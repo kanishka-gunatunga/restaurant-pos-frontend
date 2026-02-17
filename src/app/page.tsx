@@ -1,25 +1,22 @@
-import Link from "next/link";
+import LoginForm from "@/components/login/LoginForm";
 
-export default function Home() {
+export default function LoginPage() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-zinc-50 p-8 dark:bg-zinc-950">
-      <main className="flex max-w-2xl flex-col items-center gap-8 text-center">
-        <h1 className="text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-          Restaurant POS
-        </h1>
-        <p className="text-lg text-zinc-600 dark:text-zinc-400">
-          Point of Sale system for restaurant operations. Frontend built with Next.js, Tailwind CSS,
-          and TypeScript. Backend integration pending.
-        </p>
-        <div className="flex gap-4">
-          <Link
-            href="/"
-            className="rounded-lg bg-zinc-900 px-6 py-3 font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-          >
-            Get Started
-          </Link>
-        </div>
-      </main>
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden">
+      
+      <div className="login-bg absolute inset-0" aria-hidden />
+      <div
+        className="absolute inset-0 bg-zinc-900/50"
+        aria-hidden
+      />
+
+      <div className="relative z-10 flex min-h-screen w-full flex-col items-center justify-center gap-8 p-6">
+        <LoginForm />
+        <footer className="flex flex-col items-center gap-1 text-center font-[Arial] text-[10px] font-normal leading-[15px] tracking-[2px] uppercase text-[#FFFFFF66]">
+          <span>Powered by Kode tech (pvt) ltd</span>
+          <span>• Secure Connection Enabled</span>
+        </footer>
+      </div>
     </div>
   );
 }

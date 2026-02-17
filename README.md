@@ -12,7 +12,7 @@ Web-based Point of Sale (POS) system for restaurant operations. Built with Next.
 ### 1. Clone and install
 
 ```bash
-git clone <your-repo-url>
+git clone git@github.com:kanishka-gunatunga/restaurant-pos-frontend.git
 cd restaurant-pos-frontend
 npm install
 ```
@@ -50,13 +50,13 @@ src/
 
 ## Scripts
 
-| Command   | Description                    |
-| --------- | ------------------------------ |
-| `npm run dev`    | Start dev server (port 3000)   |
-| `npm run build`  | Production build               |
-| `npm run start`  | Start production server        |
-| `npm run lint`   | Run ESLint                     |
-| `npm run format` | Format code with Prettier      |
+| Command          | Description                  |
+| ---------------- | ---------------------------- |
+| `npm run dev`    | Start dev server (port 3000) |
+| `npm run build`  | Production build             |
+| `npm run start`  | Start production server      |
+| `npm run lint`   | Run ESLint                   |
+| `npm run format` | Format code with Prettier    |
 
 ## Tech Stack
 
@@ -79,7 +79,7 @@ Figma designs are partially complete. Components will be implemented as designs 
 If you have an existing GitHub repository:
 
 ```bash
-git remote add origin https://github.com/<username>/<repo-name>.git
+git remote add origin https://github.com/kanishka-gunatunga/restaurant-pos-frontend.git
 git branch -M main
 git push -u origin main
 ```

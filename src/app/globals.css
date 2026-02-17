@@ -24,3 +24,11 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Login page background */
+.login-bg {
+  background-color: #1c1917;
+  background-image: url("/bg_image.png");
+  background-size: cover;
+  background-position: center;
+}
