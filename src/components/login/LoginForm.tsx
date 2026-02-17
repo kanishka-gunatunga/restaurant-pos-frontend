@@ -14,7 +14,7 @@ export default function LoginForm() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // TODO: Connect to auth API when backend is ready - validate credentials
-    router.push(ROUTES.DASHBOARD_ORDER);
+    router.push(ROUTES.DASHBOARD_MENU);
   };
 
   return (

@@ -10,11 +10,11 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   const { isOpen, close } = useCalculator();
 
   return (
-    <div className="flex min-h-screen bg-white">
+    <div className="flex h-screen overflow-hidden bg-white">
       <DashboardSidebar />
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col md:ml-24 min-[1920px]:ml-28 min-[2560px]:ml-32">
         <MobileHeader />
-        <main className="flex-1 overflow-auto">{children}</main>
+        <main className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</main>
       </div>
       {isOpen && <CalculatorWindow onClose={close} />}
     </div>

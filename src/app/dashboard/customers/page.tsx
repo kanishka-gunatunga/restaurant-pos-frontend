@@ -1,0 +1,8 @@
+export default function CustomersPage() {
+  return (
+    <div className="min-h-0 flex-1 overflow-auto p-8">
+      <h1 className="text-2xl font-bold text-zinc-800">Customers</h1>
+      <p className="mt-2 text-zinc-500">Customers – placeholder.</p>
+    </div>
+  );
+}

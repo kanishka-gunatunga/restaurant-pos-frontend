@@ -8,8 +8,10 @@ export const APP_NAME = "Restaurant POS";
 export const ROUTES = {
   HOME: "/",
   DASHBOARD: "/dashboard",
-  DASHBOARD_ORDER: "/dashboard/order",
+  DASHBOARD_MENU: "/dashboard/menu",
+  DASHBOARD_ORDERS: "/dashboard/orders",
   DASHBOARD_PAYMENTS: "/dashboard/payments",
+  DASHBOARD_CUSTOMERS: "/dashboard/customers",
   DASHBOARD_CALCULATOR: "/dashboard/calculator",
   ORDERS: "/orders",
   MENU: "/menu",
