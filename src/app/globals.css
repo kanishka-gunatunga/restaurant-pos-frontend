@@ -3,11 +3,21 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* Theme primary - change this to update orange across the app */
+  --color-primary: #EA580C;
+  --color-primary-hover: #c2410c;
+  --color-primary-muted: #fff7ed;
+  /* Update shadow when changing --color-primary (matches primary at 30% opacity) */
+  --shadow-primary: 0px 4px 6px -4px color-mix(in srgb, var(--color-primary) 30%, transparent),
+    0px 10px 15px -3px color-mix(in srgb, var(--color-primary) 30%, transparent);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-primary: var(--color-primary);
+  --color-primary-hover: var(--color-primary-hover);
+  --color-primary-muted: var(--color-primary-muted);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }

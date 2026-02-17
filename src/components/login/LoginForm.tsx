@@ -1,17 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { User, Lock, ArrowRight } from "lucide-react";
+import { ROUTES } from "@/lib/constants";
 
 export default function LoginForm() {
+  const router = useRouter();
   const [employeeId, setEmployeeId] = useState("");
   const [pin, setPin] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Connect to auth API when backend is ready
-    console.log({ employeeId, pin });
+    // TODO: Connect to auth API when backend is ready - validate credentials
+    router.push(ROUTES.DASHBOARD_ORDER);
   };
 
   return (
@@ -19,8 +22,8 @@ export default function LoginForm() {
       onSubmit={handleSubmit}
       className="flex w-full max-w-md flex-col items-center rounded-3xl bg-white px-10 py-10 shadow-xl"
     >
-      {/* Logo - Bistro/House icon (Figma: 64×52, radius 16px, #EA580C, shadow) */}
-      <div className="mb-4 flex h-[52px] w-16 shrink-0 items-center justify-center rounded-2xl bg-[#EA580C] shadow-[0px_4px_6px_-4px_rgba(0,0,0,0.1),0px_10px_15px_-3px_rgba(0,0,0,0.1)]">
+      {/* Logo - Bistro/House icon */}
+      <div className="mb-4 flex h-[52px] w-16 shrink-0 items-center justify-center rounded-2xl bg-primary shadow-[0px_4px_6px_-4px_rgba(0,0,0,0.1),0px_10px_15px_-3px_rgba(0,0,0,0.1)]">
         <Image
           src="/house_icon.svg"
           alt=""
@@ -53,7 +56,7 @@ export default function LoginForm() {
             placeholder="EMP-1024"
             value={employeeId}
             onChange={(e) => setEmployeeId(e.target.value)}
-            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-3.5 pl-12 pr-4 text-zinc-800 placeholder:font-[Arial] placeholder:text-[16px] placeholder:leading-[100%] placeholder:text-[#31415880] focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-3.5 pl-12 pr-4 text-zinc-800 placeholder:font-[Arial] placeholder:text-[16px] placeholder:leading-[100%] placeholder:text-[#31415880] focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
         </div>
       </div>
@@ -74,7 +77,7 @@ export default function LoginForm() {
             placeholder="••••"
             value={pin}
             onChange={(e) => setPin(e.target.value)}
-            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-3.5 pl-12 pr-4 text-zinc-800 placeholder:font-[Arial] placeholder:text-[16px] placeholder:leading-[100%] placeholder:text-[#31415880] focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-3.5 pl-12 pr-4 text-zinc-800 placeholder:font-[Arial] placeholder:text-[16px] placeholder:leading-[100%] placeholder:text-[#31415880] focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
         </div>
       </div>
@@ -82,7 +85,7 @@ export default function LoginForm() {
       {/* Sign In Button */}
       <button
         type="submit"
-        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#EA580C] py-3.5 font-medium text-white shadow-[0px_4px_6px_-4px_#EA580C4D,0px_10px_15px_-3px_#EA580C4D] transition-all hover:bg-orange-600 active:scale-[0.98]"
+        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 font-medium text-white shadow-[var(--shadow-primary)] transition-all hover:bg-primary-hover active:scale-[0.98]"
       >
         Sign In to Terminal
         <ArrowRight className="h-5 w-5" />
@@ -93,7 +96,7 @@ export default function LoginForm() {
         Forgot your credentials?{" "}
         <a
           href="#"
-          className="inline font-[Arial] text-[16px] font-bold leading-[24px] text-[#EA580C] hover:underline hover:opacity-90"
+          className="inline font-[Arial] text-[16px] font-bold leading-[24px] text-primary hover:underline hover:opacity-90"
         >
           Contact Manager
         </a>
