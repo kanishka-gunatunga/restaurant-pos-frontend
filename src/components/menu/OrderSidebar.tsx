@@ -7,7 +7,10 @@ import { useOrder } from "@/contexts/OrderContext";
 const TAX_RATE = 0.1;
 
 export default function OrderSidebar() {
-  const { items, updateQty, removeItem } = useOrder();
+  const { items, updateQty, removeItem, orders, activeOrderId } = useOrder();
+
+  const activeOrderIndex = orders.findIndex((o) => o.id === activeOrderId);
+  const orderLabel = activeOrderIndex >= 0 ? `Order ${activeOrderIndex + 1}` : "Current Order";
 
   const subtotal = items.reduce((sum, i) => sum + i.price * i.qty, 0);
   const tax = subtotal * TAX_RATE;
@@ -17,7 +20,7 @@ export default function OrderSidebar() {
     <aside className="fixed right-0 top-0 z-40 flex h-screen w-[320px] flex-col overflow-hidden border-l border-zinc-200 bg-white shadow-lg md:w-[380px]">
       <div className="flex flex-1 flex-col overflow-hidden">
         <div className="flex items-center justify-between border-b border-zinc-200 px-5 py-4">
-          <h2 className="text-lg font-bold text-zinc-800">Current Order</h2>
+          <h2 className="text-lg font-bold text-zinc-800">{orderLabel}</h2>
           <button
             type="button"
             className="text-sm font-medium text-primary hover:underline"
@@ -53,14 +56,14 @@ export default function OrderSidebar() {
                 key={item.id}
                 className="flex gap-3 rounded-lg border border-zinc-100 bg-zinc-50/50 p-3"
               >
-                <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-zinc-200">
+                <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-zinc-200">
                   {item.image ? (
                     <Image
                       src={item.image}
                       alt={item.name}
                       fill
                       className="object-cover"
-                      sizes="48px"
+                      sizes="56px"
                     />
                   ) : (
                     <span className="flex h-full w-full items-center justify-center text-xl">🍽️</span>
@@ -68,34 +71,37 @@ export default function OrderSidebar() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-zinc-800">{item.name}</p>
-                  <p className="text-xs text-zinc-500">{item.details}</p>
-                  <p className="mt-1 text-sm font-medium text-zinc-700">
-                    Rs.{item.price.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                  </p>
-                  <div className="mt-2 flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => updateQty(item.id, -1)}
-                      className="flex h-7 w-7 items-center justify-center rounded bg-zinc-200 text-zinc-700 hover:bg-zinc-300"
-                    >
-                      −
-                    </button>
-                    <span className="min-w-[24px] text-center text-sm font-medium">
-                      {item.qty}
+                  <p className="text-xs uppercase text-zinc-500">{item.details}</p>
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium text-zinc-700">
+                      Rs.{(item.price * item.qty).toLocaleString("en-US", { minimumFractionDigits: 2 })}
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => updateQty(item.id, 1)}
-                      className="flex h-7 w-7 items-center justify-center rounded bg-zinc-200 text-zinc-700 hover:bg-zinc-300"
-                    >
-                      +
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => updateQty(item.id, -1)}
+                        className="flex h-7 w-7 items-center justify-center rounded bg-zinc-200 text-zinc-700 hover:bg-zinc-300"
+                      >
+                        −
+                      </button>
+                      <span className="min-w-[24px] text-center text-sm font-medium">
+                        {item.qty}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => updateQty(item.id, 1)}
+                        className="flex h-7 w-7 items-center justify-center rounded bg-zinc-200 text-zinc-700 hover:bg-zinc-300"
+                      >
+                        +
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => removeItem(item.id)}
                   className="shrink-0 self-start text-zinc-400 hover:text-red-500"
+                  aria-label="Remove item"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
