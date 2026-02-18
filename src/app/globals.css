@@ -3,6 +3,10 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --menu-header-height: 72px;
+  --mobile-header-height: 56px;
+  --order-sidebar-top: var(--menu-header-height);
+  --order-sidebar-height: calc(100vh - var(--order-sidebar-top));
   /* Theme primary - change this to update orange across the app */
   --color-primary: #EA580C;
   --color-primary-hover: #c2410c;
@@ -10,6 +14,13 @@
   /* Update shadow when changing --color-primary (matches primary at 30% opacity) */
   --shadow-primary: 0px 4px 6px -4px color-mix(in srgb, var(--color-primary) 30%, transparent),
     0px 10px 15px -3px color-mix(in srgb, var(--color-primary) 30%, transparent);
+}
+
+@media (max-width: 767px) {
+  :root {
+    --order-sidebar-top: calc(var(--mobile-header-height) + var(--menu-header-height));
+    --order-sidebar-height: calc(100vh - var(--order-sidebar-top));
+  }
 }
 
 @theme inline {
@@ -29,10 +40,60 @@
   }
 }
 
+/* Product card - responsive font-size only (use Tailwind for rest) */
+.product-card-category {
+  font-size: clamp(0.5rem, 0.55rem + 0.4vw, 0.75rem);
+}
+
+.product-card-addon-header {
+  font-size: clamp(0.625rem, 0.7rem + 0.4vw, 0.875rem);
+}
+
+.product-card-label {
+  font-size: clamp(0.5rem, 0.55rem + 0.3vw, 0.6875rem);
+}
+
+.product-card-variant-label {
+  font-size: clamp(0.5rem, 0.55rem + 0.3vw, 0.6875rem);
+}
+
+.product-card-price-small {
+  font-size: clamp(0.5rem, 0.55rem + 0.3vw, 0.6875rem);
+}
+
+.product-card-title {
+  font-size: clamp(0.8125rem, 0.9rem + 0.4vw, 1rem);
+}
+
+.product-card-price {
+  font-size: clamp(0.75rem, 0.8rem + 0.3vw, 0.9375rem);
+}
+
+.product-card-variant-text {
+  font-size: clamp(0.6875rem, 0.75rem + 0.3vw, 0.8125rem);
+}
+
+.product-card-total-price {
+  font-size: clamp(0.875rem, 0.95rem + 0.4vw, 1.125rem);
+}
+
+/* Selected variant name - force orange (overrides inherited/button styles) */
+.variant-name-selected {
+  color: #ea580c !important;
+}
+
+/* Quantity display - responsive font-size only */
+.quantity-display {
+  font-size: clamp(0.75rem, 0.8rem + 0.4vw, 1rem);
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 /* Login page background */

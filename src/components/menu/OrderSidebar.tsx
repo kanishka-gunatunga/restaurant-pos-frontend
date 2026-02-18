@@ -17,7 +17,13 @@ export default function OrderSidebar() {
   const total = subtotal + tax;
 
   return (
-    <aside className="fixed right-0 top-0 z-40 flex h-screen w-[320px] flex-col overflow-hidden border-l border-zinc-200 bg-white shadow-lg md:w-[380px]">
+    <aside
+      className="fixed right-0 z-40 flex w-[320px] flex-col overflow-hidden border-l border-t border-zinc-200 bg-white shadow-lg md:w-[380px]"
+      style={{
+        top: "var(--order-sidebar-top)",
+        height: "var(--order-sidebar-height)",
+      }}
+    >
       <div className="flex flex-1 flex-col overflow-hidden">
         <div className="flex items-center justify-between border-b border-zinc-200 px-5 py-4">
           <h2 className="text-lg font-bold text-zinc-800">{orderLabel}</h2>
@@ -84,7 +90,7 @@ export default function OrderSidebar() {
                       >
                         −
                       </button>
-                      <span className="min-w-[24px] text-center text-sm font-medium">
+                      <span className="quantity-display flex min-w-[28px] items-center justify-center font-black text-[#0a0a0a]">
                         {item.qty}
                       </span>
                       <button

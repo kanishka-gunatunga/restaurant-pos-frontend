@@ -1,7 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { Calendar, Clock, Plus, Layers, X } from "lucide-react";
+import { Calendar, Clock, Layers, X } from "lucide-react";
+import NewOrderIcon from "@/components/icons/NewOrderIcon";
 import { useOrder } from "@/contexts/OrderContext";
 
 function getFormattedDate() {
@@ -34,8 +35,8 @@ export default function MenuPageHeader() {
   } = useOrder();
 
   return (
-    <header className="flex shrink-0 items-center justify-between border-b border-zinc-200 bg-white px-6 py-4">
-      <div className="flex items-center gap-4">
+    <header className="relative z-50 flex shrink-0 items-center justify-between border-b border-zinc-200 bg-white px-6 py-4">
+      <div className="flex items-center gap-6">
         <div className="flex items-center gap-3">
           <div
             className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary"
@@ -56,38 +57,46 @@ export default function MenuPageHeader() {
             <h1 className="text-lg font-bold leading-[22.5px] tracking-normal text-[#1D293D]">
               Savory Delights Bistro
             </h1>
-            <p className="text-xs font-medium text-zinc-500">
+            <p className="text-[10px] mt-1 font-bold leading-[15px] tracking-[1px] uppercase text-[#90A1B9]">
               MAHARAGAMA BRANCH
             </p>
           </div>
         </div>
 
-        {/* Order tabs - pill-shaped like in design */}
-        <div className="flex items-center gap-2">
+        {/* Order tabs - pill container */}
+        <div className="flex items-center gap-1 rounded-[16px] border border-[#E2E8F0] bg-[#F1F5F9] px-1.5 py-1.5">
           {orders.map((order, index) => (
             <div
               key={order.id}
-              className={`flex items-center gap-2 rounded-full px-4 py-2 transition-colors ${
+              className={`flex items-center gap-1.5 rounded-[14px] px-2.5 py-1 transition-colors ${
                 activeOrderId === order.id
-                  ? "bg-slate-100"
-                  : "bg-zinc-50 hover:bg-zinc-100"
+                  ? "bg-white"
+                  : "bg-transparent hover:bg-white/50"
               }`}
+              style={
+                activeOrderId === order.id
+                  ? {
+                      boxShadow:
+                        "0px 1px 2px -1px #0000001A, 0px 1px 3px 0px #0000001A",
+                    }
+                  : undefined
+              }
             >
               <button
                 type="button"
                 onClick={() => setActiveOrderId(order.id)}
-                className="flex items-center gap-2"
+                className="flex h-7 min-w-0 items-center gap-1.5"
               >
                 <Layers
                   className={`h-4 w-4 shrink-0 ${
-                    activeOrderId === order.id ? "text-primary" : "text-zinc-500"
+                    activeOrderId === order.id ? "text-primary" : "text-[#62748E]"
                   }`}
                 />
                 <span
                   className={`text-sm font-medium ${
                     activeOrderId === order.id
                       ? "text-primary"
-                      : "text-zinc-600"
+                      : "text-[#62748E]"
                   }`}
                 >
                   Order {index + 1}
@@ -100,7 +109,7 @@ export default function MenuPageHeader() {
                     e.stopPropagation();
                     closeOrder(order.id);
                   }}
-                  className="rounded-full p-0.5 text-zinc-400 transition-colors hover:bg-zinc-200 hover:text-zinc-700"
+                  className="shrink-0 rounded-full p-0.5 text-zinc-400 transition-colors hover:bg-zinc-200 hover:text-zinc-700"
                   aria-label={`Close Order ${index + 1}`}
                 >
                   <X className="h-4 w-4" />
@@ -112,11 +121,9 @@ export default function MenuPageHeader() {
             <button
               type="button"
               onClick={addOrder}
-              className="flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-600 transition-colors hover:border-zinc-300 hover:bg-zinc-50"
+              className="flex items-center gap-1.5 rounded-[14px] px-2.5 py-1 text-sm font-medium text-[#62748E] transition-colors hover:bg-white/50"
             >
-              <span className="flex h-6 w-6 items-center justify-center rounded-full border border-zinc-300 text-zinc-500">
-                <Plus className="h-3.5 w-3.5" />
-              </span>
+              <NewOrderIcon className="h-[18px] w-[18px] shrink-0" />
               New Order
             </button>
           )}
@@ -125,12 +132,16 @@ export default function MenuPageHeader() {
 
       <div className="flex items-center gap-6 text-sm text-zinc-600">
         <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4" />
-          <span>{getFormattedDate()}</span>
+          <Calendar className="h-4 w-4 text-[#EA580C]" />
+          <span className="text-sm font-bold leading-5 tracking-normal text-[#45556C]">
+            {getFormattedDate()}
+          </span>
         </div>
         <div className="flex items-center gap-2">
-          <Clock className="h-4 w-4" />
-          <span>{getFormattedTime()}</span>
+          <Clock className="h-4 w-4 text-[#EA580C]" />
+          <span className="text-sm font-bold leading-5 tracking-[-0.35px] text-[#1D293D]">
+            {getFormattedTime()}
+          </span>
         </div>
       </div>
     </header>
