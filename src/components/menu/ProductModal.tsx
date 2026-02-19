@@ -12,7 +12,9 @@ type ProductModalProps = {
     name: string,
     price: number,
     details: string,
-    image?: string
+    image?: string,
+    variant?: string,
+    addOnsList?: string[]
   ) => void;
   getProdImage: (id: string) => string;
 };
@@ -80,12 +82,17 @@ export default function ProductModal({
     return parts.join(" + ") || "REGULAR";
   };
 
+  const getAddOnsList = () =>
+    selectedAddOns.map(({ addOn, qty: n }) => (n > 1 ? `${addOn.name} x${n}` : addOn.name));
+
   const handleAddToOrder = () => {
     const unitPrice = totalPrice / qty;
     const details = getDetailsString();
     const image = getProdImage(item.id);
+    const variantName = selectedVariant?.name;
+    const addOnsParsed = getAddOnsList();
     for (let i = 0; i < qty; i++) {
-      onAddToOrder(item.name, unitPrice, details, image);
+      onAddToOrder(item.name, unitPrice, details, image, variantName, addOnsParsed.length > 0 ? addOnsParsed : undefined);
     }
     onClose();
   };

@@ -51,8 +51,8 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
     const price = item.variants?.[0]?.price ?? item.price;
-    const details = item.variants?.[0]?.name ?? "REGULAR";
-    addItem(item.name, price, details, getProdImage(item.id));
+    const variantName = item.variants?.[0]?.name ?? "REGULAR";
+    addItem(item.name, price, variantName, getProdImage(item.id), variantName);
   };
 
   const toggleAddOn = (addOn: ProductAddOn) => {
@@ -86,12 +86,17 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
     return parts.join(" + ") || "REGULAR";
   };
 
+  const getAddOnsList = () =>
+    selectedAddOns.map(({ addOn, qty: n }) => (n > 1 ? `${addOn.name} x${n}` : addOn.name));
+
   const handleAddToOrder = () => {
     const unitPrice = totalPrice / qty;
     const details = getDetailsString();
     const image = getProdImage(item.id);
+    const variantName = selectedVariant?.name;
+    const addOnsParsed = getAddOnsList();
     for (let i = 0; i < qty; i++) {
-      addItem(item.name, unitPrice, details, image);
+      addItem(item.name, unitPrice, details, image, variantName, addOnsParsed.length > 0 ? addOnsParsed : undefined);
     }
     setSelectedAddOns([]);
     setSelectedVariant(item.variants?.[0] ?? null);

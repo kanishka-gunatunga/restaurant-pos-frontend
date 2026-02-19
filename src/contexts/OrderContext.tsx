@@ -12,6 +12,8 @@ export type OrderItem = {
   id: string;
   name: string;
   details: string;
+  variant?: string;
+  addOnsList?: string[];
   price: number;
   qty: number;
   image?: string;
@@ -30,7 +32,7 @@ type OrderContextType = {
   closeOrder: (orderId: string) => void;
   getActiveOrder: () => Order | null;
   items: OrderItem[];
-  addItem: (name: string, price: number, details?: string, image?: string) => void;
+  addItem: (name: string, price: number, details?: string, image?: string, variant?: string, addOnsList?: string[]) => void;
   updateQty: (id: string, delta: number) => void;
   removeItem: (id: string) => void;
   canAddOrder: boolean;
@@ -44,16 +46,7 @@ const createEmptyOrder = (): Order => ({
   items: [],
 });
 
-const createOrderWithDefaults = (): Order => ({
-  id: crypto.randomUUID(),
-  items: [
-    { id: "1", name: "Fresh Cocktails", details: "REGULAR", price: 2300, qty: 1, image: "/prod/7.png" },
-    { id: "2", name: "Pepperoni Pizza", details: "SMALL +4 Mushrooms", price: 2800, qty: 2, image: "/prod/4.png" },
-    { id: "3", name: "Margherita Pizza", details: "LARGE", price: 2500, qty: 1, image: "/prod/3.png" },
-  ],
-});
-
-const INITIAL_ORDER = createOrderWithDefaults();
+const INITIAL_ORDER = createEmptyOrder();
 
 export function OrderProvider({ children }: { children: ReactNode }) {
   const [orders, setOrders] = useState<Order[]>([INITIAL_ORDER]);
@@ -89,7 +82,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   }, [orders]);
 
   const addItem = useCallback(
-    (name: string, price: number, details = "REGULAR", image?: string) => {
+    (name: string, price: number, details = "REGULAR", image?: string, variant?: string, addOnsList?: string[]) => {
       const orderId = activeOrderId ?? orders[0]?.id;
       if (!orderId) return;
 
@@ -116,6 +109,8 @@ export function OrderProvider({ children }: { children: ReactNode }) {
                 price,
                 qty: 1,
                 image,
+                variant,
+                addOnsList,
               },
             ],
           };

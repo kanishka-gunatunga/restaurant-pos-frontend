@@ -130,14 +130,14 @@ export default function MenuPageHeader() {
         </div>
       </div>
 
-      <div className="flex items-center gap-6 text-sm text-zinc-600">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 rounded-[14px] border border-[#F1F5F9] bg-[#F8FAFC] px-4 py-2">
           <Calendar className="h-4 w-4 text-[#EA580C]" />
           <span className="text-sm font-bold leading-5 tracking-normal text-[#45556C]">
             {getFormattedDate()}
           </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 rounded-[14px] border border-[#F1F5F9] bg-[#F8FAFC] px-4 py-2">
           <Clock className="h-4 w-4 text-[#EA580C]" />
           <span className="text-sm font-bold leading-5 tracking-[-0.35px] text-[#1D293D]">
             {getFormattedTime()}
