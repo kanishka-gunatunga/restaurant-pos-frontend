@@ -96,7 +96,7 @@ export default function ProductModal({
       onClick={onClose}
     >
       <div
-        className="relative flex max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-xl"
+        className="relative max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -107,7 +107,7 @@ export default function ProductModal({
           <X className="h-5 w-5" />
         </button>
 
-        <div className="flex flex-col md:flex-row">
+        <div className="flex h-full flex-col md:flex-row">
           <div className="relative h-48 w-full shrink-0 md:h-auto md:w-1/2">
             <Image
               src={getProdImage(item.id)}
@@ -124,46 +124,33 @@ export default function ProductModal({
             </div>
           </div>
 
-          <div className="flex flex-1 flex-col overflow-y-auto p-6">
-            <p className="text-sm text-zinc-600">
-              From Rs.
-              {item.price.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-            </p>
-
+          <div className="flex flex-1 flex-col overflow-y-auto bg-[#F8FAFC] p-5">
             {hasVariants && (
-              <div className="mt-4">
-                <p className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-500">
+              <div>
+                <p className="mb-2 font-['Arial'] text-[10px] font-black uppercase leading-[15px] tracking-[1px] text-[#90A1B9]">
                   SELECT VARIANT
                 </p>
-                <div className="flex flex-wrap gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   {item.variants!.map((v) => (
                     <button
                       key={v.name}
                       type="button"
                       onClick={() => setSelectedVariant(v)}
-                      className={`flex flex-col items-start rounded-[14px] border-2 pt-2.5 pr-2.5 pb-0.5 pl-2.5 font-sans transition-colors ${
+                      className={`rounded-[14px] px-3 py-2 text-left transition-colors ${
                         selectedVariant?.name === v.name
-                          ? "border-primary bg-[#EA580C0D] text-[#EA580C] shadow-[0px_0px_0px_2px_#EA580C1A]"
-                          : "border-white bg-white text-[#314158] hover:bg-zinc-50"
+                          ? "border-2 border-primary bg-primary-muted"
+                          : "border border-[#E2E8F0] bg-white text-zinc-700 hover:bg-zinc-50"
                       }`}
                     >
                       <span
-                        className={`block font-bold text-[12px] leading-4 ${
-                          selectedVariant?.name === v.name
-                            ? "variant-name-selected !text-[#EA580C]"
-                            : ""
+                        className={`block text-sm font-semibold ${
+                          selectedVariant?.name === v.name ? "text-primary" : ""
                         }`}
-                        {...(selectedVariant?.name === v.name && {
-                          style: { color: "#EA580C" },
-                        })}
                       >
                         {v.name}
                       </span>
-                      <span className="mt-1 block font-normal text-[10px] leading-[15px] text-[#62748E]">
-                        {v.price.toLocaleString("en-US", {
-                          minimumFractionDigits: 2,
-                        })}{" "}
-                        LKR
+                      <span className="block text-xs text-zinc-600">
+                        {v.price.toLocaleString("en-US", { minimumFractionDigits: 2 })} LKR
                       </span>
                     </button>
                   ))}
@@ -172,140 +159,135 @@ export default function ProductModal({
             )}
 
             {item.addOns && item.addOns.length > 0 && (
-            <div className="mt-4">
-              <p className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-500">
-                ADD-ONS
-              </p>
-              <div className="relative mb-3">
-                <input
-                  type="text"
-                  placeholder="Search add-ons..."
-                  value={addOnSearch}
-                  onChange={(e) => setAddOnSearch(e.target.value)}
-                  className="w-full rounded-lg border border-zinc-200 bg-zinc-50 py-2 pl-9 pr-3 text-sm"
-                />
-                <svg
-                  className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
-              </div>
-              <div className="space-y-2">
-                {filteredAddOns.map((addOn) => {
-                  const selected = selectedAddOns.find(
-                    (p) => p.addOn.id === addOn.id
-                  );
-                  return (
-                    <div
-                      key={addOn.id}
-                      className={`flex items-center justify-between rounded-lg border p-3 ${
-                        selected
-                          ? "border-primary bg-primary-muted"
-                          : "border-zinc-200 bg-white"
-                      }`}
+              <div className="mt-4">
+                <div className="mb-3 flex items-center gap-5">
+                  <p className="shrink-0 font-['Arial'] text-[10px] font-black uppercase leading-[15px] tracking-[1px] text-[#90A1B9]">
+                    ADD-ONS
+                  </p>
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      placeholder="Search add-ons..."
+                      value={addOnSearch}
+                      onChange={(e) => setAddOnSearch(e.target.value)}
+                      className="w-full rounded-[10px] border border-[#E2E8F0] bg-[#F1F5F9] py-1.5 pl-8 pr-3 text-sm text-[#0A0A0A80]"
+                    />
+                    <svg
+                      className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
                     >
-                      <button
-                        type="button"
-                        onClick={() => toggleAddOn(addOn)}
-                        className="flex flex-1 items-center gap-3 text-left"
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
+                    </svg>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  {filteredAddOns.map((addOn) => {
+                    const selected = selectedAddOns.find(
+                      (p) => p.addOn.id === addOn.id
+                    );
+                    return (
+                      <div
+                        key={addOn.id}
+                        className={`flex items-center justify-between gap-2 rounded-md border p-2.5 ${
+                          selected
+                            ? "border-primary bg-primary-muted"
+                            : "border-[#E2E8F0] bg-white"
+                        }`}
                       >
-                        <div
-                          className={`flex h-5 w-5 items-center justify-center rounded border-2 ${
-                            selected
-                              ? "border-primary bg-primary"
-                              : "border-zinc-300"
-                          }`}
+                        <button
+                          type="button"
+                          onClick={() => toggleAddOn(addOn)}
+                          className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
                         >
-                          {selected && (
-                            <svg
-                              className="h-3 w-3 text-white"
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
+                          <div
+                            className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                              selected ? "border-primary bg-primary" : "border-zinc-300"
+                            }`}
+                          >
+                            {selected && (
+                              <svg
+                                className="h-2.5 w-2.5 text-white"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                            )}
+                          </div>
+                          <div className="flex min-w-0 flex-col">
+                            <span className="text-sm font-medium text-zinc-800">
+                              {addOn.name}
+                            </span>
+                            <span className="text-xs text-zinc-600">
+                              +{addOn.price.toLocaleString("en-US", { minimumFractionDigits: 2 })} LKR
+                            </span>
+                          </div>
+                        </button>
+                        {selected && (
+                          <div className="flex shrink-0 items-center gap-1.5 rounded-lg border border-[#EA580C33] bg-white px-1.5 py-0.5">
+                            <button
+                              type="button"
+                              onClick={() => updateAddOnQty(addOn.id, -1)}
+                              className="py-0.5 text-[#90A1B9] hover:text-zinc-700"
                             >
-                              <path
-                                fillRule="evenodd"
-                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
-                          )}
-                        </div>
-                        <span className="font-medium text-zinc-800">
-                          {addOn.name}
-                        </span>
-                        <span className="text-sm text-zinc-600">
-                          +
-                          {addOn.price.toLocaleString("en-US", {
-                            minimumFractionDigits: 2,
-                          })}{" "}
-                          LKR
-                        </span>
-                      </button>
-                      {selected && (
-                        <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => updateAddOnQty(addOn.id, -1)}
-                            className="flex h-7 w-7 items-center justify-center rounded-full bg-zinc-200 text-zinc-700"
-                          >
-                            <Minus className="h-4 w-4" />
-                          </button>
-                          <span className="quantity-display flex min-w-[24px] items-center justify-center font-black text-[#0a0a0a]">
-                            {selected.qty}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => updateAddOnQty(addOn.id, 1)}
-                            className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-white"
-                          >
-                            <Plus className="h-4 w-4" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                              <Minus className="h-3.5 w-3.5" />
+                            </button>
+                            <span className="min-w-[18px] text-center text-xs font-bold text-[#0A0A0A]">
+                              {selected.qty}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => updateAddOnQty(addOn.id, 1)}
+                              className="py-0.5 text-[#90A1B9] hover:text-primary"
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
             )}
 
-            <div className="mt-6 flex items-center justify-between gap-4 border-t border-zinc-200 pt-4">
-              <div className="flex items-center gap-2">
+            <div className="mt-5 flex w-full items-stretch justify-between gap-3 border-t border-[#E2E8F0] pt-4">
+              <div className="flex shrink-0 items-stretch gap-3 rounded-[14px] border border-[#E2E8F0] bg-white px-1.5 py-1.5">
                 <button
                   type="button"
                   onClick={() => setQty((q) => Math.max(1, q - 1))}
-                  className="flex h-9 w-9 items-center justify-center rounded-full bg-zinc-200 text-zinc-700"
+                  className="flex w-8 items-center justify-center rounded-[10px] bg-[#F8FAFC] text-zinc-700"
                 >
-                  <Minus className="h-4 w-4" />
+                  <Minus className="h-3.5 w-3.5" />
                 </button>
-                <span className="quantity-display flex min-w-[32px] items-center justify-center font-black text-[#0a0a0a]">
+                <span className="flex min-w-[24px] items-center justify-center font-['Arial'] text-sm font-black leading-5 text-[#0A0A0A]">
                   {qty}
                 </span>
                 <button
                   type="button"
                   onClick={() => setQty((q) => q + 1)}
-                  className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-white"
+                  className="flex w-8 items-center justify-center rounded-[10px] bg-[#EA580C] text-white"
                 >
-                  <Plus className="h-4 w-4" />
+                  <Plus className="h-3.5 w-3.5" />
                 </button>
               </div>
-              <div className="text-right">
-                <p className="text-xs font-medium uppercase text-zinc-500">
+              <div className="min-w-0 flex-1 text-right">
+                <p className="font-['Arial'] text-[10px] font-bold uppercase leading-[15px] tracking-[1px] text-[#90A1B9]">
                   TOTAL PRICE
                 </p>
-                <p className="text-lg font-bold text-primary">
-                  Rs.
-                  {totalPrice.toLocaleString("en-US", {
-                    minimumFractionDigits: 2,
-                  })}
+                <p className="font-['Arial'] text-xl font-black leading-7 text-[#EA580C]">
+                  Rs.{totalPrice.toLocaleString("en-US")}
                 </p>
               </div>
             </div>
@@ -313,7 +295,7 @@ export default function ProductModal({
             <button
               type="button"
               onClick={handleAddToOrder}
-              className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-3 font-medium text-white hover:bg-primary-hover"
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-[14px] bg-[#EA580C] py-3 font-['Arial'] text-sm font-bold leading-4 text-white shadow-[0px_4px_6px_-4px_#EA580C33,0px_10px_15px_-3px_#EA580C33] transition-all duration-300 ease-out hover:bg-[#DC4C04] active:scale-95"
             >
               <svg
                 className="h-5 w-5"
