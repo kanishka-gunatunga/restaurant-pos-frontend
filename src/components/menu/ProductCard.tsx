@@ -10,11 +10,13 @@ import { getProdImage } from "./menuData";
 
 type ProductCardProps = {
   item: MenuItem;
+  isExpanded: boolean;
+  onExpand: () => void;
+  onCollapse: () => void;
 };
 
-export default function ProductCard({ item }: ProductCardProps) {
+export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: ProductCardProps) {
   const { addItem } = useOrder();
-  const [isExpanded, setIsExpanded] = useState(false);
   const [isAddOnsOpen, setIsAddOnsOpen] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
     item.variants?.[0] ?? null
@@ -35,14 +37,15 @@ export default function ProductCard({ item }: ProductCardProps) {
   const handleImageClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (isExpanded) {
-      setIsExpanded(false);
+      onCollapse();
     } else {
+      onCollapse();
       setShowModal(true);
     }
   };
 
   const handleBottomClick = () => {
-    setIsExpanded(true);
+    onExpand();
   };
 
   const handleQuickAdd = (e: React.MouseEvent) => {
@@ -93,17 +96,17 @@ export default function ProductCard({ item }: ProductCardProps) {
     setSelectedAddOns([]);
     setSelectedVariant(item.variants?.[0] ?? null);
     setQty(1);
-    setIsExpanded(false);
+    onCollapse();
   };
 
   const handleCancel = () => {
     setSelectedAddOns([]);
     setSelectedVariant(item.variants?.[0] ?? null);
     setQty(1);
-    setIsExpanded(false);
+    onCollapse();
   };
 
-  const handleCloseExpansion = () => setIsExpanded(false);
+  const handleCloseExpansion = () => onCollapse();
 
   if (isExpanded) {
     return (
@@ -139,7 +142,7 @@ export default function ProductCard({ item }: ProductCardProps) {
               {item.price.toLocaleString("en-US", { minimumFractionDigits: 2 })}
             </span>
           </div>
-          <div className="mt-2 border-b-2 border-[#CBD5E1]" />
+          <div className="mt-3 border-b-2 border-[#F1F5F9]" />
 
           <div className="bg-[#F8FAFC] px-4 pt-2">
             {hasVariants && (
@@ -186,7 +189,7 @@ export default function ProductCard({ item }: ProductCardProps) {
                     e.stopPropagation();
                     setIsAddOnsOpen(!isAddOnsOpen);
                   }}
-                  className={`flex w-full min-w-0 items-center justify-between rounded-[14px] border-2 px-3 py-4 text-left transition-colors ${
+                  className={`flex w-full min-w-0 items-center justify-between rounded-[14px] border-2 px-3 py-2 text-left transition-colors ${
                     isAddOnsOpen
                       ? "border-[#1D293D] bg-[#1D293D] text-white"
                       : " border-[#E2E8F0] bg-white"

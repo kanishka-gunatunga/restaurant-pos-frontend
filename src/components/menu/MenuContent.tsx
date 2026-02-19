@@ -1,9 +1,25 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Search } from "lucide-react";
 import ProductCard from "./ProductCard";
 import { MENU_ITEMS } from "./menuData";
+
+function useColumnCount() {
+  const [cols, setCols] = useState(4);
+  useEffect(() => {
+    const update = () => {
+      const w = window.innerWidth;
+      if (w >= 1024) setCols(4);
+      else if (w >= 768) setCols(3);
+      else setCols(2);
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+  return cols;
+}
 
 const CATEGORIES = ["All", "Burgers", "Pizza", "Pasta", "Drinks", "Dessert"] as const;
 
@@ -20,6 +36,7 @@ export default function MenuContent() {
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<string>("All");
   const [activeSubCategory, setActiveSubCategory] = useState<string>("All");
+  const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
 
   const subCategories = useMemo(
     () => SUB_CATEGORIES_BY_CATEGORY[activeCategory] ?? ["All"],
@@ -34,6 +51,16 @@ export default function MenuContent() {
       activeSubCategory === "All" || item.subCategory === activeSubCategory;
     return matchesSearch && matchesCategory && matchesSubCategory;
   });
+
+  const columnCount = useColumnCount();
+
+  const columns = useMemo(() => {
+    const cols: typeof filteredItems[] = Array.from({ length: columnCount }, () => []);
+    filteredItems.forEach((item, i) => {
+      cols[i % columnCount].push(item);
+    });
+    return cols;
+  }, [filteredItems, columnCount]);
 
   const handleCategoryChange = (cat: string) => {
     setActiveCategory(cat);
@@ -102,9 +129,19 @@ export default function MenuContent() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 pb-6">
-        <div className="grid grid-cols-2 items-start gap-4 md:grid-cols-3 lg:grid-cols-4">
-          {filteredItems.map((item) => (
-            <ProductCard key={item.id} item={item} />
+        <div className="flex items-start gap-4">
+          {columns.map((colItems, colIdx) => (
+            <div key={colIdx} className="flex flex-1 flex-col gap-4">
+              {colItems.map((item) => (
+                <ProductCard
+                  key={item.id}
+                  item={item}
+                  isExpanded={expandedCardId === item.id}
+                  onExpand={() => setExpandedCardId(item.id)}
+                  onCollapse={() => setExpandedCardId(null)}
+                />
+              ))}
+            </div>
           ))}
         </div>
       </div>
