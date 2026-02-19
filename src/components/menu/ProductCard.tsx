@@ -234,8 +234,9 @@ export default function ProductCard({ item }: ProductCardProps) {
                         strokeLinejoin="round"
                       />
                     </svg>
-                    ADD-ONS & CUSTOMIZATION
-                    {selectedAddOns.length > 0 && ` (${selectedAddOns.length})`}
+                    {selectedAddOns.length > 0
+                      ? `Customized (${selectedAddOns.length})`
+                      : "ADD-ONS & CUSTOMIZATION"}
                   </span>
                   {isAddOnsOpen ? (
                     <ChevronUp className="h-4 w-4 shrink-0" />
@@ -312,7 +313,10 @@ export default function ProductCard({ item }: ProductCardProps) {
                                   {addOn.name}
                                 </span>
                                 <span className="product-card-price-small text-zinc-600">
-                                  +{addOn.price.toLocaleString("en-US", { minimumFractionDigits: 2 })}{" "}
+                                  +
+                                  {addOn.price.toLocaleString("en-US", {
+                                    minimumFractionDigits: 2,
+                                  })}{" "}
                                   LKR
                                 </span>
                               </div>
@@ -356,37 +360,41 @@ export default function ProductCard({ item }: ProductCardProps) {
               </div>
             )}
 
-            <div className="mt-3 flex w-full min-w-0 items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setQty((q) => Math.max(1, q - 1));
-                  }}
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-200 text-zinc-700"
-                >
-                  <Minus className="h-3.5 w-3.5" />
-                </button>
-                <span className="quantity-display flex min-w-[28px] items-center justify-center font-black text-[#0a0a0a]">
-                  {qty}
-                </span>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setQty((q) => q + 1);
-                  }}
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-white"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                </button>
-              </div>
-              <div className="min-w-0 text-right">
-                <p className="product-card-label font-medium uppercase text-zinc-500">TOTAL PRICE</p>
-                <p className="product-card-total-price font-bold text-primary">
-                  Rs.{totalPrice.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                </p>
+            <div className="mt-3 flex w-full min-w-0 items-center justify-between gap-2 border-t border-[#E2E8F0]">
+              <div className="mt-4 flex w-full items-stretch justify-between gap-2">
+                <div className="flex shrink-0 items-stretch gap-2 rounded-[10px] border border-[#E2E8F0] bg-white px-1 py-1">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setQty((q) => Math.max(1, q - 1));
+                    }}
+                    className="flex w-7 items-center justify-center rounded-[7px] bg-[#F8FAFC] text-zinc-700"
+                  >
+                    <Minus className="h-3 w-3" />
+                  </button>
+                  <span className="quantity-display flex min-w-[18px] items-center justify-center font-['Arial'] text-xs font-black leading-4 text-[#0A0A0A]">
+                    {qty}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setQty((q) => q + 1);
+                    }}
+                    className="flex w-7 items-center justify-center rounded-[7px] bg-[#EA580C] text-white"
+                  >
+                    <Plus className="h-3 w-3" />
+                  </button>
+                </div>
+                <div className="min-w-0 flex-1 text-right">
+                  <p className="product-card-label font-['Arial'] text-[10px] font-bold uppercase leading-[15px] tracking-[1px] text-[#90A1B9]">
+                    TOTAL PRICE
+                  </p>
+                  <p className="product-card-total-price font-['Arial'] text-lg font-black leading-7 text-[#EA580C]">
+                    Rs.{totalPrice.toLocaleString("en-US")}
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -397,7 +405,7 @@ export default function ProductCard({ item }: ProductCardProps) {
                   e.stopPropagation();
                   handleCancel();
                 }}
-                className="product-card-variant-text min-w-0 flex-1 rounded-md bg-zinc-100 py-2 font-medium text-zinc-700 hover:bg-zinc-200"
+                className="product-card-variant-text min-w-0 rounded-[14px] bg-[#E2E8F0] px-4 py-3 font-['Arial'] text-xs font-bold leading-4 text-[#314158] transition-all duration-300 ease-out hover:bg-[#CBD5E1] active:scale-95"
               >
                 Cancel
               </button>
@@ -407,7 +415,7 @@ export default function ProductCard({ item }: ProductCardProps) {
                   e.stopPropagation();
                   handleAddToOrder();
                 }}
-                className="product-card-variant-text flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-md bg-primary py-2 font-medium text-white hover:bg-primary-hover"
+                className="product-card-variant-text flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-[14px] bg-[#EA580C] py-3 font-['Arial'] text-xs font-bold leading-4 text-white shadow-[0px_4px_6px_-4px_#EA580C33,0px_10px_15px_-3px_#EA580C33] transition-all duration-300 ease-out hover:bg-[#DC4C04] active:scale-95"
               >
                 <svg
                   className="h-4 w-4 shrink-0"
