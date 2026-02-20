@@ -23,32 +23,31 @@ type Props = {
 
 const DineInIcon = ({ active }: { active: boolean }) => (
   <svg className="h-6 w-6" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M3 11H21" stroke={active ? "#EA580C" : "#45556C"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M12 3V7" stroke={active ? "#EA580C" : "#45556C"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M5 11C5 8.17157 5 6.75736 5.87868 5.87868C6.75736 5 8.17157 5 11 5H13C15.8284 5 17.2426 5 18.1213 5.87868C19 6.75736 19 8.17157 19 11" stroke={active ? "#EA580C" : "#45556C"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M20 11L20.5 17C20.5 19.2091 18.7091 21 16.5 21H7.5C5.29086 21 3.5 19.2091 3.5 17L4 11" stroke={active ? "#EA580C" : "#45556C"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M14 2V4" stroke={active ? "#E26522" : "#62748E"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M16 8C16.2652 8 16.5196 8.10536 16.7071 8.29289C16.8946 8.48043 17 8.73478 17 9V17C17 18.0609 16.5786 19.0783 15.8284 19.8284C15.0783 20.5786 14.0609 21 13 21H7C5.93913 21 4.92172 20.5786 4.17157 19.8284C3.42143 19.0783 3 18.0609 3 17V9C3 8.73478 3.10536 8.48043 3.29289 8.29289C3.48043 8.10536 3.73478 8 4 8H18C19.0609 8 20.0783 8.42143 20.8284 9.17157C21.5786 9.92172 22 10.9391 22 12C22 13.0609 21.5786 14.0783 20.8284 14.8284C20.0783 15.5786 19.0609 16 18 16H17" stroke={active ? "#E26522" : "#62748E"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M6 2V4" stroke={active ? "#E26522" : "#62748E"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 
 const TakeAwayIcon = ({ active }: { active: boolean }) => (
   <svg className="h-6 w-6" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M15 11L14 20" stroke={active ? "#EA580C" : "#45556C"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M19 11L15 4" stroke={active ? "#EA580C" : "#45556C"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M2 11H22" stroke={active ? "#EA580C" : "#45556C"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M3.5 11L5.1 18.4C5.19357 18.8585 5.44491 19.2697 5.81034 19.5621C6.17578 19.8545 6.63217 20.0094 7.1 20H16.9C17.3678 20.0094 17.8242 19.8545 18.1897 19.5621C18.5551 19.2697 18.8064 18.8585 18.9 18.4L20.6 11" stroke={active ? "#EA580C" : "#45556C"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M4.5 15.5H19.5" stroke={active ? "#EA580C" : "#45556C"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M5 11L9 4" stroke={active ? "#EA580C" : "#45556C"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M9 11L10 20" stroke={active ? "#EA580C" : "#45556C"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M15 11L14 20" stroke={active ? "#E26522" : "#62748E"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M19 11L15 4" stroke={active ? "#E26522" : "#62748E"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M2 11H22" stroke={active ? "#E26522" : "#62748E"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M3.5 11L5.1 18.4C5.19357 18.8585 5.44491 19.2697 5.81034 19.5621C6.17578 19.8545 6.63217 20.0094 7.1 20H16.9C17.3678 20.0094 17.8242 19.8545 18.1897 19.5621C18.5551 19.2697 18.8064 18.8585 18.9 18.4L20.6 11" stroke={active ? "#E26522" : "#62748E"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M4.5 15.5H19.5" stroke={active ? "#E26522" : "#62748E"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M5 11L9 4" stroke={active ? "#E26522" : "#62748E"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M9 11L10 20" stroke={active ? "#E26522" : "#62748E"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 
 const DeliveryIcon = ({ active }: { active: boolean }) => (
   <svg className="h-6 w-6" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M14 18V6C14 5.46957 13.7893 4.96086 13.4142 4.58579C13.0391 4.21071 12.5304 4 12 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V15C2 15.5304 2.21071 16.0391 2.58579 16.4142C2.96086 16.7893 3.46957 17 4 17H5" stroke={active ? "#EA580C" : "#45556C"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M14 8H17L20 11V17H19" stroke={active ? "#EA580C" : "#45556C"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <circle cx="7.5" cy="18.5" r="1.5" stroke={active ? "#EA580C" : "#45556C"} strokeWidth="1.5"/>
-    <circle cx="16.5" cy="18.5" r="1.5" stroke={active ? "#EA580C" : "#45556C"} strokeWidth="1.5"/>
-    <path d="M9 18H15" stroke={active ? "#EA580C" : "#45556C"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M14 18V6C14 5.46957 13.7893 4.96086 13.4142 4.58579C13.0391 4.21071 12.5304 4 12 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V15C2 15.5304 2.21071 16.0391 2.58579 16.4142C2.96086 16.7893 3.46957 17 4 17H5" stroke={active ? "#E26522" : "#62748E"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M14 8H17L20 11V17H19" stroke={active ? "#E26522" : "#62748E"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <circle cx="7.5" cy="18.5" r="1.5" stroke={active ? "#E26522" : "#62748E"} strokeWidth="1.5"/>
+    <circle cx="16.5" cy="18.5" r="1.5" stroke={active ? "#E26522" : "#62748E"} strokeWidth="1.5"/>
+    <path d="M9 18H15" stroke={active ? "#E26522" : "#62748E"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 
@@ -72,20 +71,20 @@ export default function NewOrderDetailsModal({ onSubmit, initialData }: Props) {
     });
   };
 
-  const labelClass = "font-['Arial'] text-xs font-bold leading-4 text-[#45556C]";
-  const inputClass = "w-full rounded-[14px] border border-[#E2E8F0] bg-white px-3 py-2.5 pl-10 font-['Arial'] text-sm leading-5 text-[#1D293D] placeholder:text-[#90A1B9] focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C]/20";
-  const iconClass = "absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#90A1B9]";
+  const labelClass = "font-['Arial'] text-sm leading-5 text-[#62748E]";
+  const inputClass = "w-full rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFC] py-3 pr-4 pl-11 font-['Arial'] text-base leading-[100%] text-[#0A0A0A80] placeholder:text-[#0A0A0A80] focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C]/20";
+  const iconClass = "absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#90A1B9]";
 
   const orderTypes: OrderType[] = ["Dine In", "Take Away", "Delivery"];
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
       <div
-        className="w-full max-w-lg overflow-y-auto rounded-[20px] bg-white p-8 shadow-xl"
-        style={{ maxHeight: "90vh" }}
+        className="w-full max-w-lg overflow-y-auto rounded-[16px] border border-[#F1F5F9] bg-white px-8 py-5 shadow-[0px_1px_2px_-1px_#0000001A,0px_1px_3px_0px_#0000001A] [scrollbar-color:#E2E8F0_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#E2E8F0] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-1.5"
+        style={{ maxHeight: "85vh" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="font-['Arial'] text-2xl font-bold leading-8 text-[#0F172B]">
+        <h2 className="font-['Arial'] text-2xl font-bold leading-8 text-[#1D293D]">
           New Order Details
         </h2>
 
@@ -108,10 +107,14 @@ export default function NewOrderDetailsModal({ onSubmit, initialData }: Props) {
             <div className="relative mt-1.5">
               <Phone className={iconClass} />
               <input
-                type="text"
+                type="tel"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="Enter number"
+                onChange={(e) => {
+                  const val = e.target.value.replace(/[^\d+\-\s]/g, "");
+                  setPhone(val);
+                }}
+                pattern="^(?:0|94|\+94)?7[0-9]{8}$"
+                placeholder="07X-XXXX-XXX"
                 className={inputClass}
               />
             </div>
@@ -128,9 +131,9 @@ export default function NewOrderDetailsModal({ onSubmit, initialData }: Props) {
                   key={type}
                   type="button"
                   onClick={() => setOrderType(type)}
-                  className={`flex flex-col items-center gap-2 rounded-[14px] border-2 px-4 py-4 transition-colors ${
+                  className={`flex flex-col items-center gap-2 rounded-[14px] border px-4 py-4 transition-all duration-300 ease-out ${
                     isActive
-                      ? "border-[#EA580C] bg-[#EA580C08]"
+                      ? "border-[#E26522] bg-[#E265220D]"
                       : "border-[#E2E8F0] bg-white hover:bg-zinc-50"
                   }`}
                 >
@@ -139,7 +142,7 @@ export default function NewOrderDetailsModal({ onSubmit, initialData }: Props) {
                   {type === "Delivery" && <DeliveryIcon active={isActive} />}
                   <span
                     className={`font-['Arial'] text-sm font-bold leading-5 ${
-                      isActive ? "text-[#EA580C]" : "text-[#45556C]"
+                      isActive ? "text-[#E26522]" : "text-[#62748E]"
                     }`}
                   >
                     {type}
@@ -159,7 +162,7 @@ export default function NewOrderDetailsModal({ onSubmit, initialData }: Props) {
                 value={tableNumber}
                 onChange={(e) => setTableNumber(e.target.value)}
                 placeholder="e.g. T6"
-                className="w-full rounded-[14px] border border-[#E2E8F0] bg-white px-4 py-2.5 font-['Arial'] text-sm leading-5 text-[#1D293D] placeholder:text-[#90A1B9] focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C]/20"
+                className="w-full rounded-[14px] border border-[#E3E4EA] bg-[#F8FAFC] px-4 py-3 font-['Arial'] text-base leading-[100%] text-[#0A0A0A80] placeholder:text-[#0A0A0A80] focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C]/20"
               />
             </div>
           </div>
@@ -233,7 +236,7 @@ export default function NewOrderDetailsModal({ onSubmit, initialData }: Props) {
         <button
           type="button"
           onClick={handleSubmit}
-          className="mt-8 w-full rounded-[14px] bg-[#EA580C] py-3.5 font-['Arial'] text-base font-bold leading-6 text-white shadow-[0px_4px_6px_-4px_#EA580C4D,0px_10px_15px_-3px_#EA580C4D] transition-all duration-300 ease-out hover:bg-[#DC4C04] active:scale-[0.98]"
+          className="mt-8 w-full rounded-[14px] bg-[#EA580C] py-4 font-['Arial'] text-lg font-bold leading-7 text-white shadow-[0px_4px_6px_-4px_#EA580C4D,0px_10px_15px_-3px_#EA580C4D] transition-all duration-300 ease-out hover:bg-[#DC4C04] active:scale-[0.98]"
         >
           Proceed to Menu
         </button>
