@@ -67,7 +67,7 @@ function NoteModal({
 }
 
 export default function OrderSidebar() {
-  const { items, updateQty, removeItem, activeOrderDetails, setActiveOrderDetails, activeOrderId, activeKitchenNote, activeOrderNote, setActiveKitchenNote, setActiveOrderNote } = useOrder();
+  const { items, updateQty, removeItem, activeOrderDetails, setActiveOrderDetails, activeOrderId, activeKitchenNote, activeOrderNote, setActiveKitchenNote, setActiveOrderNote, clearActiveOrder } = useOrder();
   const [editOrderId, setEditOrderId] = useState<string | null>(null);
   const [noteModal, setNoteModal] = useState<NoteModalType>(null);
 
@@ -318,6 +318,10 @@ export default function OrderSidebar() {
           <div className="flex gap-2.5">
             <button
               type="button"
+              onClick={() => {
+                // TODO: Save order to DB here
+                clearActiveOrder();
+              }}
               className="flex-1 rounded-[14px] border-2 border-[#EA580C] bg-white py-2.5 font-['Arial'] text-base font-bold leading-6 text-[#EA580C] transition-all duration-300 ease-out hover:bg-primary-muted active:scale-95"
             >
               Order Now
