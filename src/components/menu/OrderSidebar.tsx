@@ -2,23 +2,84 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { User, Phone, ChefHat, Trash2 } from "lucide-react";
+import { User, Phone, ChefHat, Trash2, X } from "lucide-react";
 import { useOrder } from "@/contexts/OrderContext";
-import NewOrderDetailsModal, { type OrderDetailsData } from "./NewOrderDetailsModal";
+import NewOrderDetailsModal from "./NewOrderDetailsModal";
+import type { OrderDetailsData } from "@/contexts/OrderContext";
 
 const TAX_RATE = 0.1;
 
-export default function OrderSidebar() {
-  const { items, updateQty, removeItem } = useOrder();
-  const [orderDetails, setOrderDetails] = useState<OrderDetailsData | null>(null);
-  const [showModal, setShowModal] = useState(false);
+type NoteModalType = "kitchen" | "order" | null;
 
+function NoteModal({
+  type,
+  title,
+  value,
+  onSave,
+  onClose,
+}: {
+  type: NoteModalType;
+  title: string;
+  value: string;
+  onSave: (value: string) => void;
+  onClose: () => void;
+}) {
+  const [draft, setDraft] = useState(value);
+  if (!type) return null;
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-sm rounded-[16px] border border-[#F1F5F9] bg-white p-5 shadow-[0px_1px_2px_-1px_#0000001A,0px_1px_3px_0px_#0000001A]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="font-['Arial'] text-lg font-bold leading-6 text-[#1D293D]">{title}</h3>
+          <button type="button" onClick={onClose} className="rounded-full p-1 text-[#90A1B9] hover:bg-[#F1F5F9] hover:text-[#45556C]">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder={`Enter ${title.toLowerCase()}...`}
+          rows={3}
+          className="mt-3 w-full resize-none rounded-[10px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 font-['Arial'] text-sm leading-5 text-[#0A0A0A] placeholder:text-[#45556C80] focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C]/20"
+        />
+        <div className="mt-4 flex gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 rounded-[14px] border border-[#E2E8F0] bg-white py-2 font-['Arial'] text-sm font-bold leading-5 text-[#45556C] hover:bg-zinc-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => { if (typeof onSave === "function") onSave(draft); onClose(); }}
+            className="flex-1 rounded-[14px] bg-[#EA580C] py-2 font-['Arial'] text-sm font-bold leading-5 text-white shadow-[0px_4px_6px_-4px_#EA580C4D,0px_10px_15px_-3px_#EA580C4D] hover:opacity-90"
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function OrderSidebar() {
+  const { items, updateQty, removeItem, activeOrderDetails, setActiveOrderDetails, activeOrderId, activeKitchenNote, activeOrderNote, setActiveKitchenNote, setActiveOrderNote } = useOrder();
+  const [editOrderId, setEditOrderId] = useState<string | null>(null);
+  const [noteModal, setNoteModal] = useState<NoteModalType>(null);
+
+  const orderDetails = activeOrderDetails;
   const orderLabel = "Current Order";
   const hasDetails = orderDetails !== null;
 
+  const showModal = editOrderId === activeOrderId;
+
   const handleOrderDetailsSubmit = (data: OrderDetailsData) => {
-    setOrderDetails(data);
-    setShowModal(false);
+    setActiveOrderDetails(data);
+    setEditOrderId(null);
   };
 
   const subtotal = items.reduce((sum, i) => sum + i.price * i.qty, 0);
@@ -41,7 +102,7 @@ export default function OrderSidebar() {
               <h2 className="font-['Arial'] text-xl font-bold leading-7 text-[#0F172B]">{orderLabel}</h2>
               <button
                 type="button"
-                onClick={() => setShowModal(true)}
+                onClick={() => setEditOrderId(activeOrderId)}
                 className="font-['Arial'] text-xs font-bold uppercase leading-4 text-[#E26522] transition-opacity duration-300 ease-out hover:opacity-70"
               >
                 EDIT INFO
@@ -73,7 +134,7 @@ export default function OrderSidebar() {
         ) : (
           <>
             <div className="px-5 pt-4 pb-2">
-              <p className="font-['Arial'] text-base font-bold leading-7 text-[#EA580C]">
+              <p className="font-['Arial'] text-base font-bold leading-7 text-[#EA580C] mt-2">
                 Choose a menu option to start a new order.
               </p>
             </div>
@@ -200,12 +261,18 @@ export default function OrderSidebar() {
             <p className="font-['Arial'] text-[10px] font-black uppercase leading-[15px] tracking-[1px] text-[#90A1B9]">
               Estimated Preparation
             </p>
-            <p className="rounded-[10px] border border-[#F1F5F9] bg-[#F8FAFC] px-3 py-1.5 font-['Arial'] text-xs leading-[100%] text-[#45556C80]">15 mins</p>
+            <input
+              type="text"
+              defaultValue="15 mins"
+              placeholder="e.g. 15 mins"
+              className="w-full rounded-[10px] border border-[#F1F5F9] bg-[#F8FAFC] px-3 py-1.5 font-['Arial'] text-xs leading-[100%] text-[#45556C80] focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C]/20"
+            />
           </div>
 
           <div className="flex gap-2">
             <button
               type="button"
+              onClick={() => setNoteModal("kitchen")}
               className="flex flex-1 items-center justify-center gap-1.5 rounded-[14px] border border-[#E2E8F0] bg-white py-2 font-['Arial'] text-xs font-bold leading-4 text-[#45556C] hover:bg-zinc-50"
             >
               <ChefHat className="h-4 w-4" />
@@ -213,6 +280,7 @@ export default function OrderSidebar() {
             </button>
             <button
               type="button"
+              onClick={() => setNoteModal("order")}
               className="flex flex-1 items-center justify-center gap-1.5 rounded-[14px] border border-[#E2E8F0] bg-white py-2 font-['Arial'] text-xs font-bold leading-4 text-[#45556C] hover:bg-zinc-50"
             >
               <svg className="h-4 w-4 shrink-0" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -267,15 +335,30 @@ export default function OrderSidebar() {
 
       {showModal && (
         <NewOrderDetailsModal
+          key={activeOrderId}
           onSubmit={handleOrderDetailsSubmit}
+          onClose={() => setEditOrderId(null)}
           initialData={orderDetails}
         />
       )}
 
+      <NoteModal
+        key={noteModal ?? "closed"}
+        type={noteModal}
+        title={noteModal === "kitchen" ? "Kitchen Note" : noteModal === "order" ? "Order Note" : ""}
+        value={noteModal === "kitchen" ? activeKitchenNote : noteModal === "order" ? activeOrderNote : ""}
+        onSave={(value) => {
+          if (noteModal === "kitchen") setActiveKitchenNote(value);
+          else if (noteModal === "order") setActiveOrderNote(value);
+        }}
+        onClose={() => setNoteModal(null)}
+      />
+
       {!hasDetails && !showModal && (
         <div
-          className="fixed inset-0 z-50 cursor-pointer"
-          onClick={() => setShowModal(true)}
+          className="fixed bottom-0 right-0 z-50 cursor-pointer left-0 md:left-24 min-[1920px]:left-28 min-[2560px]:left-32"
+          style={{ top: "var(--menu-header-height)" }}
+          onClick={() => setEditOrderId(activeOrderId)}
         />
       )}
     </>

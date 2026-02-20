@@ -8,6 +8,19 @@ import {
   type ReactNode,
 } from "react";
 
+export type OrderType = "Dine In" | "Take Away" | "Delivery";
+
+export type OrderDetailsData = {
+  customerName: string;
+  phone: string;
+  orderType: OrderType;
+  tableNumber?: string;
+  deliveryAddress?: string;
+  landmark?: string;
+  zipCode?: string;
+  deliveryInstructions?: string;
+};
+
 export type OrderItem = {
   id: string;
   name: string;
@@ -22,6 +35,9 @@ export type OrderItem = {
 export type Order = {
   id: string;
   items: OrderItem[];
+  orderDetails: OrderDetailsData | null;
+  kitchenNote?: string;
+  orderNote?: string;
 };
 
 type OrderContextType = {
@@ -32,6 +48,12 @@ type OrderContextType = {
   closeOrder: (orderId: string) => void;
   getActiveOrder: () => Order | null;
   items: OrderItem[];
+  activeOrderDetails: OrderDetailsData | null;
+  setActiveOrderDetails: (data: OrderDetailsData) => void;
+  activeKitchenNote: string;
+  activeOrderNote: string;
+  setActiveKitchenNote: (value: string) => void;
+  setActiveOrderNote: (value: string) => void;
   addItem: (name: string, price: number, details?: string, image?: string, variant?: string, addOnsList?: string[]) => void;
   updateQty: (id: string, delta: number) => void;
   removeItem: (id: string) => void;
@@ -44,6 +66,9 @@ const OrderContext = createContext<OrderContextType | null>(null);
 const createEmptyOrder = (): Order => ({
   id: crypto.randomUUID(),
   items: [],
+  orderDetails: null,
+  kitchenNote: "",
+  orderNote: "",
 });
 
 const INITIAL_ORDER = createEmptyOrder();
@@ -61,6 +86,48 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   }, [orders, activeOrderId]);
 
   const items = getActiveOrder()?.items ?? [];
+  const activeOrderDetails = getActiveOrder()?.orderDetails ?? null;
+  const activeKitchenNote = getActiveOrder()?.kitchenNote ?? "";
+  const activeOrderNote = getActiveOrder()?.orderNote ?? "";
+
+  const setActiveOrderDetails = useCallback(
+    (data: OrderDetailsData) => {
+      const orderId = activeOrderId ?? orders[0]?.id;
+      if (!orderId) return;
+      setOrders((prev) =>
+        prev.map((order) =>
+          order.id === orderId ? { ...order, orderDetails: data } : order
+        )
+      );
+    },
+    [activeOrderId, orders]
+  );
+
+  const setActiveKitchenNote = useCallback(
+    (value: string) => {
+      const orderId = activeOrderId ?? orders[0]?.id;
+      if (!orderId) return;
+      setOrders((prev) =>
+        prev.map((order) =>
+          order.id === orderId ? { ...order, kitchenNote: value } : order
+        )
+      );
+    },
+    [activeOrderId, orders]
+  );
+
+  const setActiveOrderNote = useCallback(
+    (value: string) => {
+      const orderId = activeOrderId ?? orders[0]?.id;
+      if (!orderId) return;
+      setOrders((prev) =>
+        prev.map((order) =>
+          order.id === orderId ? { ...order, orderNote: value } : order
+        )
+      );
+    },
+    [activeOrderId, orders]
+  );
 
   const addOrder = useCallback(() => {
     if (orders.length >= 2) return;
@@ -173,6 +240,12 @@ export function OrderProvider({ children }: { children: ReactNode }) {
         closeOrder,
         getActiveOrder,
         items,
+        activeOrderDetails,
+        setActiveOrderDetails,
+        activeKitchenNote,
+        activeOrderNote,
+        setActiveKitchenNote,
+        setActiveOrderNote,
         addItem,
         updateQty,
         removeItem,

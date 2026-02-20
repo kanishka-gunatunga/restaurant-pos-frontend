@@ -2,22 +2,12 @@
 
 import { useState } from "react";
 import { User, Phone, Home, MapPin, Navigation } from "lucide-react";
-
-export type OrderType = "Dine In" | "Take Away" | "Delivery";
-
-export type OrderDetailsData = {
-  customerName: string;
-  phone: string;
-  orderType: OrderType;
-  tableNumber?: string;
-  deliveryAddress?: string;
-  landmark?: string;
-  zipCode?: string;
-  deliveryInstructions?: string;
-};
+import { X } from "lucide-react";
+import type { OrderDetailsData, OrderType } from "@/contexts/OrderContext";
 
 type Props = {
   onSubmit: (data: OrderDetailsData) => void;
+  onClose: () => void;
   initialData?: OrderDetailsData | null;
 };
 
@@ -51,7 +41,7 @@ const DeliveryIcon = ({ active }: { active: boolean }) => (
   </svg>
 );
 
-export default function NewOrderDetailsModal({ onSubmit, initialData }: Props) {
+export default function NewOrderDetailsModal({ onSubmit, onClose, initialData }: Props) {
   const [customerName, setCustomerName] = useState(initialData?.customerName ?? "");
   const [phone, setPhone] = useState(initialData?.phone ?? "");
   const [orderType, setOrderType] = useState<OrderType>(initialData?.orderType ?? "Dine In");
@@ -60,8 +50,20 @@ export default function NewOrderDetailsModal({ onSubmit, initialData }: Props) {
   const [landmark, setLandmark] = useState(initialData?.landmark ?? "");
   const [zipCode, setZipCode] = useState(initialData?.zipCode ?? "");
   const [deliveryInstructions, setDeliveryInstructions] = useState(initialData?.deliveryInstructions ?? "");
+  const [toast, setToast] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  };
 
   const handleSubmit = () => {
+    if (!customerName.trim()) return showToast("Please enter customer name.");
+    if (!phone.trim()) return showToast("Please enter mobile number.");
+    if (!/^0{1}7{1}[01245678]{1}[0-9]{7}$/.test(phone.replace(/[-\s]/g, ""))) return showToast("Invalid mobile number.");
+    if (orderType === "Dine In" && !tableNumber.trim()) return showToast("Please enter table number.");
+    if (orderType === "Delivery" && !deliveryAddress.trim()) return showToast("Please enter delivery address.");
+
     onSubmit({
       customerName,
       phone,
@@ -78,12 +80,19 @@ export default function NewOrderDetailsModal({ onSubmit, initialData }: Props) {
   const orderTypes: OrderType[] = ["Dine In", "Take Away", "Delivery"];
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
       <div
-        className="w-full max-w-lg overflow-y-auto rounded-[16px] border border-[#F1F5F9] bg-white px-8 py-5 shadow-[0px_1px_2px_-1px_#0000001A,0px_1px_3px_0px_#0000001A] [scrollbar-color:#E2E8F0_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#E2E8F0] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-1.5"
+        className="relative w-full max-w-lg overflow-y-auto rounded-[16px] border border-[#F1F5F9] bg-white px-8 py-5 shadow-[0px_1px_2px_-1px_#0000001A,0px_1px_3px_0px_#0000001A] [scrollbar-color:#E2E8F0_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#E2E8F0] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-1.5"
         style={{ maxHeight: "85vh" }}
         onClick={(e) => e.stopPropagation()}
       >
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-4 top-4 rounded-full p-1 text-[#90A1B9] transition-colors hover:bg-[#F1F5F9] hover:text-[#45556C]"
+        >
+          <X className="h-5 w-5" />
+        </button>
         <h2 className="font-['Arial'] text-2xl font-bold leading-8 text-[#1D293D]">
           New Order Details
         </h2>
@@ -241,6 +250,14 @@ export default function NewOrderDetailsModal({ onSubmit, initialData }: Props) {
           Proceed to Menu
         </button>
       </div>
+
+      {toast && (
+        <div className="fixed bottom-6 left-0 right-0 z-[70] flex justify-center animate-[fadeInUp_0.3s_ease-out]">
+          <div className="rounded-[14px] border border-red-200 bg-red-500 px-6 py-3 font-['Arial'] text-sm font-bold text-white shadow-lg">
+            {toast}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

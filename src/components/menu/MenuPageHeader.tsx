@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Calendar, Clock, Layers, X } from "lucide-react";
 import NewOrderIcon from "@/components/icons/NewOrderIcon";
@@ -23,6 +24,15 @@ function getFormattedTime() {
   });
 }
 
+function useRealTimeClock() {
+  const [time, setTime] = useState(getFormattedTime);
+  useEffect(() => {
+    const interval = setInterval(() => setTime(getFormattedTime()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+  return time;
+}
+
 export default function MenuPageHeader() {
   const {
     orders,
@@ -33,6 +43,8 @@ export default function MenuPageHeader() {
     canAddOrder,
     canCloseOrder,
   } = useOrder();
+
+  const currentTime = useRealTimeClock();
 
   return (
     <header className="relative z-50 flex shrink-0 items-center justify-between border-b border-zinc-200 bg-white px-6 py-4">
@@ -140,7 +152,7 @@ export default function MenuPageHeader() {
         <div className="flex items-center gap-2 rounded-[14px] border border-[#F1F5F9] bg-[#F8FAFC] px-4 py-2">
           <Clock className="h-4 w-4 text-[#EA580C]" />
           <span className="text-sm font-bold leading-5 tracking-[-0.35px] text-[#1D293D]">
-            {getFormattedTime()}
+            {currentTime}
           </span>
         </div>
       </div>
