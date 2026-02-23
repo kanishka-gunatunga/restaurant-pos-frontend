@@ -109,13 +109,13 @@ export default function OrderSidebar() {
               </button>
             </div>
             <div className="flex items-center gap-4 bg-[#F8FAFC80] px-5 pb-2.5">
-              <div className="flex items-center gap-1.5 font-['Arial'] text-sm leading-5 text-[#45556C]">
-                <User className="h-3.5 w-3.5" />
-                <span>{orderDetails.customerName}</span>
+              <div className="flex min-w-0 w-1/2 items-center gap-1.5 font-['Arial'] text-sm leading-5 text-[#45556C]">
+                <User className="h-3.5 w-3.5 shrink-0" />
+                <span className="min-w-0 truncate">{orderDetails.customerName}</span>
               </div>
-              <div className="flex items-center gap-1.5 font-['Arial'] text-sm leading-5 text-[#45556C]">
-                <Phone className="h-3.5 w-3.5" />
-                <span>{orderDetails.phone}</span>
+              <div className="flex min-w-0 w-1/2 items-center gap-1.5 font-['Arial'] text-sm leading-5 text-[#45556C]">
+                <Phone className="h-3.5 w-3.5 shrink-0" />
+                <span className="min-w-0 truncate">{orderDetails.phone}</span>
               </div>
             </div>
             <div className="flex items-center gap-1.5 border-b border-[#F1F5F9] bg-[#F8FAFC80] px-5 py-1.5">
