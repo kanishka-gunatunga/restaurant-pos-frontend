@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import { Search, Clock, Pencil, Trash2, Lock, X } from "lucide-react";
 import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
-import { ROUTES } from "@/lib/constants";
+import NewOrderDetailsModal from "@/components/menu/NewOrderDetailsModal";
+import type { OrderDetailsData } from "@/contexts/OrderContext";
 
 type OrderStatus = "PREPARING" | "PENDING" | "COMPLETE" | "HOLD" | "READY" | "CANCELED";
 
@@ -198,12 +198,12 @@ function ManagerAuthorizationModal({
 }
 
 export default function OrdersPage() {
-  const router = useRouter();
   const [search, setSearch] = useState("");
   const [authModal, setAuthModal] = useState<{ isOpen: boolean; orderNo: string | null }>({
     isOpen: false,
     orderNo: null,
   });
+  const [editOrderModal, setEditOrderModal] = useState<OrderRow | null>(null);
 
   const filteredOrders = useMemo(() => {
     if (!search.trim()) return MOCK_ORDERS;
@@ -220,7 +220,7 @@ export default function OrdersPage() {
     setAuthModal({ isOpen: true, orderNo });
   };
 
-  const handleVerify = (passcode: string) => {
+  const handleVerify = (_passcode: string) => {
     // TODO: Verify passcode with backend
     // TODO: Update order status to CANCELED
     setAuthModal({ isOpen: false, orderNo: null });
@@ -232,49 +232,13 @@ export default function OrdersPage() {
 
   const handleEditClick = (order: OrderRow) => {
     if (order.status === "PENDING") {
-      // TODO: Replace with actual API call to fetch order items from backend
-      const dummyItems = [
-        {
-          id: crypto.randomUUID(),
-          name: "Margherita Pizza",
-          details: "REGULAR",
-          variant: "Large",
-          addOnsList: ["+2 Extra Cheese", "+1 Mushrooms"],
-          price: 1250,
-          qty: 1,
-          image: "/prod/1.png",
-        },
-        {
-          id: crypto.randomUUID(),
-          name: "Chicken Burger",
-          details: "REGULAR",
-          variant: "Medium",
-          addOnsList: ["+1 Bacon", "+1 Avocado"],
-          price: 890,
-          qty: 2,
-          image: "/prod/2.png",
-        },
-        {
-          id: crypto.randomUUID(),
-          name: "Caesar Salad",
-          details: "REGULAR",
-          price: 650,
-          qty: 1,
-          image: "/prod/3.png",
-        },
-      ];
-      
-      const orderData = {
-        id: order.id,
-        orderNo: order.orderNo,
-        customerName: order.customerName,
-        phone: order.phone,
-        totalAmount: order.totalAmount,
-        items: dummyItems,
-      };
-      sessionStorage.setItem(`order_${order.id}`, JSON.stringify(orderData));
-      router.push(`${ROUTES.DASHBOARD_MENU}?orderId=${order.id}&orderNo=${order.orderNo}`);
+      setEditOrderModal(order);
     }
+  };
+
+  const handleEditOrderSubmit = (_data: OrderDetailsData) => {
+    // TODO: Call API to update order details
+    setEditOrderModal(null);
   };
 
   return (
@@ -474,6 +438,20 @@ export default function OrdersPage() {
           </div>
         </div>
       </div>
+
+      {editOrderModal && (
+        <NewOrderDetailsModal
+          title="Edit Order Details"
+          submitButtonText="Save"
+          initialData={{
+            customerName: editOrderModal.customerName,
+            phone: editOrderModal.phone,
+            orderType: "Dine In",
+          }}
+          onSubmit={handleEditOrderSubmit}
+          onClose={() => setEditOrderModal(null)}
+        />
+      )}
 
       {authModal.orderNo && (
         <ManagerAuthorizationModal

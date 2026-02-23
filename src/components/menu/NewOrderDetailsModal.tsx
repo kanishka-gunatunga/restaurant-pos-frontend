@@ -9,6 +9,8 @@ type Props = {
   onSubmit: (data: OrderDetailsData) => void;
   onClose: () => void;
   initialData?: OrderDetailsData | null;
+  title?: string;
+  submitButtonText?: string;
 };
 
 const DineInIcon = ({ active }: { active: boolean }) => (
@@ -41,7 +43,7 @@ const DeliveryIcon = ({ active }: { active: boolean }) => (
   </svg>
 );
 
-export default function NewOrderDetailsModal({ onSubmit, onClose, initialData }: Props) {
+export default function NewOrderDetailsModal({ onSubmit, onClose, initialData, title = "New Order Details", submitButtonText = "Proceed to Menu" }: Props) {
   const [customerName, setCustomerName] = useState(initialData?.customerName ?? "");
   const [phone, setPhone] = useState(initialData?.phone ?? "");
   const [orderType, setOrderType] = useState<OrderType>(initialData?.orderType ?? "Dine In");
@@ -94,7 +96,7 @@ export default function NewOrderDetailsModal({ onSubmit, onClose, initialData }:
           <X className="h-5 w-5" />
         </button>
         <h2 className="font-['Arial'] text-2xl font-bold leading-8 text-[#1D293D]">
-          New Order Details
+          {title}
         </h2>
 
         <div className="mt-6 grid grid-cols-2 gap-4">
@@ -247,7 +249,7 @@ export default function NewOrderDetailsModal({ onSubmit, onClose, initialData }:
           onClick={handleSubmit}
           className="mt-8 w-full rounded-[14px] bg-[#EA580C] py-4 font-['Arial'] text-lg font-bold leading-7 text-white shadow-[0px_4px_6px_-4px_#EA580C4D,0px_10px_15px_-3px_#EA580C4D] transition-all duration-300 ease-out hover:bg-[#DC4C04] active:scale-[0.98]"
         >
-          Proceed to Menu
+          {submitButtonText}
         </button>
       </div>
 
