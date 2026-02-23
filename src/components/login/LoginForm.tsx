@@ -6,15 +6,48 @@ import Image from "next/image";
 import { User, Lock, ArrowRight } from "lucide-react";
 import { ROUTES } from "@/lib/constants";
 
+import axiosInstance from "@/lib/api/axiosInstance";
+
 export default function LoginForm() {
   const router = useRouter();
-  const [employeeId, setEmployeeId] = useState("");
-  const [pin, setPin] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Connect to auth API when backend is ready - validate credentials
-    router.push(ROUTES.DASHBOARD_MENU);
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await axiosInstance.post("/auth/login", {
+        username,
+        password,
+      });
+
+      if (response.data && response.data.token) {
+        // Store the token
+        localStorage.setItem("token", response.data.token);
+        // Store user info if needed
+        if (response.data.user) {
+          localStorage.setItem("user", JSON.stringify(response.data.user));
+        }
+        
+        console.log("Login successful:", response.data);
+        router.push(ROUTES.DASHBOARD_MENU);
+      } else {
+        setError("Invalid response from server. Please try again.");
+      }
+    } catch (err: any) {
+      console.error("Login failed:", err);
+      setError(
+        err.response?.data?.message || 
+        "Login failed. Please check your credentials and try again."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -40,43 +73,51 @@ export default function LoginForm() {
         Login Here
       </p>
 
-      {/* Employee ID */}
+      {error && (
+        <div className="mb-6 w-full rounded-xl bg-red-50 p-4 text-center text-[12px] font-semibold text-red-500 border border-red-100 animate-in fade-in slide-in-from-top-2">
+          {error}
+        </div>
+      )}
+
+      {/* Username */}
       <div className="mb-5 mt-2 w-full">
         <label
-          htmlFor="employeeId"
+          htmlFor="username"
           className="mb-2 block font-[Arial] text-[12px] font-bold leading-[16px] tracking-[1.2px] uppercase text-[#90A1B9]"
         >
-          Employee ID
+          Username
         </label>
         <div className="relative">
           <User className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-400" />
           <input
-            id="employeeId"
+            id="username"
             type="text"
-            placeholder="EMP-1024"
-            value={employeeId}
-            onChange={(e) => setEmployeeId(e.target.value)}
+            placeholder="admin1"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
             className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-3.5 pl-12 pr-4 text-zinc-800 placeholder:font-[Arial] placeholder:text-[16px] placeholder:leading-[100%] placeholder:text-[#31415880] focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
         </div>
       </div>
 
-      {/* Secure PIN */}
+      {/* Password */}
       <div className="mb-8 w-full">
         <label
-          htmlFor="pin"
+          htmlFor="password"
           className="mb-2 block font-[Arial] text-[12px] font-bold leading-[16px] tracking-[1.2px] uppercase text-[#90A1B9]"
         >
-          Secure PIN
+          Password
         </label>
         <div className="relative">
           <Lock className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-400" />
           <input
-            id="pin"
+            id="password"
             type="password"
-            placeholder="••••"
-            value={pin}
-            onChange={(e) => setPin(e.target.value)}
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
             className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-3.5 pl-12 pr-4 text-zinc-800 placeholder:font-[Arial] placeholder:text-[16px] placeholder:leading-[100%] placeholder:text-[#31415880] focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
         </div>
@@ -85,10 +126,20 @@ export default function LoginForm() {
       {/* Sign In Button */}
       <button
         type="submit"
-        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 font-medium text-white shadow-[var(--shadow-primary)] transition-all hover:bg-primary-hover active:scale-[0.98]"
+        disabled={loading}
+        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 font-medium text-white shadow-[var(--shadow-primary)] transition-all hover:bg-primary-hover active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
       >
-        Sign In to Terminal
-        <ArrowRight className="h-5 w-5" />
+        {loading ? (
+          <>
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+            Signing In...
+          </>
+        ) : (
+          <>
+            Sign In to Terminal
+            <ArrowRight className="h-5 w-5" />
+          </>
+        )}
       </button>
 
       {/* Forgot credentials */}

@@ -1,25 +1,64 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import MenuPageHeader from "@/components/menu/MenuPageHeader";
 import { OrderProvider } from "@/contexts/OrderContext";
 import { Search, UserPlus } from "lucide-react";
 import UserTable from "@/components/users/UserTable";
 import AddUserModal from "@/components/users/AddUserModal";
-import type { UserRole } from "@/components/users/UserTable";
+import type { UserRole, User } from "@/components/users/UserTable";
+
+import axiosInstance from "@/lib/api/axiosInstance";
 
 export default function UsersPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [users, setUsers] = useState<User[]>([]);
+  const [isUsersLoading, setIsUsersLoading] = useState(true);
 
-  const handleAddUser = (user: {
-    name: string;
-    email: string;
-    role: UserRole;
-    passcode?: string;
-  }) => {
-    console.log("Adding user:", user);
-    setIsAddModalOpen(false);
+  const fetchUsers = async () => {
+    setIsUsersLoading(true);
+    try {
+      const response = await axiosInstance.get("/users");
+      // Map API role to UI role if needed
+      const formattedUsers = response.data.map((u: any) => ({
+        ...u,
+        role: u.role.toUpperCase() as UserRole,
+      }));
+      setUsers(formattedUsers);
+    } catch (error) {
+      console.error("Failed to fetch users:", error);
+    } finally {
+      setIsUsersLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const handleAddUser = async (user: any) => {
+    setLoading(true);
+    try {
+      const payload = {
+        ...user,
+        role: user.role.toLowerCase(), // API expects lowercase roles
+      };
+
+      const response = await axiosInstance.post("/auth/register", payload);
+      
+      if (response.status === 200 || response.status === 201) {
+        console.log("User registered successfully:", response.data);
+        setIsAddModalOpen(false);
+        fetchUsers(); // Refresh the list without full reload
+      }
+    } catch (error: any) {
+      console.error("Failed to register user:", error);
+      alert(error.response?.data?.message || "Failed to register user. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -60,7 +99,11 @@ export default function UsersPage() {
               </div>
             </div>
 
-            <UserTable searchTerm={searchTerm} />
+            <UserTable 
+              searchTerm={searchTerm} 
+              users={users}
+              isLoading={isUsersLoading}
+            />
           </div>
         </div>
 
