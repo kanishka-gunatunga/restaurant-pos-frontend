@@ -1,20 +1,50 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { User, Lock, ArrowRight } from "lucide-react";
 import { ROUTES } from "@/lib/constants";
+import { useAuth, type UserRole } from "@/contexts/AuthContext";
+
+/** Sample credentials for development. Replace with backend auth later. */
+const SAMPLE_CREDENTIALS: { employeeId: string; pin: string; role: UserRole; name: string }[] = [
+  { employeeId: "EMP-1001", pin: "1234", role: "cashier", name: "Sarah" },
+  { employeeId: "EMP-2001", pin: "1234", role: "manager", name: "James" },
+  { employeeId: "EMP-3001", pin: "1234", role: "admin", name: "Alex" },
+];
 
 export default function LoginForm() {
   const router = useRouter();
+  const { login, user } = useAuth();
   const [employeeId, setEmployeeId] = useState("");
   const [pin, setPin] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      if (user.role === "cashier") router.replace(ROUTES.DASHBOARD_MENU);
+      else router.replace(ROUTES.DASHBOARD);
+    }
+  }, [user, router]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Connect to auth API when backend is ready - validate credentials
-    router.push(ROUTES.DASHBOARD_MENU);
+    setError(null);
+    const id = employeeId.trim().toUpperCase();
+    const matched = SAMPLE_CREDENTIALS.find(
+      (c) => c.employeeId.toUpperCase() === id && c.pin === pin
+    );
+    if (!matched) {
+      setError("Invalid Employee ID or PIN.");
+      return;
+    }
+    login(matched.role, matched.name);
+    if (matched.role === "cashier") {
+      router.push(ROUTES.DASHBOARD_MENU);
+    } else {
+      router.push(ROUTES.DASHBOARD);
+    }
   };
 
   return (
@@ -40,8 +70,14 @@ export default function LoginForm() {
         Login Here
       </p>
 
+      {error && (
+        <p className="mb-4 w-full rounded-xl bg-red-50 px-4 py-2.5 font-[Arial] text-sm text-red-600">
+          {error}
+        </p>
+      )}
+
       {/* Employee ID */}
-      <div className="mb-5 mt-2 w-full">
+      <div className="mb-5 w-full">
         <label
           htmlFor="employeeId"
           className="mb-2 block font-[Arial] text-[12px] font-bold leading-[16px] tracking-[1.2px] uppercase text-[#90A1B9]"
