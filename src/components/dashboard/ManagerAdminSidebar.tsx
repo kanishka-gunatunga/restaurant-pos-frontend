@@ -1,0 +1,179 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  LayoutGrid,
+  ShoppingBag,
+  CreditCard,
+  Users,
+  Calculator,
+  LogOut,
+  X,
+  Package,
+  UserCog,
+} from "lucide-react";
+import OrdersIcon from "@/components/icons/OrdersIcon";
+import { ROUTES } from "@/lib/constants";
+import { useCalculator } from "@/contexts/CalculatorContext";
+import { useSidebar } from "@/contexts/SidebarContext";
+import { useAuth } from "@/contexts/AuthContext";
+
+const navLinks = [
+  { href: ROUTES.DASHBOARD, label: "Dashboard", icon: LayoutGrid },
+  { href: ROUTES.DASHBOARD_MENU, label: "Menu", icon: ShoppingBag },
+  { href: ROUTES.DASHBOARD_ORDERS, label: "Orders", icon: OrdersIcon },
+  { href: ROUTES.DASHBOARD_PAYMENTS, label: "Payments", icon: CreditCard },
+  { href: ROUTES.DASHBOARD_CUSTOMERS, label: "Customers", icon: Users },
+  { href: ROUTES.DASHBOARD_USERS, label: "Users", icon: UserCog },
+  { href: ROUTES.DASHBOARD_INVENTORY, label: "Inventory", icon: Package },
+] as const;
+
+function NavLink({
+  href,
+  label,
+  icon: Icon,
+  isActive,
+  onNavigate,
+}: {
+  href: string;
+  label: string;
+  icon: React.ElementType;
+  isActive: boolean;
+  onNavigate?: () => void;
+}) {
+  return (
+    <Link
+      href={href}
+      onClick={onNavigate}
+      className={`flex flex-col items-center gap-1 py-1.5 transition-colors ${
+        isActive ? "text-primary" : "text-[#90A1B9] hover:text-zinc-700"
+      }`}
+    >
+      <div
+        className={`flex items-center justify-center rounded-lg p-1.5 ${
+          isActive ? "bg-primary-muted" : ""
+        }`}
+      >
+        <Icon className="h-5 w-5 shrink-0" />
+      </div>
+      <span className="text-[9px] font-medium uppercase tracking-wider leading-tight">
+        {label}
+      </span>
+    </Link>
+  );
+}
+
+function CalculatorTab({ onToggle }: { onToggle?: () => void }) {
+  const { isOpen, toggle } = useCalculator();
+
+  const handleClick = () => {
+    toggle();
+    onToggle?.();
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      className={`flex flex-col items-center gap-1 py-1.5 transition-colors ${
+        isOpen ? "text-primary" : "text-[#90A1B9] hover:text-zinc-700"
+      }`}
+    >
+      <div
+        className={`flex items-center justify-center rounded-lg p-1.5 ${
+          isOpen ? "bg-primary-muted" : ""
+        }`}
+      >
+        <Calculator className="h-5 w-5 shrink-0" />
+      </div>
+      <span className="text-[9px] font-medium uppercase tracking-wider leading-tight">
+        Calculator
+      </span>
+    </button>
+  );
+}
+
+export default function ManagerAdminSidebar() {
+  const pathname = usePathname();
+  const { isOpen, close } = useSidebar();
+  const { user, logout } = useAuth();
+
+  return (
+    <>
+      <div
+        className={`fixed inset-0 z-40 bg-black/50 transition-opacity md:hidden ${
+          isOpen ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+        onClick={close}
+        aria-hidden
+      />
+
+      <aside
+        className={`fixed left-0 top-0 z-50 flex h-screen w-64 flex-col border-r border-[#E2E8F0] bg-[#F8FAFC] transition-transform md:w-24 md:translate-x-0 min-[1920px]:w-28 min-[2560px]:w-32 ${
+          isOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="flex items-center justify-end border-b border-[#E2E8F0] bg-[#F8FAFC] p-2.5 md:hidden">
+          <button
+            type="button"
+            onClick={close}
+            className="rounded-lg p-2 text-[#90A1B9] transition-colors hover:bg-[#E2E8F0] hover:text-[#45556C]"
+            aria-label="Close menu"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <nav className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto pt-3 pb-2">
+          {navLinks.map(({ href, label, icon: Icon }) => {
+            const isDashboard = label === "Dashboard";
+            const isMenu = label === "Menu";
+            const isActive = isDashboard
+              ? pathname === ROUTES.DASHBOARD
+              : isMenu
+                ? pathname === ROUTES.DASHBOARD_MENU
+                : pathname === href || pathname.startsWith(`${href}/`);
+            return (
+              <NavLink
+                key={label}
+                href={href}
+                label={label}
+                icon={Icon}
+                isActive={isActive}
+                onNavigate={close}
+              />
+            );
+          })}
+          <CalculatorTab onToggle={close} />
+        </nav>
+
+        <div className="shrink-0 flex flex-col items-center gap-3 pb-4 pt-2 border-t border-[#E2E8F0]">
+          <div className="flex flex-col items-center gap-1">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/profile.jpg"
+              alt="Profile"
+              width={40}
+              height={40}
+              className="h-10 w-10 rounded-xl border-2 border-[#E2E8F0] object-cover shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.1),0px_1px_3px_0px_rgba(0,0,0,0.1)]"
+            />
+            <span className="text-[9px] font-medium uppercase tracking-wider text-[#90A1B9]">
+              {user?.name ?? "User"}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={logout}
+            className="flex flex-col items-center gap-1 text-[#90A1B9] transition-colors hover:text-zinc-700"
+          >
+            <LogOut className="h-4 w-4" />
+            <span className="text-[9px] font-medium uppercase tracking-wider">
+              Logout
+            </span>
+          </button>
+        </div>
+      </aside>
+    </>
+  );
+}

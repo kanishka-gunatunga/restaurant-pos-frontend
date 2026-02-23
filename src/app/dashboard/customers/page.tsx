@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import MenuPageHeader from "@/components/menu/MenuPageHeader";
-import { OrderProvider } from "@/contexts/OrderContext";
+import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
 import CustomerHeader from "@/components/customers/CustomerHeader";
 import CustomerTable from "@/components/customers/CustomerTable";
 import AddCustomerModal from "@/components/customers/AddCustomerModal";
@@ -22,9 +21,8 @@ export default function CustomersPage() {
   };
 
   return (
-    <OrderProvider>
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#F8FAFC]">
-        <MenuPageHeader />
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#F8FAFC]">
+      <DashboardPageHeader />
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           <div className="mx-auto max-w-7xl">
             <CustomerHeader 
@@ -42,7 +40,6 @@ export default function CustomersPage() {
             onAdd={handleAddCustomer}
           />
         )}
-      </div>
-    </OrderProvider>
+    </div>
   );
 }

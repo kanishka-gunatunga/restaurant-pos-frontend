@@ -15,6 +15,7 @@ import OrdersIcon from "@/components/icons/OrdersIcon";
 import { ROUTES } from "@/lib/constants";
 import { useCalculator } from "@/contexts/CalculatorContext";
 import { useSidebar } from "@/contexts/SidebarContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 const navLinks = [
   { href: ROUTES.DASHBOARD, label: "Dashboard", icon: LayoutGrid },
@@ -92,6 +93,7 @@ function CalculatorTab({ onToggle }: { onToggle?: () => void }) {
 export default function DashboardSidebar() {
   const pathname = usePathname();
   const { isOpen, close } = useSidebar();
+  const { user, logout } = useAuth();
 
   return (
     <>
@@ -161,18 +163,19 @@ export default function DashboardSidebar() {
             className="h-11 w-11 rounded-xl border-2 border-black object-cover shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.1),0px_1px_3px_0px_rgba(0,0,0,0.1)] min-[1920px]:h-12 min-[1920px]:w-12 min-[2560px]:h-14 min-[2560px]:w-14"
           />
           <span className="text-[10px] font-medium uppercase tracking-wider text-[#90A1B9] min-[1920px]:text-[11px] min-[2560px]:text-xs">
-            Sarah
+            {user?.name ?? "Cashier"}
           </span>
         </div>
-        <Link
-          href={ROUTES.HOME}
+        <button
+          type="button"
+          onClick={logout}
           className="flex flex-col items-center gap-1.5 text-[#90A1B9] transition-colors hover:text-zinc-700 min-[1920px]:gap-2 min-[2560px]:gap-2.5"
         >
           <LogOut className="h-5 w-5 min-[1920px]:h-6 min-[1920px]:w-6 min-[2560px]:h-7 min-[2560px]:w-7" />
           <span className="text-[10px] font-medium uppercase tracking-wider min-[1920px]:text-[11px] min-[2560px]:text-xs">
             Logout
           </span>
-        </Link>
+        </button>
       </div>
     </aside>
     </>
