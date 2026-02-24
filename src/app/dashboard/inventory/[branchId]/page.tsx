@@ -598,7 +598,7 @@ export default function BranchDetailPage() {
                     Add Sub-Category
                   </button>
                 </div>
-                <div className="max-h-48 min-h-0 space-y-2 overflow-y-auto">
+                <div className="max-h-48 min-h-0 space-y-2 overflow-y-auto [scrollbar-color:#E2E8F0_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#E2E8F0] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-1.5">
                   {newSubCategories.map((value, index) => (
                     <div key={index} className="flex items-center gap-2">
                       <input
@@ -697,7 +697,7 @@ export default function BranchDetailPage() {
                     Add Another Item
                   </button>
                 </div>
-                <div className="max-h-48 min-h-0 space-y-4 overflow-y-auto">
+                <div className="max-h-48 min-h-0 space-y-4 overflow-y-auto [scrollbar-color:#E2E8F0_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#E2E8F0] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-1.5">
                   {newGroupItems.map((item, index) => (
                     <div key={index} className="flex shrink-0 gap-3">
                       <div className="min-w-0 flex-1">
@@ -792,7 +792,7 @@ export default function BranchDetailPage() {
               </button>
             </div>
 
-            <div className="min-h-0 flex-1 space-y-6 overflow-y-auto">
+            <div className="min-h-0 flex-1 space-y-6 overflow-y-auto [scrollbar-color:#E2E8F0_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#E2E8F0] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-1.5">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label htmlFor="product-name" className="mb-1.5 block font-['Inter'] text-xs font-bold uppercase tracking-wide text-[#45556C]">
@@ -891,7 +891,7 @@ export default function BranchDetailPage() {
                 </div>
               </div>
 
-              <div className="rounded-[12px] border border-[#E2E8F0] bg-[#F0F9FF]/50 p-4">
+              <div className="rounded-[12px] border border-[#BFDBFE] bg-[#F0F9FF]/60 p-4">
                 <div className="mb-4 flex items-center gap-2">
                   <Package className="h-4 w-4 text-[#3B82F6]" />
                   <span className="font-['Inter'] text-xs font-bold uppercase tracking-wide text-[#45556C]">
@@ -918,11 +918,10 @@ export default function BranchDetailPage() {
                     </label>
                     <input
                       id="expiry"
-                      type="text"
+                      type="date"
                       value={newProduct.expiryDate}
                       onChange={(e) => setNewProduct((p) => ({ ...p, expiryDate: e.target.value }))}
-                      placeholder="DD/MM/YYYY"
-                      className="w-full rounded-[10px] border border-[#E2E8F0] bg-white px-3 py-2.5 font-['Inter'] text-sm text-[#1D293D] placeholder:text-[#90A1B9] focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C]"
+                      className="w-full rounded-[10px] border border-[#E2E8F0] bg-white px-3 py-2.5 font-['Inter'] text-sm text-[#1D293D] focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C]"
                     />
                   </div>
                 </div>
@@ -931,7 +930,7 @@ export default function BranchDetailPage() {
               <div>
                 <div className="mb-1.5 flex shrink-0 items-center justify-between">
                   <label className="block font-['Inter'] text-xs font-bold uppercase tracking-wide text-[#45556C]">
-                    Product Variants (e.g. Sizes)
+                    Product Variants (E.G. Sizes)
                   </label>
                   <button
                     type="button"
@@ -947,7 +946,7 @@ export default function BranchDetailPage() {
                     No variants added yet. Add variants for different sizes or options.
                   </div>
                 ) : (
-                  <div className="max-h-40 space-y-3 overflow-y-auto">
+                  <div className="max-h-40 space-y-3 overflow-y-auto [scrollbar-color:#E2E8F0_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#E2E8F0] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-1.5">
                     {newProduct.variants.map((v, i) => (
                       <div key={i} className="flex gap-3">
                         <div className="min-w-0 flex-1">
@@ -1006,10 +1005,10 @@ export default function BranchDetailPage() {
                             : "border-[#E2E8F0] bg-white hover:border-[#CAD5E2]"
                         }`}
                       >
-                        <span className={`h-4 w-4 rounded-full border-2 ${selected ? "border-[#EA580C] bg-[#EA580C]" : "border-[#90A1B9]"}`} />
+                        <span className={`h-4 w-4 shrink-0 rounded-full border-2 ${selected ? "border-[#EA580C] bg-[#EA580C]" : "border-[#90A1B9]"}`} />
                         <div>
-                          <p className="font-['Inter'] text-sm font-bold text-[#1D293D]">{g.name}</p>
                           <p className="font-['Inter'] text-xs text-[#90A1B9]">{g.items.length} items</p>
+                          <p className="font-['Inter'] text-sm font-bold text-[#1D293D]">{g.name}</p>
                         </div>
                       </button>
                     );
