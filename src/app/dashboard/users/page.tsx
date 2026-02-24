@@ -20,13 +20,12 @@ export default function UsersPage() {
     if (isCashier) router.replace(ROUTES.DASHBOARD_MENU);
   }, [isCashier, router]);
 
-  const handleAddUser = (user: {
+  const handleAddUser = (_user: {
     name: string;
     email: string;
     role: UserRole;
     passcode?: string;
   }) => {
-    console.log("Adding user:", user);
     setIsAddModalOpen(false);
   };
 

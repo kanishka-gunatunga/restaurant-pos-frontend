@@ -3,11 +3,10 @@
 import {
   createContext,
   useContext,
-  useState,
   useCallback,
-  useEffect,
   type ReactNode,
 } from "react";
+import { useSession, signOut } from "next-auth/react";
 import { ROUTES } from "@/lib/constants";
 
 export type UserRole = "cashier" | "manager" | "admin";
@@ -16,34 +15,27 @@ export type AuthUser = {
   id: string;
   name: string;
   role: UserRole;
+  employeeId?: string;
+  email?: string | null;
+  branchId?: number | null;
 };
 
-const AUTH_STORAGE_KEY = "pos_auth_user";
+const ALLOWED_ROLES: UserRole[] = ["admin", "manager", "cashier"];
 
-function loadStoredUser(): AuthUser | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = localStorage.getItem(AUTH_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as AuthUser;
-    if (parsed?.id && parsed?.name && parsed?.role) return parsed;
-  } catch {
-    return null;
-  }
-  return null;
-}
-
-function saveStoredUser(user: AuthUser | null) {
-  if (typeof window === "undefined") return;
-  try {
-    if (user) {
-      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
-    } else {
-      localStorage.removeItem(AUTH_STORAGE_KEY);
-    }
-  } catch {
-    return;
-  }
+function sessionUserToAuthUser(sessionUser: { id?: string; name?: string | null; role?: string } | null): AuthUser | null {
+  if (!sessionUser?.id || !sessionUser?.name || !sessionUser?.role) return null;
+  const rawRole = sessionUser.role;
+  const roleLower = typeof rawRole === "string" ? rawRole.trim().toLowerCase() : "";
+  const role = ALLOWED_ROLES.includes(roleLower as UserRole) ? (roleLower as UserRole) : null;
+  if (!role) return null;
+  return {
+    id: sessionUser.id,
+    name: sessionUser.name,
+    role,
+    employeeId: (sessionUser as { employeeId?: string }).employeeId,
+    email: (sessionUser as { email?: string | null }).email ?? null,
+    branchId: (sessionUser as { branchId?: number | null }).branchId ?? null,
+  };
 }
 
 type AuthContextType = {
@@ -52,6 +44,7 @@ type AuthContextType = {
   isReady: boolean;
   isCashier: boolean;
   isManagerOrAdmin: boolean;
+  token: string | null;
   login: (role: UserRole, name?: string) => void;
   logout: () => void;
 };
@@ -59,43 +52,29 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [hydrated, setHydrated] = useState(false);
-
-  useEffect(() => {
-    setUser(loadStoredUser());
-    setHydrated(true);
-  }, []);
-
-  const login = useCallback((role: UserRole, name?: string) => {
-    const newUser: AuthUser = {
-      id: `user-${Date.now()}`,
-      name: name?.trim() || (role === "cashier" ? "Cashier" : role === "manager" ? "Manager" : "Admin"),
-      role,
-    };
-    setUser(newUser);
-    saveStoredUser(newUser);
-  }, []);
+  const { data: session, status } = useSession();
+  const isReady = status !== "loading";
+  const user = sessionUserToAuthUser(session?.user ?? null);
+  const token = (session?.user as { token?: string } | undefined)?.token ?? null;
 
   const logout = useCallback(() => {
-    setUser(null);
-    saveStoredUser(null);
-    if (typeof window !== "undefined") window.location.href = ROUTES.HOME;
+    signOut({ callbackUrl: ROUTES.HOME });
+  }, []);
+
+  const login = useCallback((_role: UserRole, _name?: string) => {
+    // No-op: actual login is done via NextAuth signIn in LoginForm
   }, []);
 
   const value: AuthContextType = {
     user,
     role: user?.role ?? null,
-    isReady: hydrated,
+    isReady,
     isCashier: user?.role === "cashier",
     isManagerOrAdmin: user?.role === "manager" || user?.role === "admin",
+    token,
     login,
     logout,
   };
-
-  if (!hydrated) {
-    return null;
-  }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
