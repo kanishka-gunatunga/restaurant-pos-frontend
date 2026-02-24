@@ -10,13 +10,12 @@ export default function CustomersPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-  const handleAddCustomer = (customer: {
+  const handleAddCustomer = (_customer: {
     name: string;
     mobile: string;
     email: string;
     address: string;
   }) => {
-    console.log("Adding customer:", customer);
     setIsAddModalOpen(false);
   };
 
