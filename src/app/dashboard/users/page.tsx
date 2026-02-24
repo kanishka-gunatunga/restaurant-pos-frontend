@@ -8,7 +8,7 @@ import UserTable from "@/components/users/UserTable";
 import AddUserModal from "@/components/users/AddUserModal";
 import type { UserRole, User } from "@/components/users/UserTable";
 
-import axiosInstance from "@/lib/api/axiosInstance";
+import * as userService from "@/services/userService";
 
 export default function UsersPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -16,13 +16,14 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [isUsersLoading, setIsUsersLoading] = useState(true);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   const fetchUsers = async () => {
     setIsUsersLoading(true);
     try {
-      const response = await axiosInstance.get("/users");
+      const data = await userService.getUsers();
       // Map API role to UI role if needed
-      const formattedUsers = response.data.map((u: any) => ({
+      const formattedUsers = data.map((u: any) => ({
         ...u,
         role: u.role.toUpperCase() as UserRole,
       }));
@@ -38,26 +39,53 @@ export default function UsersPage() {
     fetchUsers();
   }, []);
 
-  const handleAddUser = async (user: any) => {
+  const handleSaveUser = async (user: any) => {
     setLoading(true);
     try {
       const payload = {
         ...user,
         role: user.role.toLowerCase(), // API expects lowercase roles
       };
-
-      const response = await axiosInstance.post("/auth/register", payload);
       
-      if (response.status === 200 || response.status === 201) {
-        console.log("User registered successfully:", response.data);
-        setIsAddModalOpen(false);
-        fetchUsers(); // Refresh the list without full reload
+      // Remove empty password if it is an edit and not provided
+      if (selectedUser && !payload.password) {
+        delete payload.password;
       }
+
+      if (selectedUser) {
+         // Has an ID since we're editing
+         const data = await userService.updateUser(selectedUser.id, payload);
+         console.log("User updated successfully:", data);
+      } else {
+         const data = await userService.registerUser(payload);
+         console.log("User registered successfully:", data);
+      }
+      
+      setIsAddModalOpen(false);
+      setSelectedUser(null);
+      fetchUsers(); // Refresh the list without full reload
     } catch (error: any) {
-      console.error("Failed to register user:", error);
-      alert(error.response?.data?.message || "Failed to register user. Please try again.");
+      console.error("Failed to save user:", error);
+      alert(error.response?.data?.message || "Failed to save user. Please try again.");
     } finally {
-      setLoading(false);
+      loading && setLoading(false);
+    }
+  };
+
+  const handleEditUserClick = (user: User) => {
+    setSelectedUser(user);
+    setIsAddModalOpen(true);
+  };
+
+  const handleDeleteUser = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this user?")) return;
+
+    try {
+      await userService.deleteUser(id);
+      fetchUsers();
+    } catch (error: any) {
+      console.error("Failed to delete user:", error);
+      alert(error.response?.data?.message || "Failed to delete user. Please try again.");
     }
   };
 
@@ -77,7 +105,10 @@ export default function UsersPage() {
 
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => setIsAddModalOpen(true)}
+                  onClick={() => {
+                    setSelectedUser(null);
+                    setIsAddModalOpen(true);
+                  }}
                   className="flex h-11 items-center gap-2 rounded-xl bg-[#EA580C] cursor-pointer px-5 text-[14px] font-bold text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:scale-[1.02] active:scale-[0.98]"
                 >
                   <UserPlus className="h-4 w-4" />
@@ -103,14 +134,20 @@ export default function UsersPage() {
               searchTerm={searchTerm} 
               users={users}
               isLoading={isUsersLoading}
+              onEdit={handleEditUserClick}
+              onDelete={handleDeleteUser}
             />
           </div>
         </div>
 
         {isAddModalOpen && (
           <AddUserModal
-            onClose={() => setIsAddModalOpen(false)}
-            onAdd={handleAddUser}
+            onClose={() => {
+              setIsAddModalOpen(false);
+              setSelectedUser(null);
+            }}
+            onAdd={handleSaveUser}
+            initialData={selectedUser}
           />
         )}
       </div>

@@ -6,10 +6,12 @@ import Image from "next/image";
 import { User, Lock, ArrowRight } from "lucide-react";
 import { ROUTES } from "@/lib/constants";
 
-import axiosInstance from "@/lib/api/axiosInstance";
+import { loginUser } from "@/services/userService";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function LoginForm() {
   const router = useRouter();
+  const { login } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -21,20 +23,16 @@ export default function LoginForm() {
     setError(null);
 
     try {
-      const response = await axiosInstance.post("/auth/login", {
+      const data = await loginUser({
         username,
         password,
       });
 
-      if (response.data && response.data.token) {
-        // Store the token
-        localStorage.setItem("token", response.data.token);
-        // Store user info if needed
-        if (response.data.user) {
-          localStorage.setItem("user", JSON.stringify(response.data.user));
-        }
+      if (data && data.token) {
+        // Use login function from AuthContext
+        login(data.user, data.token);
         
-        console.log("Login successful:", response.data);
+        console.log("Login successful:", data);
         router.push(ROUTES.DASHBOARD_MENU);
       } else {
         setError("Invalid response from server. Please try again.");

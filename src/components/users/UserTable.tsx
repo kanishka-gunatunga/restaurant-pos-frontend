@@ -17,9 +17,11 @@ interface UserTableProps {
   searchTerm: string;
   users: User[];
   isLoading: boolean;
+  onEdit: (user: User) => void;
+  onDelete: (id: string) => void;
 }
 
-export default function UserTable({ searchTerm, users = [], isLoading }: UserTableProps) {
+export default function UserTable({ searchTerm, users = [], isLoading, onEdit, onDelete }: UserTableProps) {
   const filteredUsers = (users || []).filter((u) => {
     const nameMatch = u?.name?.toLowerCase().includes(searchTerm.toLowerCase());
     const roleMatch = u?.role?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -137,10 +139,16 @@ export default function UserTable({ searchTerm, users = [], isLoading }: UserTab
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2 text-[#90A1B9]">
-                      <button className="flex h-8 w-8 items-center cursor-pointer justify-center rounded-xl border border-[#E2E8F0] hover:bg-white hover:text-primary transition-colors">
+                      <button 
+                        onClick={() => onEdit(user)}
+                        className="flex h-8 w-8 items-center cursor-pointer justify-center rounded-xl border border-[#E2E8F0] hover:bg-white hover:text-primary transition-colors"
+                      >
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
-                      <button className="flex h-8 w-8 items-center cursor-pointer justify-center rounded-xl border border-[#E2E8F0] hover:bg-white hover:text-red-500 transition-colors">
+                      <button 
+                        onClick={() => onDelete(user.id)}
+                        className="flex h-8 w-8 items-center cursor-pointer justify-center rounded-xl border border-[#E2E8F0] hover:bg-white hover:text-red-500 transition-colors"
+                      >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>

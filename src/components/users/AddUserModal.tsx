@@ -13,20 +13,22 @@ interface Branch {
 interface AddUserModalProps {
   onClose: () => void;
   onAdd: (user: any) => void;
+  initialData?: any;
 }
 
-export default function AddUserModal({ onClose, onAdd }: AddUserModalProps) {
+export default function AddUserModal({ onClose, onAdd, initialData }: AddUserModalProps) {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [isBranchesLoading, setIsBranchesLoading] = useState(true);
   const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    username: "",
-    password: "",
-    role: "CASHIER" as UserRole,
-    employeeId: "",
-    branchId: "" as unknown as number,
-    passcode: "",
+    id: initialData?.id || undefined,
+    name: initialData?.name || "",
+    email: initialData?.email || "",
+    username: initialData?.username || "",
+    password: "", // Keep empty for edit unless they want to change it
+    role: (initialData?.role as UserRole) || "CASHIER",
+    employeeId: initialData?.employeeId || "",
+    branchId: initialData?.branchId || ("" as unknown as number),
+    passcode: initialData?.passcode || "",
   });
 
   useEffect(() => {
@@ -34,7 +36,7 @@ export default function AddUserModal({ onClose, onAdd }: AddUserModalProps) {
       try {
         const response = await axiosInstance.get("/branches");
         setBranches(response.data);
-        if (response.data.length > 0) {
+        if (response.data.length > 0 && !initialData?.branchId) {
           setFormData(prev => ({ ...prev, branchId: response.data[0].id }));
         }
       } catch (error) {
@@ -81,7 +83,9 @@ export default function AddUserModal({ onClose, onAdd }: AddUserModalProps) {
           <X className="h-5 w-5" />
         </button>
 
-        <h2 className="mb-8 text-[20px] font-bold text-[#1D293D]">Create New User</h2>
+        <h2 className="mb-8 text-[20px] font-bold text-[#1D293D]">
+          {initialData ? "Edit User" : "Create New User"}
+        </h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -142,7 +146,7 @@ export default function AddUserModal({ onClose, onAdd }: AddUserModalProps) {
                 placeholder="********"
                 value={formData.password}
                 onChange={handleChange}
-                required
+                required={!initialData}
                 className="h-12 w-full rounded-xl bg-[#F8FAFC] px-4 text-[14px] text-[#1D293D] outline-none transition-all focus:ring-2 focus:ring-primary/10"
               />
             </div>
@@ -248,7 +252,7 @@ export default function AddUserModal({ onClose, onAdd }: AddUserModalProps) {
               type="submit"
               className="h-12 flex-1 rounded-xl cursor-pointer bg-[#EA580C] text-[14px] font-bold text-white shadow-lg shadow-[#EA580C]/20 transition-all hover:bg-[#DC4C04] hover:shadow-xl active:scale-95"
             >
-              Create User
+              {initialData ? "Save Changes" : "Create User"}
             </button>
           </div>
         </form>
