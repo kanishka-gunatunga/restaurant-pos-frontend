@@ -6,9 +6,10 @@ import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
 import { Search, UserPlus } from "lucide-react";
 import UserTable from "@/components/users/UserTable";
 import AddUserModal from "@/components/users/AddUserModal";
-import type { UserRole } from "@/components/users/UserTable";
+import type { User, UserRole } from "@/components/users/UserTable";
 import { ROUTES } from "@/lib/constants";
 import { useAuth } from "@/contexts/AuthContext";
+import * as userService from "@/services/userService";
 
 export default function UsersPage() {
   const router = useRouter();
@@ -81,6 +82,14 @@ export default function UsersPage() {
 
   const handleDeleteUser = async (id: string) => {
     if (!confirm("Are you sure you want to delete this user?")) return;
+    try {
+      await userService.deleteUser(id);
+      fetchUsers();
+    } catch (error) {
+      console.error("Failed to delete user:", error);
+      alert("Failed to delete user. Please try again.");
+    }
+  };
 
   useEffect(() => {
     if (isCashier) router.replace(ROUTES.DASHBOARD_MENU);

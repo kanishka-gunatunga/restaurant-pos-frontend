@@ -4,9 +4,11 @@ import {
   createContext,
   useContext,
   useCallback,
+  useEffect,
   type ReactNode,
 } from "react";
 import { useSession, signOut } from "next-auth/react";
+import Cookies from "js-cookie";
 import { ROUTES } from "@/lib/constants";
 
 export type UserRole = "cashier" | "manager" | "admin";
@@ -56,6 +58,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isReady = status !== "loading";
   const user = sessionUserToAuthUser(session?.user ?? null);
   const token = (session?.user as { token?: string } | undefined)?.token ?? null;
+
+  // Sync token to cookie for axiosInstance and other consumers
+  useEffect(() => {
+    if (token) {
+      Cookies.set("token", token, { expires: 1 }); // 1 day
+    } else if (status === "unauthenticated") {
+      Cookies.remove("token");
+    }
+  }, [token, status]);
 
   const logout = useCallback(() => {
     signOut({ callbackUrl: ROUTES.HOME });
