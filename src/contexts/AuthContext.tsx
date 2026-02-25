@@ -1,98 +1,86 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import Cookies from "js-cookie";
-import { useRouter } from "next/navigation";
+import {
+  createContext,
+  useContext,
+  useCallback,
+  type ReactNode,
+} from "react";
+import { useSession, signOut } from "next-auth/react";
 import { ROUTES } from "@/lib/constants";
-import axiosInstance from "@/lib/api/axiosInstance";
 
-interface User {
-  id: number;
-  username: string;
-  role: string;
-  fullName?: string;
-  [key: string]: any;
+export type UserRole = "cashier" | "manager" | "admin";
+
+export type AuthUser = {
+  id: string;
+  name: string;
+  role: UserRole;
+  employeeId?: string;
+  email?: string | null;
+  branchId?: number | null;
+};
+
+const ALLOWED_ROLES: UserRole[] = ["admin", "manager", "cashier"];
+
+function sessionUserToAuthUser(sessionUser: { id?: string; name?: string | null; role?: string } | null): AuthUser | null {
+  if (!sessionUser?.id || !sessionUser?.name || !sessionUser?.role) return null;
+  const rawRole = sessionUser.role;
+  const roleLower = typeof rawRole === "string" ? rawRole.trim().toLowerCase() : "";
+  const role = ALLOWED_ROLES.includes(roleLower as UserRole) ? (roleLower as UserRole) : null;
+  if (!role) return null;
+  return {
+    id: sessionUser.id,
+    name: sessionUser.name,
+    role,
+    employeeId: (sessionUser as { employeeId?: string }).employeeId,
+    email: (sessionUser as { email?: string | null }).email ?? null,
+    branchId: (sessionUser as { branchId?: number | null }).branchId ?? null,
+  };
 }
 
-interface AuthContextType {
-  user: User | null;
+type AuthContextType = {
+  user: AuthUser | null;
+  role: UserRole | null;
+  isReady: boolean;
+  isCashier: boolean;
+  isManagerOrAdmin: boolean;
   token: string | null;
-  login: (userData: User, tokenData: string) => void;
+  login: (role: UserRole, name?: string) => void;
   logout: () => void;
-  isLoading: boolean;
-}
+};
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
+  const { data: session, status } = useSession();
+  const isReady = status !== "loading";
+  const user = sessionUserToAuthUser(session?.user ?? null);
+  const token = (session?.user as { token?: string } | undefined)?.token ?? null;
 
-  useEffect(() => {
-    // Initialize auth state from cookies/localStorage on mount
-    const storedToken = Cookies.get("token");
-    const storedUser = localStorage.getItem("user");
-
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        console.error("Failed to parse stored user", e);
-      }
-    }
-    setIsLoading(false);
+  const logout = useCallback(() => {
+    signOut({ callbackUrl: ROUTES.HOME });
   }, []);
 
-  const login = (userData: User, tokenData: string) => {
-    Cookies.set("token", tokenData, { expires: 1, secure: process.env.NODE_ENV === "production" });
-
-    localStorage.setItem("user", JSON.stringify(userData));
-    localStorage.setItem("token", tokenData);
-
-    setUser(userData);
-    setToken(tokenData);
-  };
-
-  const logout = () => {
-    Cookies.remove("token");
-    localStorage.removeItem("user");
-    localStorage.removeItem("token");
-    setUser(null);
-    setToken(null);
-    router.push(ROUTES.HOME);
-  };
-
-
-  useEffect(() => {
-    const interceptor = axiosInstance.interceptors.response.use(
-      (response) => response,
-      (error) => {
-        if (error.response && error.response.status === 401) {
-          logout();
-        }
-        return Promise.reject(error);
-      }
-    );
-
-    return () => {
-      axiosInstance.interceptors.response.eject(interceptor);
-    };
+  const login = useCallback((_role: UserRole, _name?: string) => {
+    // No-op: actual login is done via NextAuth signIn in LoginForm
   }, []);
 
-  return (
-    <AuthContext.Provider value={{ user, token, login, logout, isLoading }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  const value: AuthContextType = {
+    user,
+    role: user?.role ?? null,
+    isReady,
+    isCashier: user?.role === "cashier",
+    isManagerOrAdmin: user?.role === "manager" || user?.role === "admin",
+    token,
+    login,
+    logout,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  return ctx;
 }

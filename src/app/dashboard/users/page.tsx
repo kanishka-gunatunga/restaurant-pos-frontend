@@ -1,16 +1,18 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import MenuPageHeader from "@/components/menu/MenuPageHeader";
-import { OrderProvider } from "@/contexts/OrderContext";
+import { useRouter } from "next/navigation";
+import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
 import { Search, UserPlus } from "lucide-react";
 import UserTable from "@/components/users/UserTable";
 import AddUserModal from "@/components/users/AddUserModal";
-import type { UserRole, User } from "@/components/users/UserTable";
-
-import * as userService from "@/services/userService";
+import type { UserRole } from "@/components/users/UserTable";
+import { ROUTES } from "@/lib/constants";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function UsersPage() {
+  const router = useRouter();
+  const { isCashier } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -80,19 +82,24 @@ export default function UsersPage() {
   const handleDeleteUser = async (id: string) => {
     if (!confirm("Are you sure you want to delete this user?")) return;
 
-    try {
-      await userService.deleteUser(id);
-      fetchUsers();
-    } catch (error: any) {
-      console.error("Failed to delete user:", error);
-      alert(error.response?.data?.message || "Failed to delete user. Please try again.");
-    }
+  useEffect(() => {
+    if (isCashier) router.replace(ROUTES.DASHBOARD_MENU);
+  }, [isCashier, router]);
+
+  const handleAddUser = (_user: {
+    name: string;
+    email: string;
+    role: UserRole;
+    passcode?: string;
+  }) => {
+    setIsAddModalOpen(false);
   };
 
+  if (isCashier) return null;
+
   return (
-    <OrderProvider>
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-zinc-50/50">
-        <MenuPageHeader />
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-zinc-50/50">
+      <DashboardPageHeader />
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           <div className="mx-auto max-w-7xl space-y-6">
             <div className="flex items-center justify-between">
@@ -150,7 +157,6 @@ export default function UsersPage() {
             initialData={selectedUser}
           />
         )}
-      </div>
-    </OrderProvider>
+    </div>
   );
 }

@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { Geist_Mono } from "next/font/google";
 import { AuthProvider } from "@/contexts/AuthContext";
 import "./globals.css";
+import MinWidthGuard from "@/components/MinWidthGuard";
+import { SessionProvider } from "@/components/providers/SessionProvider";
+import { AuthProvider } from "@/contexts/AuthContext";
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -21,7 +24,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistMono.variable} antialiased`}>
-        <AuthProvider>{children}</AuthProvider>
+        <MinWidthGuard>
+          <SessionProvider>
+            <AuthProvider>{children}</AuthProvider>
+          </SessionProvider>
+        </MinWidthGuard>
       </body>
     </html>
   );
