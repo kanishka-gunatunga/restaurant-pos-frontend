@@ -1,34 +1,70 @@
 "use client";
 
-import { useState } from "react";
-import { X, ChevronDown } from "lucide-react";
+import { useState, useEffect } from "react";
+import { X, ChevronDown, Loader2 } from "lucide-react";
 import { UserRole } from "./UserTable";
+import axiosInstance from "@/lib/api/axiosInstance";
+
+interface Branch {
+  id: number;
+  name: string;
+}
 
 interface AddUserModalProps {
   onClose: () => void;
-  onAdd: (user: { name: string; email: string; role: UserRole; passcode?: string }) => void;
+  onAdd: (user: any) => void;
+  initialData?: any;
 }
 
-export default function AddUserModal({ onClose, onAdd }: AddUserModalProps) {
+export default function AddUserModal({ onClose, onAdd, initialData }: AddUserModalProps) {
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [isBranchesLoading, setIsBranchesLoading] = useState(true);
   const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    role: "CASHIER" as UserRole,
-    passcode: "",
+    id: initialData?.id || undefined,
+    name: initialData?.name || "",
+    email: initialData?.email || "",
+    username: initialData?.username || "",
+    password: "", // Keep empty for edit unless they want to change it
+    role: (initialData?.role as UserRole) || "CASHIER",
+    employeeId: initialData?.employeeId || "",
+    branchId: initialData?.branchId || ("" as unknown as number),
+    passcode: initialData?.passcode || "",
   });
+
+  useEffect(() => {
+    const fetchBranches = async () => {
+      try {
+        const response = await axiosInstance.get("/branches");
+        setBranches(response.data);
+        if (response.data.length > 0 && !initialData?.branchId) {
+          setFormData(prev => ({ ...prev, branchId: response.data[0].id }));
+        }
+      } catch (error) {
+        console.error("Failed to fetch branches:", error);
+      } finally {
+        setIsBranchesLoading(false);
+      }
+    };
+
+    fetchBranches();
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onAdd(formData);
-    onClose();
   };
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [name]: name === "branchId" ? parseInt(value) : value,
+    }));
   };
+
+  const showPasscode = formData.role === "ADMIN" || formData.role === "MANAGER";
 
   return (
     <div
@@ -36,7 +72,7 @@ export default function AddUserModal({ onClose, onAdd }: AddUserModalProps) {
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-[500px] overflow-hidden rounded-[32px] bg-white p-8 shadow-2xl transition-all"
+        className="relative w-full max-w-[600px] max-h-[90vh] overflow-y-auto rounded-[32px] bg-white p-8 shadow-2xl transition-all"
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -47,74 +83,162 @@ export default function AddUserModal({ onClose, onAdd }: AddUserModalProps) {
           <X className="h-5 w-5" />
         </button>
 
-        <h2 className="mb-8 text-[20px] font-bold text-[#1D293D]">Create New User</h2>
+        <h2 className="mb-8 text-[20px] font-bold text-[#1D293D]">
+          {initialData ? "Edit User" : "Create New User"}
+        </h2>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="space-y-2">
-            <label className="text-[12px] font-bold uppercase text-[#90A1B9]">
-              FULL NAME
-            </label>
-            <input
-              type="text"
-              name="name"
-              placeholder="Enter user name"
-              value={formData.name}
-              onChange={handleChange}
-              required
-              className="h-12 w-full rounded-xl bg-[#F8FAFC] px-4 text-[14px] text-[#1D293D] outline-none transition-all focus:ring-2 focus:ring-primary/10"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-[12px] font-bold uppercase text-[#90A1B9]">
-              EMAIL ADDRESS
-            </label>
-            <input
-              type="email"
-              name="email"
-              placeholder="name@bistro.com"
-              value={formData.email}
-              onChange={handleChange}
-              required
-              className="h-12 w-full rounded-xl bg-[#F8FAFC] px-4 text-[14px] text-[#1D293D] outline-none transition-all focus:ring-2 focus:ring-primary/10"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-[12px] font-bold uppercase text-[#90A1B9]">
-              SYSTEM ROLE
-            </label>
-            <div className="relative">
-              <select
-                name="role"
-                value={formData.role}
-                onChange={handleChange}
-                className="h-12 w-full appearance-none rounded-xl bg-[#F8FAFC] px-4 text-[14px] text-[#1D293D] outline-none transition-all focus:ring-2 focus:ring-primary/10"
-              >
-                <option value="ADMIN">Admin</option>
-                <option value="MANAGER">Manager</option>
-                <option value="CASHIER">Cashier</option>
-              </select>
-              <ChevronDown className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#90A1B9] pointer-events-none" />
-            </div>
-          </div>
-
-          {formData.role === "MANAGER" && (
-            <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
               <label className="text-[12px] font-bold uppercase text-[#90A1B9]">
-                MANAGER PASSCODE
+                FULL NAME
               </label>
               <input
                 type="text"
-                name="passcode"
-                placeholder="4-digit code"
-                value={formData.passcode}
+                name="name"
+                placeholder="Enter user name"
+                value={formData.name}
                 onChange={handleChange}
-                maxLength={4}
-                className="h-12 w-full rounded-xl bg-[#F8FAFC] px-4 text-[14px] text-[#1D293D] outline-none transition-all focus:ring-2 focus:ring-primary/10 font-mono"
+                required
+                className="h-12 w-full rounded-xl bg-[#F8FAFC] px-4 text-[14px] text-[#1D293D] outline-none transition-all focus:ring-2 focus:ring-primary/10"
               />
             </div>
-          )}
+
+            <div className="space-y-2">
+              <label className="text-[12px] font-bold uppercase text-[#90A1B9]">
+                EMAIL ADDRESS
+              </label>
+              <input
+                type="email"
+                name="email"
+                placeholder="name@bistro.com"
+                value={formData.email}
+                onChange={handleChange}
+                required
+                className="h-12 w-full rounded-xl bg-[#F8FAFC] px-4 text-[14px] text-[#1D293D] outline-none transition-all focus:ring-2 focus:ring-primary/10"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-[12px] font-bold uppercase text-[#90A1B9]">
+                USERNAME
+              </label>
+              <input
+                type="text"
+                name="username"
+                placeholder="johndoe"
+                value={formData.username}
+                onChange={handleChange}
+                required
+                className="h-12 w-full rounded-xl bg-[#F8FAFC] px-4 text-[14px] text-[#1D293D] outline-none transition-all focus:ring-2 focus:ring-primary/10"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[12px] font-bold uppercase text-[#90A1B9]">
+                PASSWORD
+              </label>
+              <input
+                type="password"
+                name="password"
+                placeholder="********"
+                value={formData.password}
+                onChange={handleChange}
+                required={!initialData}
+                className="h-12 w-full rounded-xl bg-[#F8FAFC] px-4 text-[14px] text-[#1D293D] outline-none transition-all focus:ring-2 focus:ring-primary/10"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-[12px] font-bold uppercase text-[#90A1B9]">
+                EMPLOYEE ID
+              </label>
+              <input
+                type="text"
+                name="employeeId"
+                placeholder="EMP001"
+                value={formData.employeeId}
+                onChange={handleChange}
+                required
+                className="h-12 w-full rounded-xl bg-[#F8FAFC] px-4 text-[14px] text-[#1D293D] outline-none transition-all focus:ring-2 focus:ring-primary/10"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[12px] font-bold uppercase text-[#90A1B9]">
+                BRANCH
+              </label>
+              <div className="relative">
+                <select
+                  name="branchId"
+                  value={formData.branchId}
+                  onChange={handleChange}
+                  disabled={isBranchesLoading}
+                  className="h-12 w-full appearance-none rounded-xl bg-[#F8FAFC] px-4 text-[14px] text-[#1D293D] outline-none transition-all focus:ring-2 focus:ring-primary/10 disabled:opacity-50"
+                  required
+                >
+                  {isBranchesLoading ? (
+                    <option value="">Loading branches...</option>
+                  ) : branches.length === 0 ? (
+                    <option value="">No branches found</option>
+                  ) : (
+                    branches.map((branch) => (
+                      <option key={branch.id} value={branch.id}>
+                        {branch.name}
+                      </option>
+                    ))
+                  )}
+                </select>
+                {isBranchesLoading ? (
+                  <Loader2 className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#90A1B9] animate-spin" />
+                ) : (
+                  <ChevronDown className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#90A1B9] pointer-events-none" />
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-[12px] font-bold uppercase text-[#90A1B9]">
+                SYSTEM ROLE
+              </label>
+              <div className="relative">
+                <select
+                  name="role"
+                  value={formData.role}
+                  onChange={handleChange}
+                  className="h-12 w-full appearance-none rounded-xl bg-[#F8FAFC] px-4 text-[14px] text-[#1D293D] outline-none transition-all focus:ring-2 focus:ring-primary/10"
+                >
+                  <option value="ADMIN">Admin</option>
+                  <option value="MANAGER">Manager</option>
+                  <option value="CASHIER">Cashier</option>
+                </select>
+                <ChevronDown className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#90A1B9] pointer-events-none" />
+              </div>
+            </div>
+
+            {showPasscode && (
+              <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                <label className="text-[12px] font-bold uppercase text-[#90A1B9]">
+                   PASSCODE (ADMIN/MANAGER ONLY)
+                </label>
+                <input
+                  type="text"
+                  name="passcode"
+                  placeholder="4-digit code"
+                  value={formData.passcode}
+                  onChange={handleChange}
+                  maxLength={4}
+                  className="h-12 w-full rounded-xl bg-[#F8FAFC] px-4 text-[14px] text-[#1D293D] outline-none transition-all focus:ring-2 focus:ring-primary/10 font-mono"
+                />
+              </div>
+            )}
+          </div>
 
           <div className="mt-8 flex items-center gap-4 pt-2">
             <button
@@ -128,7 +252,7 @@ export default function AddUserModal({ onClose, onAdd }: AddUserModalProps) {
               type="submit"
               className="h-12 flex-1 rounded-xl cursor-pointer bg-[#EA580C] text-[14px] font-bold text-white shadow-lg shadow-[#EA580C]/20 transition-all hover:bg-[#DC4C04] hover:shadow-xl active:scale-95"
             >
-              Create User
+              {initialData ? "Save Changes" : "Create User"}
             </button>
           </div>
         </form>

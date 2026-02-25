@@ -31,6 +31,9 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
   ]);
 }
 
+import { loginUser } from "@/services/userService";
+import { useAuth } from "@/contexts/AuthContext";
+
 export default function LoginForm() {
   const router = useRouter();
   const { status: sessionStatus } = useSession();
@@ -128,15 +131,15 @@ export default function LoginForm() {
       {/* Employee ID */}
       <div className="mb-5 w-full">
         <label
-          htmlFor="employeeId"
+          htmlFor="username"
           className="mb-2 block font-[Arial] text-[12px] font-bold leading-[16px] tracking-[1.2px] uppercase text-[#90A1B9]"
         >
-          Employee ID
+          Username
         </label>
         <div className="relative">
           <User className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-400" />
           <input
-            id="employeeId"
+            id="username"
             type="text"
             placeholder="e.g. EMP001"
             value={employeeId}

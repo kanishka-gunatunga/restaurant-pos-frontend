@@ -10,6 +10,8 @@ import {
   Calculator,
   LogOut,
   X,
+  UserRound,
+  Boxes,
 } from "lucide-react";
 import OrdersIcon from "@/components/icons/OrdersIcon";
 import { ROUTES } from "@/lib/constants";
@@ -23,6 +25,8 @@ const navLinks = [
   { href: ROUTES.DASHBOARD_ORDERS, label: "Orders", icon: OrdersIcon },
   { href: ROUTES.DASHBOARD_PAYMENTS, label: "Payments", icon: CreditCard },
   { href: ROUTES.DASHBOARD_CUSTOMERS, label: "Customers", icon: Users },
+  { href: ROUTES.DASHBOARD_USERS, label: "Users", icon: UserRound },
+  { href: ROUTES.DASHBOARD_INVENTORY, label: "Inventory", icon: Boxes },
 ] as const;
 
 function NavLink({

@@ -15,6 +15,72 @@ export default function UsersPage() {
   const { isCashier } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [users, setUsers] = useState<User[]>([]);
+  const [isUsersLoading, setIsUsersLoading] = useState(true);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+
+  const fetchUsers = async () => {
+    setIsUsersLoading(true);
+    try {
+      const data = await userService.getUsers();
+      // Map API role to UI role if needed
+      const formattedUsers = data.map((u: any) => ({
+        ...u,
+        role: u.role.toUpperCase() as UserRole,
+      }));
+      setUsers(formattedUsers);
+    } catch (error) {
+      console.error("Failed to fetch users:", error);
+    } finally {
+      setIsUsersLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const handleSaveUser = async (user: any) => {
+    setLoading(true);
+    try {
+      const payload = {
+        ...user,
+        role: user.role.toLowerCase(), // API expects lowercase roles
+      };
+      
+      // Remove empty password if it is an edit and not provided
+      if (selectedUser && !payload.password) {
+        delete payload.password;
+      }
+
+      if (selectedUser) {
+         // Has an ID since we're editing
+         const data = await userService.updateUser(selectedUser.id, payload);
+         console.log("User updated successfully:", data);
+      } else {
+         const data = await userService.registerUser(payload);
+         console.log("User registered successfully:", data);
+      }
+      
+      setIsAddModalOpen(false);
+      setSelectedUser(null);
+      fetchUsers(); // Refresh the list without full reload
+    } catch (error: any) {
+      console.error("Failed to save user:", error);
+      alert(error.response?.data?.message || "Failed to save user. Please try again.");
+    } finally {
+      loading && setLoading(false);
+    }
+  };
+
+  const handleEditUserClick = (user: User) => {
+    setSelectedUser(user);
+    setIsAddModalOpen(true);
+  };
+
+  const handleDeleteUser = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this user?")) return;
 
   useEffect(() => {
     if (isCashier) router.replace(ROUTES.DASHBOARD_MENU);
@@ -46,7 +112,10 @@ export default function UsersPage() {
 
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => setIsAddModalOpen(true)}
+                  onClick={() => {
+                    setSelectedUser(null);
+                    setIsAddModalOpen(true);
+                  }}
                   className="flex h-11 items-center gap-2 rounded-xl bg-[#EA580C] cursor-pointer px-5 text-[14px] font-bold text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:scale-[1.02] active:scale-[0.98]"
                 >
                   <UserPlus className="h-4 w-4" />
@@ -68,14 +137,24 @@ export default function UsersPage() {
               </div>
             </div>
 
-            <UserTable searchTerm={searchTerm} />
+            <UserTable 
+              searchTerm={searchTerm} 
+              users={users}
+              isLoading={isUsersLoading}
+              onEdit={handleEditUserClick}
+              onDelete={handleDeleteUser}
+            />
           </div>
         </div>
 
         {isAddModalOpen && (
           <AddUserModal
-            onClose={() => setIsAddModalOpen(false)}
-            onAdd={handleAddUser}
+            onClose={() => {
+              setIsAddModalOpen(false);
+              setSelectedUser(null);
+            }}
+            onAdd={handleSaveUser}
+            initialData={selectedUser}
           />
         )}
     </div>
