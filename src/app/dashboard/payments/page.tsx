@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import MenuPageHeader from "@/components/menu/MenuPageHeader";
-import { OrderProvider } from "@/contexts/OrderContext";
+import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
 import PaymentStats from "@/components/payments/PaymentStats";
 import PaymentHistoryTable from "@/components/payments/PaymentHistoryTable";
 import { Search } from "lucide-react";
@@ -11,9 +10,8 @@ export default function PaymentsPage() {
   const [searchTerm, setSearchTerm] = useState("");
 
   return (
-    <OrderProvider>
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-zinc-50/50">
-        <MenuPageHeader />
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-zinc-50/50">
+      <DashboardPageHeader />
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           <div className="mx-auto max-w-7xl space-y-6">
             <div className="flex items-center justify-between">
@@ -39,7 +37,6 @@ export default function PaymentsPage() {
             <PaymentHistoryTable searchTerm={searchTerm} />
           </div>
         </div>
-      </div>
-    </OrderProvider>
+    </div>
   );
 }

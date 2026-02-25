@@ -1,20 +1,99 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { signIn, signOut, useSession } from "next-auth/react";
 import Image from "next/image";
 import { User, Lock, ArrowRight } from "lucide-react";
 import { ROUTES } from "@/lib/constants";
+import { useAuth } from "@/contexts/AuthContext";
+
+const ERROR_MESSAGES: Record<string, string> = {
+  MISSING_FIELDS: "Please enter Employee ID and Password.",
+  INVALID_CREDENTIALS: "Invalid Employee ID or Password.",
+  CredentialsSignin: "Invalid Employee ID or Password.",
+  ACCOUNT_INACTIVE: "Account is inactive. Contact your manager.",
+  USER_NOT_FOUND: "User not found.",
+  SERVER_ERROR: "Something went wrong. Try again later.",
+  TIMEOUT: "Connection timed out. Check your network or try again.",
+  ROLE_NOT_SUPPORTED:
+    "Your account role is not set up for this app. Contact your manager.",
+};
+
+const SIGN_IN_TIMEOUT_MS = 15000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(message)), ms)
+    ),
+  ]);
+}
 
 export default function LoginForm() {
   const router = useRouter();
+  const { status: sessionStatus } = useSession();
+  const { user } = useAuth();
   const [employeeId, setEmployeeId] = useState("");
-  const [pin, setPin] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Redirect when we have a valid mapped user
+  useEffect(() => {
+    if (user) {
+      if (user.role === "cashier") router.replace(ROUTES.DASHBOARD_MENU);
+      else router.replace(ROUTES.DASHBOARD);
+    }
+  }, [user, router]);
+
+  // Signed in but role not supported or missing (e.g. backend returned role "employee" – we only allow cashier/manager/admin)
+  useEffect(() => {
+    if (sessionStatus !== "authenticated" || user) return;
+    setError(ERROR_MESSAGES.ROLE_NOT_SUPPORTED);
+    signOut({ redirect: false }).then(() => router.refresh());
+  }, [sessionStatus, user, router]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Connect to auth API when backend is ready - validate credentials
-    router.push(ROUTES.DASHBOARD_MENU);
+    setError(null);
+    const id = employeeId.trim();
+    if (!id || !password) {
+      setError(ERROR_MESSAGES.MISSING_FIELDS);
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const result = await withTimeout(
+        signIn("credentials", {
+          employeeId: id,
+          password,
+          redirect: false,
+        }),
+        SIGN_IN_TIMEOUT_MS,
+        "TIMEOUT"
+      );
+
+      if (result?.error) {
+        const msg = ERROR_MESSAGES[result.error] ?? ERROR_MESSAGES.SERVER_ERROR;
+        setError(msg);
+        return;
+      }
+
+      if (result?.ok) {
+        await router.refresh();
+        return;
+      }
+
+      setError(ERROR_MESSAGES.SERVER_ERROR);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "SERVER_ERROR";
+      const msg = ERROR_MESSAGES[message] ?? ERROR_MESSAGES.SERVER_ERROR;
+      setError(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -40,8 +119,14 @@ export default function LoginForm() {
         Login Here
       </p>
 
+      {error && (
+        <p className="mb-4 w-full rounded-xl bg-red-50 px-4 py-2.5 font-[Arial] text-sm text-red-600">
+          {error}
+        </p>
+      )}
+
       {/* Employee ID */}
-      <div className="mb-5 mt-2 w-full">
+      <div className="mb-5 w-full">
         <label
           htmlFor="employeeId"
           className="mb-2 block font-[Arial] text-[12px] font-bold leading-[16px] tracking-[1.2px] uppercase text-[#90A1B9]"
@@ -53,31 +138,35 @@ export default function LoginForm() {
           <input
             id="employeeId"
             type="text"
-            placeholder="EMP-1024"
+            placeholder="e.g. EMP001"
             value={employeeId}
             onChange={(e) => setEmployeeId(e.target.value)}
-            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-3.5 pl-12 pr-4 text-zinc-800 placeholder:font-[Arial] placeholder:text-[16px] placeholder:leading-[100%] placeholder:text-[#31415880] focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            autoComplete="username"
+            disabled={isSubmitting}
+            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-3.5 pl-12 pr-4 text-zinc-800 placeholder:font-[Arial] placeholder:text-[16px] placeholder:leading-[100%] placeholder:text-[#31415880] focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
           />
         </div>
       </div>
 
-      {/* Secure PIN */}
+      {/* Password */}
       <div className="mb-8 w-full">
         <label
-          htmlFor="pin"
+          htmlFor="password"
           className="mb-2 block font-[Arial] text-[12px] font-bold leading-[16px] tracking-[1.2px] uppercase text-[#90A1B9]"
         >
-          Secure PIN
+          Password
         </label>
         <div className="relative">
           <Lock className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-400" />
           <input
-            id="pin"
+            id="password"
             type="password"
             placeholder="••••"
-            value={pin}
-            onChange={(e) => setPin(e.target.value)}
-            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-3.5 pl-12 pr-4 text-zinc-800 placeholder:font-[Arial] placeholder:text-[16px] placeholder:leading-[100%] placeholder:text-[#31415880] focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
+            disabled={isSubmitting}
+            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-3.5 pl-12 pr-4 text-zinc-800 placeholder:font-[Arial] placeholder:text-[16px] placeholder:leading-[100%] placeholder:text-[#31415880] focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
           />
         </div>
       </div>
@@ -85,9 +174,10 @@ export default function LoginForm() {
       {/* Sign In Button */}
       <button
         type="submit"
-        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 font-medium text-white shadow-[var(--shadow-primary)] transition-all hover:bg-primary-hover active:scale-[0.98]"
+        disabled={isSubmitting}
+        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 font-medium text-white shadow-[var(--shadow-primary)] transition-all hover:bg-primary-hover active:scale-[0.98] disabled:opacity-60 disabled:pointer-events-none"
       >
-        Sign In to Terminal
+        {isSubmitting ? "Signing in…" : "Sign In to Terminal"}
         <ArrowRight className="h-5 w-5" />
       </button>
 

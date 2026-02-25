@@ -118,8 +118,8 @@ const saveOrdersToStorage = (orders: Order[]) => {
     } else {
       sessionStorage.removeItem(STORAGE_KEY);
     }
-  } catch (error) {
-    console.error("Failed to save orders to sessionStorage:", error);
+  } catch {
+    // sessionStorage may be full or unavailable; fail silently
   }
 };
 
