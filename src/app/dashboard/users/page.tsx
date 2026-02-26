@@ -6,7 +6,7 @@ import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
 import { Search, UserPlus } from "lucide-react";
 import UserTable from "@/components/users/UserTable";
 import AddUserModal from "@/components/users/AddUserModal";
-import type { UserRole, User } from "@/components/users/UserTable";
+import type { User, UserRole } from "@/components/users/UserTable";
 import { ROUTES } from "@/lib/constants";
 import { useAuth } from "@/contexts/AuthContext";
 import * as userService from "@/services/userService";
@@ -93,6 +93,7 @@ export default function UsersPage() {
       fetchUsers();
     } catch (error) {
       console.error("Failed to delete user:", error);
+      alert("Failed to delete user. Please try again.");
     }
   };
 
