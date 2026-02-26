@@ -3,10 +3,9 @@
 import { useState, useMemo } from "react";
 import { Search, Clock, Pencil, Trash2, Lock, X, Filter, Eye } from "lucide-react";
 import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
-import NewOrderDetailsModal from "@/components/menu/NewOrderDetailsModal";
+import EditOrderModal from "@/components/orders/EditOrderModal";
 import OrderDetailsViewModal from "@/components/orders/OrderDetailsViewModal";
 import type { OrderDetailsView } from "@/components/orders/OrderDetailsViewModal";
-import type { OrderDetailsData } from "@/contexts/OrderContext";
 
 type OrderStatus = "PREPARING" | "PENDING" | "COMPLETE" | "HOLD" | "READY" | "CANCELED";
 type PaymentStatus = "PENDING" | "PAID" | "PARTIAL REFUND" | "FULL REFUND";
@@ -46,8 +45,22 @@ const PAYMENT_STATUS_STYLES: Record<PaymentStatus, { bg: string; border: string;
   "FULL REFUND": { bg: "#FFE6EB", border: "#FFB3C1", text: "#EC003F" },
 };
 
-const ORDER_STATUS_OPTIONS: (OrderStatus | "All")[] = ["All", "PENDING", "PREPARING", "READY", "COMPLETE", "HOLD", "CANCELED"];
-const PAYMENT_STATUS_OPTIONS: (PaymentStatus | "All")[] = ["All", "PENDING", "PAID", "PARTIAL REFUND", "FULL REFUND"];
+const ORDER_STATUS_OPTIONS: (OrderStatus | "All")[] = [
+  "All",
+  "PENDING",
+  "PREPARING",
+  "READY",
+  "COMPLETE",
+  "HOLD",
+  "CANCELED",
+];
+const PAYMENT_STATUS_OPTIONS: (PaymentStatus | "All")[] = [
+  "All",
+  "PENDING",
+  "PAID",
+  "PARTIAL REFUND",
+  "FULL REFUND",
+];
 
 const MOCK_ORDERS: OrderRow[] = [
   {
@@ -66,11 +79,65 @@ const MOCK_ORDERS: OrderRow[] = [
     discount: 0,
     items: [{ name: "Classic Beef Burger", qty: 2, price: 900 }],
   },
-  { id: "2", orderNo: "1023", date: "2026-02-19", time: "11:22 AM", customerName: "James Chen", phone: "0771234567", totalAmount: 3890, status: "PENDING", paymentStatus: "PENDING" },
-  { id: "3", orderNo: "1022", date: "2026-02-19", time: "11:15 AM", customerName: "Maria Garcia", phone: "0723456789", totalAmount: 6750, status: "COMPLETE", paymentStatus: "PAID" },
-  { id: "4", orderNo: "1021", date: "2026-02-19", time: "11:08 AM", customerName: "David Kim", phone: "0762345678", totalAmount: 2100, status: "HOLD", paymentStatus: "PENDING" },
-  { id: "5", orderNo: "1020", date: "2026-02-19", time: "11:00 AM", customerName: "Emma Wilson", phone: "0753456789", totalAmount: 4450, status: "READY", paymentStatus: "PAID" },
-  { id: "6", orderNo: "1019", date: "2026-02-19", time: "10:52 AM", customerName: "Alex Brown", phone: "0784567890", totalAmount: 1890, status: "CANCELED", paymentStatus: "PARTIAL REFUND" },
+  {
+    id: "2",
+    orderNo: "1023",
+    date: "2026-02-19",
+    time: "11:22 AM",
+    customerName: "James Chen",
+    phone: "0771234567",
+    totalAmount: 3890,
+    status: "PENDING",
+    paymentStatus: "PENDING",
+    items: [
+      { name: "Classic Beef Burger", qty: 1, price: 2500 },
+      { name: "Iced Latte", qty: 1, price: 1390 },
+    ],
+  },
+  {
+    id: "3",
+    orderNo: "1022",
+    date: "2026-02-19",
+    time: "11:15 AM",
+    customerName: "Maria Garcia",
+    phone: "0723456789",
+    totalAmount: 6750,
+    status: "COMPLETE",
+    paymentStatus: "PAID",
+  },
+  {
+    id: "4",
+    orderNo: "1021",
+    date: "2026-02-19",
+    time: "11:08 AM",
+    customerName: "David Kim",
+    phone: "0762345678",
+    totalAmount: 2100,
+    status: "HOLD",
+    paymentStatus: "PENDING",
+  },
+  {
+    id: "5",
+    orderNo: "1020",
+    date: "2026-02-19",
+    time: "11:00 AM",
+    customerName: "Emma Wilson",
+    phone: "0753456789",
+    totalAmount: 4450,
+    status: "READY",
+    paymentStatus: "PAID",
+  },
+  {
+    id: "6",
+    orderNo: "1019",
+    date: "2026-02-19",
+    time: "10:52 AM",
+    customerName: "Alex Brown",
+    phone: "0784567890",
+    totalAmount: 1890,
+    status: "CANCELED",
+    paymentStatus: "PARTIAL REFUND",
+  },
 ];
 
 function StatusPill({ status }: { status: OrderStatus }) {
@@ -149,8 +216,11 @@ function ManagerAuthorizationModal({
             Manager Authorization
           </h2>
           <p className="mt-2 font-['Inter'] text-sm font-bold leading-[22.75px] text-[#62748E]">
-            To cancel order <span className="font-['Inter'] text-sm font-bold leading-[22.75px] text-[#314158]">#{orderNo}</span>, please
-            enter the manager passcode for verification.
+            To cancel order{" "}
+            <span className="font-['Inter'] text-sm font-bold leading-[22.75px] text-[#314158]">
+              #{orderNo}
+            </span>
+            , please enter the manager passcode for verification.
           </p>
         </div>
 
@@ -230,7 +300,8 @@ export default function OrdersPage() {
       );
     }
     if (orderStatusFilter !== "All") list = list.filter((o) => o.status === orderStatusFilter);
-    if (paymentStatusFilter !== "All") list = list.filter((o) => o.paymentStatus === paymentStatusFilter);
+    if (paymentStatusFilter !== "All")
+      list = list.filter((o) => o.paymentStatus === paymentStatusFilter);
     return list;
   }, [search, orderStatusFilter, paymentStatusFilter]);
 
@@ -256,8 +327,8 @@ export default function OrdersPage() {
     }
   };
 
-  const handleEditOrderSubmit = (_data: OrderDetailsData) => {
-    // TODO: Call API to update order details
+  const handleEditOrderSubmit = (_data: { items: { id: string; name: string; qty: number; price: number }[] }) => {
+    // TODO: Call API to update order with new items
     setEditOrderModal(null);
   };
 
@@ -307,7 +378,14 @@ export default function OrdersPage() {
                           : "bg-[#F1F5F9] text-[#45556C] hover:bg-[#E2E8F0]"
                       }`}
                     >
-                      {opt === "All" ? "All" : opt.charAt(0) + opt.slice(1).toLowerCase()}
+                      {opt === "All"
+                        ? "All"
+                        : opt
+                            .split(" ")
+                            .map(
+                              (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+                            )
+                            .join(" ")}
                     </button>
                   ))}
                 </div>
@@ -329,7 +407,14 @@ export default function OrdersPage() {
                           : "bg-[#F1F5F9] text-[#45556C] hover:bg-[#E2E8F0]"
                       }`}
                     >
-                      {opt === "All" ? "All" : opt}
+                      {opt === "All"
+                        ? "All"
+                        : opt
+                            .split(" ")
+                            .map(
+                              (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+                            )
+                            .join(" ")}
                     </button>
                   ))}
                 </div>
@@ -423,7 +508,10 @@ export default function OrdersPage() {
                             <div className="flex items-center justify-end gap-2">
                               <button
                                 type="button"
-                                onClick={(e) => { e.stopPropagation(); handleViewOrder(order); }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleViewOrder(order);
+                                }}
                                 className="rounded-lg p-1.5 text-[#90A1B9] transition-colors hover:bg-[#F1F5F9] hover:text-[#45556C]"
                                 aria-label="View order"
                                 title="View order"
@@ -432,7 +520,10 @@ export default function OrdersPage() {
                               </button>
                               <button
                                 type="button"
-                                onClick={(e) => { e.stopPropagation(); handleEditClick(order); }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditClick(order);
+                                }}
                                 disabled={order.status !== "PENDING"}
                                 className={`rounded-lg p-1.5 transition-colors ${
                                   order.status === "PENDING"
@@ -440,13 +531,20 @@ export default function OrdersPage() {
                                     : "text-[#CAD5E2] cursor-not-allowed opacity-50"
                                 }`}
                                 aria-label="Edit order"
-                                title={order.status !== "PENDING" ? "Only pending orders can be edited" : "Edit order"}
+                                title={
+                                  order.status !== "PENDING"
+                                    ? "Only pending orders can be edited"
+                                    : "Edit order"
+                                }
                               >
                                 <Pencil className="h-4 w-4" />
                               </button>
                               <button
                                 type="button"
-                                onClick={(e) => { e.stopPropagation(); handleDeleteClick(order.orderNo); }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteClick(order.orderNo);
+                                }}
                                 className="rounded-lg p-1.5 text-[#90A1B9] transition-colors hover:bg-red-50 hover:text-red-600"
                                 aria-label="Delete order"
                               >
@@ -487,7 +585,10 @@ export default function OrdersPage() {
                       <div className="flex gap-1">
                         <button
                           type="button"
-                          onClick={(e) => { e.stopPropagation(); handleViewOrder(order); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleViewOrder(order);
+                          }}
                           className="rounded-lg p-1.5 text-[#90A1B9] hover:bg-[#F1F5F9] hover:text-[#45556C]"
                           aria-label="View order"
                         >
@@ -495,7 +596,10 @@ export default function OrdersPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={(e) => { e.stopPropagation(); handleEditClick(order); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditClick(order);
+                          }}
                           disabled={order.status !== "PENDING"}
                           className={`rounded-lg p-1.5 transition-colors ${
                             order.status === "PENDING"
@@ -503,13 +607,20 @@ export default function OrdersPage() {
                               : "text-[#CAD5E2] cursor-not-allowed opacity-50"
                           }`}
                           aria-label="Edit order"
-                          title={order.status !== "PENDING" ? "Only pending orders can be edited" : "Edit order"}
+                          title={
+                            order.status !== "PENDING"
+                              ? "Only pending orders can be edited"
+                              : "Edit order"
+                          }
                         >
                           <Pencil className="h-4 w-4" />
                         </button>
                         <button
                           type="button"
-                          onClick={(e) => { e.stopPropagation(); handleDeleteClick(order.orderNo); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteClick(order.orderNo);
+                          }}
                           className="rounded-lg p-1.5 text-[#90A1B9] hover:bg-red-50 hover:text-red-600"
                           aria-label="Delete order"
                         >
@@ -544,13 +655,12 @@ export default function OrdersPage() {
       </div>
 
       {editOrderModal && (
-        <NewOrderDetailsModal
-          title="Edit Order Details"
-          submitButtonText="Save"
-          initialData={{
+        <EditOrderModal
+          order={{
+            orderNo: editOrderModal.orderNo,
             customerName: editOrderModal.customerName,
-            phone: editOrderModal.phone,
-            orderType: "Dine In",
+            totalAmount: editOrderModal.totalAmount,
+            items: editOrderModal.items,
           }}
           onSubmit={handleEditOrderSubmit}
           onClose={() => setEditOrderModal(null)}
@@ -561,8 +671,18 @@ export default function OrdersPage() {
         <OrderDetailsViewModal
           order={orderToView(viewOrder)}
           onClose={() => setViewOrder(null)}
-          onEdit={viewOrder.status === "PENDING" ? () => { setViewOrder(null); setEditOrderModal(viewOrder); } : undefined}
-          onCancel={() => { setAuthModal({ isOpen: true, orderNo: viewOrder.orderNo }); setViewOrder(null); }}
+          onEdit={
+            viewOrder.status === "PENDING"
+              ? () => {
+                  setViewOrder(null);
+                  setEditOrderModal(viewOrder);
+                }
+              : undefined
+          }
+          onCancel={() => {
+            setAuthModal({ isOpen: true, orderNo: viewOrder.orderNo });
+            setViewOrder(null);
+          }}
         />
       )}
 

@@ -29,13 +29,13 @@ export type OrderDetailsView = {
   discount?: number;
 };
 
-const STATUS_STYLES: Record<OrderStatus, { bg: string; text: string }> = {
-  PREPARING: { bg: "#EFF6FF", text: "#155DFC" },
-  PENDING: { bg: "#FFF4E6", text: "#E17100" },
-  COMPLETE: { bg: "#E6F7F0", text: "#009966" },
-  HOLD: { bg: "#F1F5F9", text: "#45556C" },
-  READY: { bg: "#F3F0FF", text: "#4F39F6" },
-  CANCELED: { bg: "#FFE6EB", text: "#EC003F" },
+const STATUS_STYLES: Record<OrderStatus, { bg: string; text: string; border: string }> = {
+  PREPARING: { bg: "#EFF6FF", text: "#155DFC", border: "#8EC5FF" },
+  PENDING: { bg: "#FFF4E6", text: "#E17100", border: "#F5C78A" },
+  COMPLETE: { bg: "#E6F7F0", text: "#009966", border: "#66D9B3" },
+  HOLD: { bg: "#F1F5F9", text: "#45556C", border: "#CBD5E1" },
+  READY: { bg: "#F3F0FF", text: "#4F39F6", border: "#B8A9F5" },
+  CANCELED: { bg: "#FFE6EB", text: "#EC003F", border: "#FF9BB0" },
 };
 
 const formatRs = (n: number) =>
@@ -50,6 +50,7 @@ type Props = {
 
 export default function OrderDetailsViewModal({ order, onClose, onEdit, onCancel }: Props) {
   const paymentClipId = useId();
+  const cancelIconClipId = useId();
   const subtotal = order.subtotal ?? order.totalAmount;
   const discount = order.discount ?? 0;
   const items = order.items ?? [{ name: "Order items", qty: 1, price: order.totalAmount }];
@@ -84,10 +85,9 @@ export default function OrderDetailsViewModal({ order, onClose, onEdit, onCancel
               <span
                 className="inline-flex rounded-[14px] border-2 px-3 py-1 font-['Inter'] text-xs font-bold uppercase leading-4"
                 style={{
-                  backgroundColor: order.status === "PREPARING" ? "#DBEAFE" : "#DBEAFE",
-                  borderColor: "#8EC5FF",
-                  color:
-                    order.status === "PREPARING" ? "#1447E6" : STATUS_STYLES[order.status].text,
+                  backgroundColor: STATUS_STYLES[order.status].bg,
+                  borderColor: STATUS_STYLES[order.status].border,
+                  color: STATUS_STYLES[order.status].text,
                 }}
               >
                 {order.status}
@@ -120,11 +120,11 @@ export default function OrderDetailsViewModal({ order, onClose, onEdit, onCancel
           </button>
         </div>
 
-        {/* Content - 2 column grid, scrollable with styled scrollbar */}
-        <div
-          className="min-h-0 flex-1 overflow-y-auto p-5 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#F1F5F9] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#CBD5E1] [&::-webkit-scrollbar-thumb]:hover:bg-[#94A3B8]"
-        >
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 items-start">
+        {/* Content - 2 columns: left (Customer, Order Type, Payment) | right (Order Items, Price Breakdown) */}
+        <div className="min-h-0 flex-1 overflow-y-auto p-5 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#F1F5F9] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#CBD5E1] [&::-webkit-scrollbar-thumb]:hover:bg-[#94A3B8]">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+            {/* Left column */}
+            <div className="flex flex-1 min-w-0 flex-col gap-3">
             {/* Customer Details */}
             <div className="flex flex-col gap-4 rounded-[16px] border border-[#E2E8F0] bg-[#F8FAFC] p-5">
               <div className="flex items-center justify-between">
@@ -168,27 +168,6 @@ export default function OrderDetailsViewModal({ order, onClose, onEdit, onCancel
               </div>
             </div>
 
-            {/* Order Items - scroll only inside this list when many items */}
-            <div className="flex max-h-[min(220px,30vh)] flex-col gap-4 rounded-[16px] border border-[#E2E8F0] bg-[#F8FAFC] p-5">
-              <div className="shrink-0 flex items-center gap-2 font-['Inter'] text-lg font-bold leading-7 text-[#1D293D]">
-                <Package className="h-5 w-5 text-[#EA580C]" />
-                Order Items
-              </div>
-              <div className="min-h-0 overflow-y-auto space-y-2 pr-1">
-                {items.map((item, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center justify-between rounded-[14px] border border-[#E2E8F0] bg-white px-4 py-4 font-['Inter'] text-base font-bold leading-6 text-[#1D293D]"
-                  >
-                    <span>
-                      {item.qty}x {item.name}
-                    </span>
-                    <span>{formatRs(item.qty * item.price)}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
             {/* Order Type */}
             <div className="flex flex-col gap-4 rounded-[16px] border border-[#E2E8F0] bg-[#F8FAFC] p-5">
               <div className="flex items-center justify-between">
@@ -220,6 +199,74 @@ export default function OrderDetailsViewModal({ order, onClose, onEdit, onCancel
               </div>
             </div>
 
+            {/* Payment Information */}
+            <div className="flex flex-col gap-4 rounded-[16px] border border-[#E2E8F0] bg-[#F8FAFC] p-5">
+              <div className="flex items-center gap-2 font-['Inter'] text-lg font-bold leading-7 text-[#1D293D]">
+                <DollarSign className="h-4 w-4 text-[#EA580C]" />
+                Payment Information
+              </div>
+              <div className="inline-flex items-center gap-3 rounded-[14px] border-2 border-[#FFD230] bg-[#FEF3C6] pl-4 pr-3 py-2">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="shrink-0"
+                  aria-hidden
+                >
+                  <g clipPath={`url(#${paymentClipId})`}>
+                    <path
+                      d="M10 18.3333C14.6024 18.3333 18.3334 14.6023 18.3334 9.99996C18.3334 5.39759 14.6024 1.66663 10 1.66663C5.39765 1.66663 1.66669 5.39759 1.66669 9.99996C1.66669 14.6023 5.39765 18.3333 10 18.3333Z"
+                      stroke="#BB4D00"
+                      strokeWidth="1.66667"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M7.5 10L9.16667 11.6667L12.5 8.33337"
+                      stroke="#BB4D00"
+                      strokeWidth="1.66667"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </g>
+                  <defs>
+                    <clipPath id={paymentClipId}>
+                      <rect width="20" height="20" fill="white" />
+                    </clipPath>
+                  </defs>
+                </svg>
+                <span className="font-['Inter'] text-base font-bold leading-6 text-[#BB4D00]">
+                  Payment Status: {order.paymentStatus}
+                </span>
+              </div>
+            </div>
+            </div>
+
+            {/* Right column */}
+            <div className="flex flex-1 min-w-0 flex-col gap-3">
+            {/* Order Items - scroll only inside this list when many items */}
+            <div className="flex max-h-[min(220px,30vh)] flex-col gap-4 rounded-[16px] border border-[#E2E8F0] bg-[#F8FAFC] p-5">
+              <div className="shrink-0 flex items-center gap-2 font-['Inter'] text-lg font-bold leading-7 text-[#1D293D]">
+                <Package className="h-5 w-5 text-[#EA580C]" />
+                Order Items
+              </div>
+              <div className="min-h-0 overflow-y-auto space-y-2 pr-1">
+                {items.map((item, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between rounded-[14px] border border-[#E2E8F0] bg-white px-4 py-4 font-['Inter'] text-base font-bold leading-6 text-[#1D293D]"
+                  >
+                    <span>
+                      {item.qty}x {item.name}
+                    </span>
+                    <span>{formatRs(item.qty * item.price)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {/* Price Breakdown */}
             <div className="flex flex-col gap-4 rounded-[16px] border border-[#E2E8F0] bg-[#F8FAFC] p-5">
               <div className="flex items-center gap-2 font-['Inter'] text-lg font-bold leading-7 text-[#1D293D]">
@@ -236,71 +283,64 @@ export default function OrderDetailsViewModal({ order, onClose, onEdit, onCancel
                   <span className="font-bold text-[#009966]">{formatRs(discount)}</span>
                 </div>
                 <div className="flex justify-between border-t-2 border-[#CAD5E2] pt-3">
-                  <span className="font-['Inter'] text-lg font-bold leading-7 text-[#1D293D]">Total Amount</span>
-                  <span className="font-['Inter'] text-2xl font-bold leading-8 text-[#EA580C]">{formatRs(order.totalAmount)}</span>
+                  <span className="font-['Inter'] text-lg font-bold leading-7 text-[#1D293D]">
+                    Total Amount
+                  </span>
+                  <span className="font-['Inter'] text-2xl font-bold leading-8 text-[#EA580C]">
+                    {formatRs(order.totalAmount)}
+                  </span>
                 </div>
               </div>
             </div>
-
-            {/* Payment Information - single column like others */}
-            <div className="flex flex-col gap-4 rounded-[16px] border border-[#E2E8F0] bg-[#F8FAFC] pt-[25px] pr-[25px] pb-px pl-[25px]">
-              <div className="flex items-center gap-2 font-['Inter'] text-lg font-bold leading-7 text-[#1D293D]">
-                <DollarSign className="h-4 w-4 text-[#EA580C]" />
-                Payment Information
-              </div>
-              <div className="inline-flex items-center gap-3 rounded-[14px] border-2 border-[#FFD230] bg-[#FEF3C6] pl-4 pr-3 py-2">
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0" aria-hidden>
-                  <g clipPath={`url(#${paymentClipId})`}>
-                    <path d="M10 18.3333C14.6024 18.3333 18.3334 14.6023 18.3334 9.99996C18.3334 5.39759 14.6024 1.66663 10 1.66663C5.39765 1.66663 1.66669 5.39759 1.66669 9.99996C1.66669 14.6023 5.39765 18.3333 10 18.3333Z" stroke="#BB4D00" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round" />
-                    <path d="M7.5 10L9.16667 11.6667L12.5 8.33337" stroke="#BB4D00" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round" />
-                  </g>
-                  <defs>
-                    <clipPath id={paymentClipId}>
-                      <rect width="20" height="20" fill="white" />
-                    </clipPath>
-                  </defs>
-                </svg>
-                <span className="font-['Inter'] text-base font-bold leading-6 text-[#BB4D00]">
-                  Payment Status: {order.paymentStatus}
-                </span>
-              </div>
             </div>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="shrink-0 flex flex-wrap items-center justify-end gap-3 border-t border-[#E2E8F0] bg-white p-5">
+        {/* Footer: Close left, Edit + Cancel right */}
+        <div className="shrink-0 flex flex-wrap items-center justify-between gap-3 border-t border-[#E2E8F0] bg-white p-5">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-[14px] bg-[#F1F5F9] px-5 py-2.5 font-['Inter'] text-sm font-bold leading-5 text-[#314158] transition-colors hover:bg-[#E2E8F0]"
+            className="rounded-[14px] bg-[#E2E8F0] px-5 py-3 font-['Inter'] text-base font-bold leading-6 text-[#314158] transition-colors hover:bg-[#CBD5E1]"
           >
             Close
           </button>
-          {onEdit && (
-            <button
-              type="button"
-              onClick={onEdit}
-              className="flex items-center gap-2 rounded-[14px] bg-[#3B82F6] px-5 py-2.5 font-['Inter'] text-sm font-bold leading-5 text-white transition-colors hover:bg-[#2563EB]"
-            >
-              <span className="inline-block h-4 w-4">
-                <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-                  <path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" />
+          <div className="flex items-center gap-3">
+            {onEdit && (
+              <button
+                type="button"
+                onClick={onEdit}
+                className="flex items-center gap-2 rounded-[14px] bg-[#2B7FFF] px-5 py-3 font-['Inter'] text-base font-bold leading-6 text-white shadow-[0px_4px_6px_-4px_#2B7FFF4D,0px_10px_15px_-3px_#2B7FFF4D] transition-colors hover:bg-[#1A6AE6] hover:shadow-[0px_4px_6px_-4px_#2B7FFF66,0px_10px_15px_-3px_#2B7FFF66]"
+              >
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0" aria-hidden>
+                  <path d="M9 2.25H3.75C3.35218 2.25 2.97064 2.40804 2.68934 2.68934C2.40804 2.97064 2.25 3.35218 2.25 3.75V14.25C2.25 14.6478 2.40804 15.0294 2.68934 15.3107C2.97064 15.592 3.35218 15.75 3.75 15.75H14.25C14.6478 15.75 15.0294 15.592 15.3107 15.3107C15.592 15.0294 15.75 14.6478 15.75 14.25V9" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M13.7812 1.9688C14.0796 1.67043 14.4842 1.50281 14.9062 1.50281C15.3282 1.50281 15.7328 1.67043 16.0312 1.9688C16.3296 2.26717 16.4972 2.67184 16.4972 3.0938C16.4972 3.51575 16.3296 3.92043 16.0312 4.2188L9.27145 10.9793C9.09336 11.1572 8.87335 11.2875 8.6317 11.358L6.47695 11.988C6.41241 12.0069 6.344 12.008 6.27888 11.9913C6.21376 11.9746 6.15432 11.9407 6.10678 11.8932C6.05925 11.8457 6.02536 11.7862 6.00868 11.7211C5.992 11.656 5.99312 11.5876 6.01195 11.523L6.64195 9.3683C6.71284 9.12684 6.84335 8.90709 7.02145 8.7293L13.7812 1.9688Z" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-              </span>
-              Edit Order
-            </button>
-          )}
-          {onCancel && (
-            <button
-              type="button"
-              onClick={onCancel}
-              className="flex items-center gap-2 rounded-[14px] bg-[#EC003F] px-5 py-2.5 font-['Inter'] text-sm font-bold leading-5 text-white transition-colors hover:bg-[#D10038]"
-            >
-              <X className="h-4 w-4" />
-              Cancel Order
-            </button>
-          )}
+                Edit Order
+              </button>
+            )}
+            {onCancel && (
+              <button
+                type="button"
+                onClick={onCancel}
+                className="flex items-center gap-2 rounded-[14px] bg-[#FF2056] px-5 py-3 font-['Inter'] text-base font-bold leading-6 text-white shadow-[0px_4px_6px_-4px_#FF20564D,0px_10px_15px_-3px_#FF20564D] transition-colors hover:bg-[#E61A4A] hover:shadow-[0px_4px_6px_-4px_#FF205666,0px_10px_15px_-3px_#FF205666]"
+              >
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0" aria-hidden>
+                  <g clipPath={`url(#${cancelIconClipId})`}>
+                    <path d="M9 16.5C13.1421 16.5 16.5 13.1421 16.5 9C16.5 4.85786 13.1421 1.5 9 1.5C4.85786 1.5 1.5 4.85786 1.5 9C1.5 13.1421 4.85786 16.5 9 16.5Z" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M11.25 6.75L6.75 11.25" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M6.75 6.75L11.25 11.25" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </g>
+                  <defs>
+                    <clipPath id={cancelIconClipId}>
+                      <rect width="18" height="18" fill="white" />
+                    </clipPath>
+                  </defs>
+                </svg>
+                Cancel Order
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
