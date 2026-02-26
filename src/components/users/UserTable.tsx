@@ -25,11 +25,11 @@ export default function UserTable({ searchTerm, users = [], isLoading, onEdit, o
   const filteredUsers = (users || []).filter((u) => {
     const nameMatch = u?.name?.toLowerCase().includes(searchTerm.toLowerCase());
     const roleMatch = u?.role?.toLowerCase().includes(searchTerm.toLowerCase());
-    return nameMatch || roleMatch;
-  });
-
 
   console.log(filteredUsers);
+
+    return nameMatch || roleMatch;
+  });
 
   const getRoleBadgeStyle = (role: UserRole) => {
     switch (role) {

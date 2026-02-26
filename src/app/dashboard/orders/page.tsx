@@ -1,12 +1,16 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Search, Clock, Pencil, Trash2, Lock, X } from "lucide-react";
+import { Search, Clock, Pencil, Trash2, Lock, X, Filter, Eye } from "lucide-react";
 import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
-import NewOrderDetailsModal from "@/components/menu/NewOrderDetailsModal";
-import type { OrderDetailsData } from "@/contexts/OrderContext";
+import EditOrderModal from "@/components/orders/EditOrderModal";
+import OrderDetailsViewModal from "@/components/orders/OrderDetailsViewModal";
+import type { OrderDetailsView } from "@/components/orders/OrderDetailsViewModal";
 
 type OrderStatus = "PREPARING" | "PENDING" | "COMPLETE" | "HOLD" | "READY" | "CANCELED";
+type PaymentStatus = "PENDING" | "PAID" | "PARTIAL REFUND" | "FULL REFUND";
+
+type OrderDetailItem = { name: string; qty: number; price: number };
 
 type OrderRow = {
   id: string;
@@ -17,6 +21,12 @@ type OrderRow = {
   phone: string;
   totalAmount: number;
   status: OrderStatus;
+  paymentStatus: PaymentStatus;
+  orderType?: "Dine In" | "Take Away" | "Delivery";
+  tableNumber?: string;
+  items?: OrderDetailItem[];
+  subtotal?: number;
+  discount?: number;
 };
 
 const STATUS_STYLES: Record<OrderStatus, { bg: string; border: string; text: string }> = {
@@ -28,6 +38,30 @@ const STATUS_STYLES: Record<OrderStatus, { bg: string; border: string; text: str
   CANCELED: { bg: "#FFE6EB", border: "#FFB3C1", text: "#EC003F" },
 };
 
+const PAYMENT_STATUS_STYLES: Record<PaymentStatus, { bg: string; border: string; text: string }> = {
+  PENDING: { bg: "#FFF4E6", border: "#FFE0B3", text: "#E17100" },
+  PAID: { bg: "#E6F7F0", border: "#B3E6D1", text: "#009966" },
+  "PARTIAL REFUND": { bg: "#FFE6EB", border: "#FFB3C1", text: "#EC003F" },
+  "FULL REFUND": { bg: "#FFE6EB", border: "#FFB3C1", text: "#EC003F" },
+};
+
+const ORDER_STATUS_OPTIONS: (OrderStatus | "All")[] = [
+  "All",
+  "PENDING",
+  "PREPARING",
+  "READY",
+  "COMPLETE",
+  "HOLD",
+  "CANCELED",
+];
+const PAYMENT_STATUS_OPTIONS: (PaymentStatus | "All")[] = [
+  "All",
+  "PENDING",
+  "PAID",
+  "PARTIAL REFUND",
+  "FULL REFUND",
+];
+
 const MOCK_ORDERS: OrderRow[] = [
   {
     id: "1",
@@ -36,8 +70,14 @@ const MOCK_ORDERS: OrderRow[] = [
     time: "11:30 AM",
     customerName: "Samantha Reed",
     phone: "0712345678",
-    totalAmount: 5230,
+    totalAmount: 1800,
     status: "PREPARING",
+    paymentStatus: "PENDING",
+    orderType: "Dine In",
+    tableNumber: "4",
+    subtotal: 1800,
+    discount: 0,
+    items: [{ name: "Classic Beef Burger", qty: 2, price: 900 }],
   },
   {
     id: "2",
@@ -48,6 +88,11 @@ const MOCK_ORDERS: OrderRow[] = [
     phone: "0771234567",
     totalAmount: 3890,
     status: "PENDING",
+    paymentStatus: "PENDING",
+    items: [
+      { name: "Classic Beef Burger", qty: 1, price: 2500 },
+      { name: "Iced Latte", qty: 1, price: 1390 },
+    ],
   },
   {
     id: "3",
@@ -58,6 +103,7 @@ const MOCK_ORDERS: OrderRow[] = [
     phone: "0723456789",
     totalAmount: 6750,
     status: "COMPLETE",
+    paymentStatus: "PAID",
   },
   {
     id: "4",
@@ -68,6 +114,7 @@ const MOCK_ORDERS: OrderRow[] = [
     phone: "0762345678",
     totalAmount: 2100,
     status: "HOLD",
+    paymentStatus: "PENDING",
   },
   {
     id: "5",
@@ -78,6 +125,7 @@ const MOCK_ORDERS: OrderRow[] = [
     phone: "0753456789",
     totalAmount: 4450,
     status: "READY",
+    paymentStatus: "PAID",
   },
   {
     id: "6",
@@ -88,11 +136,24 @@ const MOCK_ORDERS: OrderRow[] = [
     phone: "0784567890",
     totalAmount: 1890,
     status: "CANCELED",
+    paymentStatus: "PARTIAL REFUND",
   },
 ];
 
 function StatusPill({ status }: { status: OrderStatus }) {
   const { bg, border, text } = STATUS_STYLES[status];
+  return (
+    <span
+      className="inline-flex items-center rounded-full border px-2.5 py-1 font-['Inter'] text-xs font-bold uppercase leading-4"
+      style={{ backgroundColor: bg, borderColor: border, color: text }}
+    >
+      {status}
+    </span>
+  );
+}
+
+function PaymentStatusPill({ status }: { status: PaymentStatus }) {
+  const { bg, border, text } = PAYMENT_STATUS_STYLES[status];
   return (
     <span
       className="inline-flex items-center rounded-full border px-2.5 py-1 font-['Inter'] text-xs font-bold uppercase leading-4"
@@ -155,8 +216,11 @@ function ManagerAuthorizationModal({
             Manager Authorization
           </h2>
           <p className="mt-2 font-['Inter'] text-sm font-bold leading-[22.75px] text-[#62748E]">
-            To cancel order <span className="font-['Inter'] text-sm font-bold leading-[22.75px] text-[#314158]">#{orderNo}</span>, please
-            enter the manager passcode for verification.
+            To cancel order{" "}
+            <span className="font-['Inter'] text-sm font-bold leading-[22.75px] text-[#314158]">
+              #{orderNo}
+            </span>
+            , please enter the manager passcode for verification.
           </p>
         </div>
 
@@ -199,22 +263,47 @@ function ManagerAuthorizationModal({
 
 export default function OrdersPage() {
   const [search, setSearch] = useState("");
+  const [orderStatusFilter, setOrderStatusFilter] = useState<OrderStatus | "All">("All");
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState<PaymentStatus | "All">("All");
   const [authModal, setAuthModal] = useState<{ isOpen: boolean; orderNo: string | null }>({
     isOpen: false,
     orderNo: null,
   });
   const [editOrderModal, setEditOrderModal] = useState<OrderRow | null>(null);
+  const [viewOrder, setViewOrder] = useState<OrderRow | null>(null);
+
+  const orderToView = (order: OrderRow): OrderDetailsView => ({
+    orderNo: order.orderNo,
+    date: order.date,
+    time: order.time,
+    status: order.status,
+    paymentStatus: order.paymentStatus,
+    customerName: order.customerName,
+    phone: order.phone,
+    totalAmount: order.totalAmount,
+    orderType: order.orderType,
+    tableNumber: order.tableNumber,
+    items: order.items,
+    subtotal: order.subtotal,
+    discount: order.discount,
+  });
 
   const filteredOrders = useMemo(() => {
-    if (!search.trim()) return MOCK_ORDERS;
-    const q = search.trim().toLowerCase();
-    return MOCK_ORDERS.filter(
-      (o) =>
-        o.orderNo.toLowerCase().includes(q) ||
-        o.customerName.toLowerCase().includes(q) ||
-        o.phone.includes(q)
-    );
-  }, [search]);
+    let list = MOCK_ORDERS;
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter(
+        (o) =>
+          o.orderNo.toLowerCase().includes(q) ||
+          o.customerName.toLowerCase().includes(q) ||
+          o.phone.includes(q)
+      );
+    }
+    if (orderStatusFilter !== "All") list = list.filter((o) => o.status === orderStatusFilter);
+    if (paymentStatusFilter !== "All")
+      list = list.filter((o) => o.paymentStatus === paymentStatusFilter);
+    return list;
+  }, [search, orderStatusFilter, paymentStatusFilter]);
 
   const handleDeleteClick = (orderNo: string) => {
     setAuthModal({ isOpen: true, orderNo });
@@ -230,14 +319,16 @@ export default function OrdersPage() {
     setAuthModal({ isOpen: false, orderNo: null });
   };
 
+  const handleViewOrder = (order: OrderRow) => setViewOrder(order);
+
   const handleEditClick = (order: OrderRow) => {
     if (order.status === "PENDING") {
       setEditOrderModal(order);
     }
   };
 
-  const handleEditOrderSubmit = (_data: OrderDetailsData) => {
-    // TODO: Call API to update order details
+  const handleEditOrderSubmit = (_data: { items: { id: string; name: string; qty: number; price: number }[] }) => {
+    // TODO: Call API to update order with new items
     setEditOrderModal(null);
   };
 
@@ -249,7 +340,7 @@ export default function OrdersPage() {
           <div className="flex w-full flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
               <h1 className="font-['Inter'] text-[24px] font-bold leading-[32px] tracking-normal text-[#1D293D]">
-                Ongoing Orders
+                Orders
               </h1>
               <p className="mt-2 font-['Inter'] text-sm font-normal leading-5 text-[#62748E]">
                 Manage and track all current restaurant orders.
@@ -264,6 +355,70 @@ export default function OrdersPage() {
                 placeholder="Search by Order ID, Customer, or Phone..."
                 className="w-full rounded-[16px] border border-[#E2E8F0] bg-white py-2.5 pl-10 pr-4 font-['Inter'] text-sm leading-[100%] text-[#0A0A0A] placeholder:font-medium placeholder:text-[#45556C80] focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C]/20"
               />
+            </div>
+          </div>
+
+          {/* Filter section */}
+          <div className="mt-5 rounded-[24px] border border-[#E2E8F0] bg-white p-4 shadow-[0px_1px_2px_-1px_#0000001A,0px_1px_3px_0px_#0000001A] sm:p-5">
+            <div className="flex gap-5">
+              <div className="">
+                <div className="mb-3 flex items-center gap-2 font-['Inter'] text-sm font-bold leading-5 text-[#314158]">
+                  <Filter className="h-4 w-4 shrink-0 text-[#90A1B9]" />
+                  Order Status
+                </div>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {ORDER_STATUS_OPTIONS.map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => setOrderStatusFilter(opt)}
+                      className={`rounded-[14px] px-4 py-2 text-center font-['Inter'] text-sm font-bold leading-5 transition-colors ${
+                        orderStatusFilter === opt
+                          ? "bg-[#EA580C] text-white shadow-[0px_4px_6px_-4px_#EA580C4D,0px_10px_15px_-3px_#EA580C4D]"
+                          : "bg-[#F1F5F9] text-[#45556C] hover:bg-[#E2E8F0]"
+                      }`}
+                    >
+                      {opt === "All"
+                        ? "All"
+                        : opt
+                            .split(" ")
+                            .map(
+                              (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+                            )
+                            .join(" ")}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="">
+                <div className="mb-3 flex items-center gap-2 font-['Inter'] text-sm font-bold leading-5 text-[#314158]">
+                  <Filter className="h-4 w-4 shrink-0 text-[#90A1B9]" />
+                  Payment Status
+                </div>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {PAYMENT_STATUS_OPTIONS.map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => setPaymentStatusFilter(opt)}
+                      className={`rounded-[14px] px-4 py-2 text-center font-['Inter'] text-sm font-bold leading-5 transition-colors ${
+                        paymentStatusFilter === opt
+                          ? "bg-[#00BC7D] text-white shadow-[0px_4px_6px_-4px_#00BC7D4D,0px_10px_15px_-3px_#00BC7D4D]"
+                          : "bg-[#F1F5F9] text-[#45556C] hover:bg-[#E2E8F0]"
+                      }`}
+                    >
+                      {opt === "All"
+                        ? "All"
+                        : opt
+                            .split(" ")
+                            .map(
+                              (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+                            )
+                            .join(" ")}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -287,7 +442,10 @@ export default function OrdersPage() {
                         Total Amount
                       </th>
                       <th className="p-4 text-left font-['Inter'] text-[10px] font-bold leading-[15px] tracking-[1px] uppercase text-[#90A1B9]">
-                        Status
+                        Order Status
+                      </th>
+                      <th className="p-4 text-left font-['Inter'] text-[10px] font-bold leading-[15px] tracking-[1px] uppercase text-[#90A1B9]">
+                        Payment Status
                       </th>
                       <th className="p-4 text-right font-['Inter'] text-[10px] font-bold leading-[15px] tracking-[1px] uppercase text-[#90A1B9]">
                         Actions
@@ -298,7 +456,7 @@ export default function OrdersPage() {
                     {filteredOrders.length === 0 ? (
                       <tr>
                         <td
-                          colSpan={6}
+                          colSpan={7}
                           className="py-12 text-center font-['Arial'] text-sm text-[#62748E]"
                         >
                           No orders match your search.
@@ -308,7 +466,11 @@ export default function OrdersPage() {
                       filteredOrders.map((order) => (
                         <tr
                           key={order.id}
-                          className="border-b border-[#F1F5F9] transition-colors hover:bg-[#F8FAFC]/50"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => handleViewOrder(order)}
+                          onKeyDown={(e) => e.key === "Enter" && handleViewOrder(order)}
+                          className="cursor-pointer border-b border-[#F1F5F9] transition-colors hover:bg-[#F8FAFC]/50"
                         >
                           <td className="p-4 font-['Inter'] text-base font-bold leading-6 text-[#314158]">
                             #{order.orderNo}
@@ -339,11 +501,29 @@ export default function OrdersPage() {
                           <td className="p-4">
                             <StatusPill status={order.status} />
                           </td>
+                          <td className="p-4">
+                            <PaymentStatusPill status={order.paymentStatus} />
+                          </td>
                           <td className="p-4 text-right">
                             <div className="flex items-center justify-end gap-2">
                               <button
                                 type="button"
-                                onClick={() => handleEditClick(order)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleViewOrder(order);
+                                }}
+                                className="rounded-lg p-1.5 text-[#90A1B9] transition-colors hover:bg-[#F1F5F9] hover:text-[#45556C]"
+                                aria-label="View order"
+                                title="View order"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditClick(order);
+                                }}
                                 disabled={order.status !== "PENDING"}
                                 className={`rounded-lg p-1.5 transition-colors ${
                                   order.status === "PENDING"
@@ -351,13 +531,20 @@ export default function OrdersPage() {
                                     : "text-[#CAD5E2] cursor-not-allowed opacity-50"
                                 }`}
                                 aria-label="Edit order"
-                                title={order.status !== "PENDING" ? "Only pending orders can be edited" : "Edit order"}
+                                title={
+                                  order.status !== "PENDING"
+                                    ? "Only pending orders can be edited"
+                                    : "Edit order"
+                                }
                               >
                                 <Pencil className="h-4 w-4" />
                               </button>
                               <button
                                 type="button"
-                                onClick={() => handleDeleteClick(order.orderNo)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteClick(order.orderNo);
+                                }}
                                 className="rounded-lg p-1.5 text-[#90A1B9] transition-colors hover:bg-red-50 hover:text-red-600"
                                 aria-label="Delete order"
                               >
@@ -377,7 +564,11 @@ export default function OrdersPage() {
                 {filteredOrders.map((order) => (
                   <div
                     key={order.id}
-                    className="rounded-[14px] border border-[#F1F5F9] bg-white p-4 shadow-[0px_1px_2px_-1px_#0000001A,0px_1px_3px_0px_#0000001A]"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => handleViewOrder(order)}
+                    onKeyDown={(e) => e.key === "Enter" && handleViewOrder(order)}
+                    className="cursor-pointer rounded-[14px] border border-[#F1F5F9] bg-white p-4 shadow-[0px_1px_2px_-1px_#0000001A,0px_1px_3px_0px_#0000001A]"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div>
@@ -387,11 +578,28 @@ export default function OrdersPage() {
                         <span className="ml-2">
                           <StatusPill status={order.status} />
                         </span>
+                        <span className="ml-2">
+                          <PaymentStatusPill status={order.paymentStatus} />
+                        </span>
                       </div>
                       <div className="flex gap-1">
                         <button
                           type="button"
-                          onClick={() => handleEditClick(order)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleViewOrder(order);
+                          }}
+                          className="rounded-lg p-1.5 text-[#90A1B9] hover:bg-[#F1F5F9] hover:text-[#45556C]"
+                          aria-label="View order"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditClick(order);
+                          }}
                           disabled={order.status !== "PENDING"}
                           className={`rounded-lg p-1.5 transition-colors ${
                             order.status === "PENDING"
@@ -399,13 +607,20 @@ export default function OrdersPage() {
                               : "text-[#CAD5E2] cursor-not-allowed opacity-50"
                           }`}
                           aria-label="Edit order"
-                          title={order.status !== "PENDING" ? "Only pending orders can be edited" : "Edit order"}
+                          title={
+                            order.status !== "PENDING"
+                              ? "Only pending orders can be edited"
+                              : "Edit order"
+                          }
                         >
                           <Pencil className="h-4 w-4" />
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleDeleteClick(order.orderNo)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteClick(order.orderNo);
+                          }}
                           className="rounded-lg p-1.5 text-[#90A1B9] hover:bg-red-50 hover:text-red-600"
                           aria-label="Delete order"
                         >
@@ -440,16 +655,34 @@ export default function OrdersPage() {
       </div>
 
       {editOrderModal && (
-        <NewOrderDetailsModal
-          title="Edit Order Details"
-          submitButtonText="Save"
-          initialData={{
+        <EditOrderModal
+          order={{
+            orderNo: editOrderModal.orderNo,
             customerName: editOrderModal.customerName,
-            phone: editOrderModal.phone,
-            orderType: "Dine In",
+            totalAmount: editOrderModal.totalAmount,
+            items: editOrderModal.items,
           }}
           onSubmit={handleEditOrderSubmit}
           onClose={() => setEditOrderModal(null)}
+        />
+      )}
+
+      {viewOrder && (
+        <OrderDetailsViewModal
+          order={orderToView(viewOrder)}
+          onClose={() => setViewOrder(null)}
+          onEdit={
+            viewOrder.status === "PENDING"
+              ? () => {
+                  setViewOrder(null);
+                  setEditOrderModal(viewOrder);
+                }
+              : undefined
+          }
+          onCancel={() => {
+            setAuthModal({ isOpen: true, orderNo: viewOrder.orderNo });
+            setViewOrder(null);
+          }}
         />
       )}
 

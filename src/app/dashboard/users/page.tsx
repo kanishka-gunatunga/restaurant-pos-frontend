@@ -25,14 +25,20 @@ export default function UsersPage() {
     setIsUsersLoading(true);
     try {
       const data = await userService.getUsers();
-      // Map API role to UI role if needed
-      const formattedUsers = data.map((u: any) => ({
-        ...u,
-        role: u.role.toUpperCase() as UserRole,
+      // API may return array or { users: [...] }
+      const list = Array.isArray(data) ? data : (data?.users ?? []);
+      const formattedUsers = list.map((u: Record<string, unknown>) => ({
+        id: String(u?.id ?? u?.employeeId ?? ""),
+        name: String(u?.name ?? ""),
+        displayName: String(u?.displayName ?? u?.name ?? ""),
+        email: String(u?.email ?? ""),
+        role: (String(u?.role ?? "").toUpperCase() || "CASHIER") as UserRole,
+        passcode: u?.passcode != null ? String(u.passcode) : null,
       }));
       setUsers(formattedUsers);
     } catch (error) {
       console.error("Failed to fetch users:", error);
+      setUsers([]);
     } finally {
       setIsUsersLoading(false);
     }
@@ -71,7 +77,7 @@ export default function UsersPage() {
       console.error("Failed to save user:", error);
       alert(error.response?.data?.message || "Failed to save user. Please try again.");
     } finally {
-      loading && setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -94,15 +100,6 @@ export default function UsersPage() {
   useEffect(() => {
     if (isCashier) router.replace(ROUTES.DASHBOARD_MENU);
   }, [isCashier, router]);
-
-  const handleAddUser = (_user: {
-    name: string;
-    email: string;
-    role: UserRole;
-    passcode?: string;
-  }) => {
-    setIsAddModalOpen(false);
-  };
 
   if (isCashier) return null;
 

@@ -5,6 +5,7 @@ import Image from "next/image";
 import { User, Phone, ChefHat, Trash2, X } from "lucide-react";
 import { useOrder } from "@/contexts/OrderContext";
 import NewOrderDetailsModal from "./NewOrderDetailsModal";
+import ProcessPaymentModal from "./ProcessPaymentModal";
 import type { OrderDetailsData } from "@/contexts/OrderContext";
 
 const TAX_RATE = 0.1;
@@ -70,6 +71,7 @@ export default function OrderSidebar() {
   const { items, updateQty, removeItem, activeOrderDetails, setActiveOrderDetails, activeOrderId, activeKitchenNote, activeOrderNote, setActiveKitchenNote, setActiveOrderNote, clearActiveOrder } = useOrder();
   const [editOrderId, setEditOrderId] = useState<string | null>(null);
   const [noteModal, setNoteModal] = useState<NoteModalType>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   const orderDetails = activeOrderDetails;
   const orderLabel = "Current Order";
@@ -328,7 +330,11 @@ export default function OrderSidebar() {
             </button>
             <button
               type="button"
-              className="flex-1 rounded-[14px] bg-[#EA580C] py-2.5 font-['Arial'] text-base font-bold leading-6 text-white shadow-[0px_4px_6px_-4px_#EA580C4D,0px_10px_15px_-3px_#EA580C4D] transition-all duration-300 ease-out hover:bg-[#DC4C04] active:scale-95"
+              onClick={() => {
+                if (hasDetails && items.length > 0) setShowPaymentModal(true);
+              }}
+              disabled={!hasDetails || items.length === 0}
+              className="flex-1 rounded-[14px] bg-[#EA580C] py-2.5 font-['Arial'] text-base font-bold leading-6 text-white shadow-[0px_4px_6px_-4px_#EA580C4D,0px_10px_15px_-3px_#EA580C4D] transition-all duration-300 ease-out hover:bg-[#DC4C04] active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
             >
               Order & Pay
             </button>
@@ -357,6 +363,15 @@ export default function OrderSidebar() {
         }}
         onClose={() => setNoteModal(null)}
       />
+
+      {showPaymentModal && hasDetails && (
+        <ProcessPaymentModal
+          customerName={orderDetails!.customerName}
+          total={total}
+          onClose={() => setShowPaymentModal(false)}
+          onComplete={() => clearActiveOrder()}
+        />
+      )}
 
       {!hasDetails && !showModal && (
         <div
