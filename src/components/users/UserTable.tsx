@@ -11,6 +11,8 @@ export type User = {
   role: UserRole;
   email: string;
   passcode: string | null;
+  branchId?: number;
+  employeeId?: string;
 };
 
 interface UserTableProps {
