@@ -414,12 +414,12 @@ export default function EditOrderModal({ order, onClose, onSubmit }: Props) {
               <DollarSign className="h-5 w-5 text-[#EA580C]" />
               Order Summary
             </div>
-            <div className="space-y-2 font-['Inter']">
+            <div className="space-y-2 font-['Inter'] border-b border-[#CAD5E2]">
               <div className="flex justify-between">
                 <span className="text-sm font-normal leading-5 text-[#45556C]">Original Amount:</span>
                 <span className="text-sm font-semibold leading-5 text-[#314158]">{formatRs(originalAmount)}</span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex justify-between mb-3">
                 <span className="text-sm font-normal leading-5 text-[#45556C]">Updated Amount:</span>
                 <span className="text-sm font-semibold leading-5 text-[#314158]">{formatRs(updatedAmount)}</span>
               </div>

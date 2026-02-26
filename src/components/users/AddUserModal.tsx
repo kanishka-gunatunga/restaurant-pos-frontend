@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { X, ChevronDown, Loader2 } from "lucide-react";
-import { UserRole } from "./UserTable";
+import { UserRole, User } from "./UserTable";
+import type { UserFormPayload } from "./types";
 import axiosInstance from "@/lib/api/axiosInstance";
 
 interface Branch {
@@ -12,23 +13,23 @@ interface Branch {
 
 interface AddUserModalProps {
   onClose: () => void;
-  onAdd: (user: any) => void;
-  initialData?: any;
+  onAdd: (user: UserFormPayload) => void;
+  initialData?: User | null;
 }
 
 export default function AddUserModal({ onClose, onAdd, initialData }: AddUserModalProps) {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [isBranchesLoading, setIsBranchesLoading] = useState(true);
-  const [formData, setFormData] = useState({
-    id: initialData?.id || undefined,
-    name: initialData?.name || "",
-    email: initialData?.email || "",
-    username: initialData?.username || "",
-    password: "", // Keep empty for edit unless they want to change it
-    role: (initialData?.role as UserRole) || "CASHIER",
-    employeeId: initialData?.employeeId || "",
-    branchId: initialData?.branchId || ("" as unknown as number),
-    passcode: initialData?.passcode || "",
+  const [formData, setFormData] = useState<UserFormPayload>({
+    id: initialData?.id,
+    name: initialData?.name ?? "",
+    email: initialData?.email ?? "",
+    username: initialData?.displayName ?? initialData?.name ?? "",
+    password: "",
+    role: initialData?.role ?? "CASHIER",
+    employeeId: initialData?.employeeId ?? "",
+    branchId: initialData?.branchId ?? 0,
+    passcode: initialData?.passcode ?? "",
   });
 
   useEffect(() => {
@@ -37,7 +38,7 @@ export default function AddUserModal({ onClose, onAdd, initialData }: AddUserMod
         const response = await axiosInstance.get("/branches");
         setBranches(response.data);
         if (response.data.length > 0 && !initialData?.branchId) {
-          setFormData(prev => ({ ...prev, branchId: response.data[0].id }));
+          setFormData((prev) => ({ ...prev, branchId: response.data[0].id }));
         }
       } catch (error) {
         console.error("Failed to fetch branches:", error);
@@ -60,7 +61,7 @@ export default function AddUserModal({ onClose, onAdd, initialData }: AddUserMod
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: name === "branchId" ? parseInt(value) : value,
+      [name]: name === "branchId" ? (parseInt(value, 10) || 0) : value,
     }));
   };
 

@@ -46,7 +46,7 @@ function NavLink({
     <Link
       href={href}
       onClick={onNavigate}
-      className={`flex flex-col items-center gap-1.5 py-2 min-[1920px]:gap-2 min-[1920px]:py-2.5 min-[2560px]:gap-2.5 min-[2560px]:py-3 transition-colors ${
+      className={`flex flex-col items-center gap-1.5 py-2 min-[1920px]:gap-2 min-[1920px]:py-2.5 min-[2560px]:gap-2.5 min-[2560px]:py-3 transition-colors shrink-0 ${
         isActive ? "text-primary" : "text-[#90A1B9] hover:text-zinc-700"
       }`}
     >
@@ -76,7 +76,7 @@ function CalculatorTab({ onToggle }: { onToggle?: () => void }) {
     <button
       type="button"
       onClick={handleClick}
-      className={`flex flex-col items-center gap-1.5 py-2 min-[1920px]:gap-2 min-[1920px]:py-2.5 min-[2560px]:gap-2.5 min-[2560px]:py-3 transition-colors ${
+      className={`flex flex-col items-center gap-1.5 py-2 min-[1920px]:gap-2 min-[1920px]:py-2.5 min-[2560px]:gap-2.5 min-[2560px]:py-3 transition-colors shrink-0 ${
         isOpen ? "text-primary" : "text-[#90A1B9] hover:text-zinc-700"
       }`}
     >
@@ -128,8 +128,8 @@ export default function DashboardSidebar() {
           </button>
         </div>
 
-        {/* Nav items - icon above label, centered */}
-        <nav className="flex flex-col items-center pt-5 min-[1920px]:pt-6 min-[2560px]:pt-7">
+        {/* Nav items - scrollable when overflowing */}
+        <nav className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto overflow-x-hidden pt-5 pb-2 min-[1920px]:pt-6 min-[2560px]:pt-7 [scrollbar-width:thin] [scrollbar-color:#E2E8F0_transparent]">
           {navLinks.map(({ href, label, icon: Icon }) => {
             const isDashboard = label === "Dashboard";
             const isMenu = label === "Menu";
@@ -152,11 +152,8 @@ export default function DashboardSidebar() {
           <CalculatorTab onToggle={close} />
         </nav>
 
-      {/* Spacer */}
-      <div className="flex-1" />
-
-      {/* Bottom - User & Logout */}
-      <div className="flex flex-col items-center gap-5 pb-5 min-[1920px]:gap-6 min-[1920px]:pb-6 min-[2560px]:gap-7 min-[2560px]:pb-6">
+      {/* Bottom - User & Logout (fixed, no scroll) */}
+      <div className="shrink-0 flex flex-col items-center gap-5 pb-5 pt-2 border-t border-zinc-200 min-[1920px]:gap-6 min-[1920px]:pb-6 min-[2560px]:gap-7 min-[2560px]:pb-6">
         <div className="flex flex-col items-center gap-1.5 min-[1920px]:gap-2 min-[2560px]:gap-2.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
