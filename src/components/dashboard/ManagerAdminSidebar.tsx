@@ -12,9 +12,9 @@ import {
   X,
   Package,
   UserCog,
-  Building2,
 } from "lucide-react";
 import OrdersIcon from "@/components/icons/OrdersIcon";
+import BranchesIcon from "@/components/icons/BranchesIcon";
 import { ROUTES } from "@/lib/constants";
 import { useCalculator } from "@/contexts/CalculatorContext";
 import { useSidebar } from "@/contexts/SidebarContext";
@@ -27,7 +27,7 @@ const navLinks = [
   { href: ROUTES.DASHBOARD_PAYMENTS, label: "Payments", icon: CreditCard },
   { href: ROUTES.DASHBOARD_CUSTOMERS, label: "Customers", icon: Users },
   { href: ROUTES.DASHBOARD_USERS, label: "Users", icon: UserCog },
-  { href: ROUTES.DASHBOARD_BRANCHES, label: "Branches", icon: Building2 },
+  { href: ROUTES.DASHBOARD_BRANCHES, label: "Branches", icon: BranchesIcon },
   { href: ROUTES.DASHBOARD_INVENTORY, label: "Inventory", icon: Package },
 ] as const;
 

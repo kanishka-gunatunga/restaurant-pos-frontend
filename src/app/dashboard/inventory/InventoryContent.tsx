@@ -1,33 +1,20 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Plus, Search } from "lucide-react";
 import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
 import { ROUTES } from "@/lib/constants";
 import { useAuth } from "@/contexts/AuthContext";
 import { BRANCHES, getBranchById } from "@/lib/branchData";
-import { TABS, type TabId, type NewProductForm } from "./types";
-import AddCategoryModal from "./components/AddCategoryModal";
-import AddGroupModal from "./components/AddGroupModal";
-import AddProductModal from "./components/AddProductModal";
-import CategoriesTab from "./components/CategoriesTab";
-import AddonsTab from "./components/AddonsTab";
-import ProductsTab from "./components/ProductsTab";
-import DiscountsTab from "./components/DiscountsTab";
-
-const INITIAL_PRODUCT: NewProductForm = {
-  productName: "",
-  productImageUrl: "",
-  basePrice: "15.00",
-  quantity: "100",
-  category: "",
-  subCategory: "",
-  batchNumber: "",
-  expiryDate: "",
-  variants: [],
-  addonGroupIds: [],
-};
+import { TABS, type TabId } from "@/domains/inventory/types";
+import AddCategoryModal from "@/components/inventory/AddCategoryModal";
+import AddGroupModal from "@/components/inventory/AddGroupModal";
+import CategoriesTab from "@/components/inventory/CategoriesTab";
+import AddonsTab from "@/components/inventory/AddonsTab";
+import ProductsTab from "@/components/inventory/ProductsTab";
+import DiscountsTab from "@/components/inventory/DiscountsTab";
 
 export default function InventoryContent() {
   const router = useRouter();
@@ -52,10 +39,6 @@ export default function InventoryContent() {
     { name: "", price: "" },
   ]);
 
-  const [addProductOpen, setAddProductOpen] = useState(false);
-  const [addProductOverlayVisible, setAddProductOverlayVisible] = useState(false);
-  const [newProduct, setNewProduct] = useState<NewProductForm>(INITIAL_PRODUCT);
-
   const branch = getBranchById(branchId);
 
   const openAddCategory = () => {
@@ -72,12 +55,6 @@ export default function InventoryContent() {
     setAddGroupOpen(true);
   };
 
-  const openAddProduct = () => {
-    setNewProduct(INITIAL_PRODUCT);
-    setAddProductOverlayVisible(false);
-    setAddProductOpen(true);
-  };
-
   useEffect(() => {
     if (!addCategoryOpen) return;
     const raf = requestAnimationFrame(() => setAddCategoryOverlayVisible(true));
@@ -89,12 +66,6 @@ export default function InventoryContent() {
     const raf = requestAnimationFrame(() => setAddGroupOverlayVisible(true));
     return () => cancelAnimationFrame(raf);
   }, [addGroupOpen]);
-
-  useEffect(() => {
-    if (!addProductOpen) return;
-    const raf = requestAnimationFrame(() => setAddProductOverlayVisible(true));
-    return () => cancelAnimationFrame(raf);
-  }, [addProductOpen]);
 
   useEffect(() => {
     if (isCashier) router.replace(ROUTES.DASHBOARD_MENU);
@@ -137,48 +108,51 @@ export default function InventoryContent() {
             )}
           </div>
 
-          <div className="w-full rounded-2xl border border-[#E2E8F0] bg-white p-1 shadow-sm">
-            <div className="flex gap-1">
-              {TABS.map(({ id, label, icon: Icon }) => {
-                const isActive = activeTab === id;
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => setActiveTab(id)}
-                    className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-center font-['Inter'] text-sm font-bold leading-5 transition-colors ${
-                      isActive
-                        ? "bg-[#EA580C1A] text-[#EA580C]"
-                        : "text-[#90A1B9] hover:bg-[#F1F5F9] hover:text-[#45556C]"
-                    }`}
-                  >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    {label}
-                  </button>
-                );
-              })}
+          <div className="w-full overflow-hidden rounded-[20px] border border-[#E2E8F0] bg-white shadow-[0px_1px_2px_-1px_#0000001A,0px_1px_3px_0px_#0000001A]">
+            <div className="rounded-t-[20px] border-b border-[#E2E8F0] bg-white p-1">
+              <div className="flex gap-1">
+                {TABS.map(({ id, label, icon: Icon }) => {
+                  const isActive = activeTab === id;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => setActiveTab(id)}
+                      className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-center font-['Inter'] text-sm font-bold leading-5 transition-colors ${
+                        isActive
+                          ? "bg-[#EA580C1A] text-[#EA580C]"
+                          : "text-[#90A1B9] hover:bg-[#F1F5F9] hover:text-[#45556C]"
+                      }`}
+                    >
+                      <Icon className="h-4 w-4 shrink-0" />
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {activeTab === "products" && (
+              <div className="flex items-center justify-between border-b border-[#E2E8F0] px-4 py-3">
+                <h2 className="font-['Inter'] text-[16px] font-bold leading-6 text-[#314158]">Products</h2>
+                <Link
+                  href={ROUTES.DASHBOARD_INVENTORY_ADD_PRODUCT}
+                  className="flex shrink-0 items-center gap-2 rounded-[14px] bg-[#EA580C] px-4 py-2.5 font-['Inter'] text-sm font-bold text-white shadow-[0px_4px_6px_-4px_#EA580C33,0px_10px_15px_-3px_#EA580C33] transition-opacity hover:bg-[#c2410c]"
+                  style={{ transitionDuration: "300ms", transitionTimingFunction: "ease-out" }}
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Product
+                </Link>
+              </div>
+            )}
+
+            <div className="p-4">
+              {activeTab === "categories" && <CategoriesTab onAddCategory={openAddCategory} />}
+              {activeTab === "addons" && <AddonsTab onAddGroup={openAddGroup} />}
+              {activeTab === "products" && <ProductsTab />}
+              {activeTab === "discounts" && <DiscountsTab />}
             </div>
           </div>
-
-          {activeTab === "products" && (
-            <div className="flex items-center justify-between">
-              <h2 className="font-['Inter'] text-[16px] font-bold leading-6 text-[#314158]">Products</h2>
-              <button
-                type="button"
-                onClick={openAddProduct}
-                className="flex shrink-0 items-center gap-2 rounded-[14px] bg-[#EA580C] px-4 py-2.5 font-['Inter'] text-sm font-bold text-white shadow-[0px_4px_6px_-4px_#EA580C33,0px_10px_15px_-3px_#EA580C33] transition-opacity hover:bg-[#c2410c]"
-                style={{ transitionDuration: "300ms", transitionTimingFunction: "ease-out" }}
-              >
-                <Plus className="h-4 w-4" />
-                Add Product
-              </button>
-            </div>
-          )}
-
-          {activeTab === "categories" && <CategoriesTab onAddCategory={openAddCategory} />}
-          {activeTab === "addons" && <AddonsTab onAddGroup={openAddGroup} />}
-          {activeTab === "products" && <ProductsTab />}
-          {activeTab === "discounts" && <DiscountsTab />}
         </div>
       </div>
 
@@ -217,44 +191,6 @@ export default function InventoryContent() {
         }
         onClose={() => setAddGroupOpen(false)}
       />
-
-      {branch && (
-        <AddProductModal
-          open={addProductOpen}
-          overlayVisible={addProductOverlayVisible}
-          branchName={branch.name}
-          product={newProduct}
-          onProductChange={setNewProduct}
-          onVariantAdd={() =>
-            setNewProduct((prev) => ({
-              ...prev,
-              variants: [...prev.variants, { name: "", price: "" }],
-            }))
-          }
-          onVariantRemove={(index) =>
-            setNewProduct((prev) => ({
-              ...prev,
-              variants: prev.variants.filter((_, i) => i !== index),
-            }))
-          }
-          onVariantUpdate={(index, field, value) =>
-            setNewProduct((prev) => {
-              const next = [...prev.variants];
-              next[index] = { ...next[index], [field]: value };
-              return { ...prev, variants: next };
-            })
-          }
-          onAddonGroupToggle={(id) =>
-            setNewProduct((prev) => ({
-              ...prev,
-              addonGroupIds: prev.addonGroupIds.includes(id)
-                ? prev.addonGroupIds.filter((x) => x !== id)
-                : [...prev.addonGroupIds, id],
-            }))
-          }
-          onClose={() => setAddProductOpen(false)}
-        />
-      )}
     </div>
   );
 }

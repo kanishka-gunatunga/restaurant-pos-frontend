@@ -1,7 +1,7 @@
 "use client";
 
 import { Plus, Pencil, Trash2 } from "lucide-react";
-import { MOCK_CATEGORIES } from "../types";
+import { MOCK_CATEGORIES } from "@/domains/inventory/types";
 import { CategoryIcon, SubCategoryIcon } from "./CategoryIcons";
 
 type CategoriesTabProps = {
@@ -12,7 +12,7 @@ export default function CategoriesTab({ onAddCategory }: CategoriesTabProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="font-['Inter'] text-lg font-bold text-[#1D293D]">
+        <h2 className="font-['Inter'] text-[16px] font-bold leading-6 text-[#314158]">
           Categories & Sub-Categories
         </h2>
         <button
