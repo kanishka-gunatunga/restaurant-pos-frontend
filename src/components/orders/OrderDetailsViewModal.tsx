@@ -35,7 +35,7 @@ export default function OrderDetailsViewModal({ order, onClose, onEdit, onCancel
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4"
+      className="fixed inset-0 z-70 flex items-center justify-center bg-black/50 p-4"
       onClick={onClose}
     >
       <div
