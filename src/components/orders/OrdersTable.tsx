@@ -1,5 +1,5 @@
 import { Clock, Pencil, Trash2, Eye } from "lucide-react";
-import type { OrderRow } from "../types";
+import type { OrderRow } from "@/domains/orders/types";
 import { StatusPill, PaymentStatusPill } from "./StatusPills";
 
 type Props = {

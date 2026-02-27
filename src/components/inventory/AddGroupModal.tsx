@@ -1,7 +1,7 @@
 "use client";
 
 import { Plus, Trash2, X } from "lucide-react";
-import type { AddonGroupItem } from "../types";
+import type { AddonGroupItem } from "@/domains/inventory/types";
 
 type AddGroupModalProps = {
   open: boolean;

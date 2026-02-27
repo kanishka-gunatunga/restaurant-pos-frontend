@@ -1,6 +1,5 @@
 import { useState, useCallback } from "react";
-import type { OrderRow } from "../types";
-import type { OrderDetailsView } from "@/components/orders/OrderDetailsViewModal";
+import type { OrderRow, OrderDetailsView } from "../types";
 
 export function useOrderModals() {
   const [authModal, setAuthModal] = useState<{ isOpen: boolean; orderNo: string | null }>({

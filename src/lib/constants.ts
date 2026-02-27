@@ -14,6 +14,7 @@ export const ROUTES = {
   DASHBOARD_CUSTOMERS: "/dashboard/customers",
   DASHBOARD_USERS: "/dashboard/users",
   DASHBOARD_INVENTORY: "/dashboard/inventory",
+  DASHBOARD_INVENTORY_ADD_PRODUCT: "/dashboard/inventory/add-product",
   DASHBOARD_BRANCHES: "/dashboard/branches",
   DASHBOARD_CALCULATOR: "/dashboard/calculator",
   ORDERS: "/orders",

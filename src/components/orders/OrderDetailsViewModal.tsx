@@ -2,32 +2,7 @@
 
 import { useId } from "react";
 import { X, Clock, Package, User, Phone, UtensilsCrossed, DollarSign } from "lucide-react";
-
-export type OrderStatus = "PREPARING" | "PENDING" | "COMPLETE" | "HOLD" | "READY" | "CANCELED";
-export type PaymentStatus = "PENDING" | "PAID" | "PARTIAL REFUND" | "FULL REFUND";
-export type OrderType = "Dine In" | "Take Away" | "Delivery";
-
-export type OrderDetailItem = {
-  name: string;
-  qty: number;
-  price: number;
-};
-
-export type OrderDetailsView = {
-  orderNo: string;
-  date: string;
-  time: string;
-  status: OrderStatus;
-  paymentStatus: PaymentStatus;
-  customerName: string;
-  phone: string;
-  totalAmount: number;
-  orderType?: OrderType;
-  tableNumber?: string;
-  items?: OrderDetailItem[];
-  subtotal?: number;
-  discount?: number;
-};
+import type { OrderStatus, OrderDetailsView } from "@/domains/orders/types";
 
 const STATUS_STYLES: Record<OrderStatus, { bg: string; text: string; border: string }> = {
   PREPARING: { bg: "#EFF6FF", text: "#155DFC", border: "#8EC5FF" },

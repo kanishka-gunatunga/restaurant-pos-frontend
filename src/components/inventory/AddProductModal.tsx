@@ -1,8 +1,8 @@
 "use client";
 
 import { Plus, Trash2, X, ChevronDown, Link2, Package, Calendar } from "lucide-react";
-import type { NewProductForm } from "../types";
-import { MOCK_CATEGORIES, MOCK_ADDON_GROUPS } from "../types";
+import type { NewProductForm } from "@/domains/inventory/types";
+import { MOCK_CATEGORIES, MOCK_ADDON_GROUPS } from "@/domains/inventory/types";
 
 type AddProductModalProps = {
   open: boolean;
