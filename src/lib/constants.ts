@@ -21,4 +21,5 @@ export const ROUTES = {
   TABLES: "/tables",
   REPORTS: "/reports",
   SETTINGS: "/settings",
+  KITCHEN: "/kitchen",
 } as const;

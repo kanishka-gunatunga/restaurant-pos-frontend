@@ -18,19 +18,25 @@ import {
   Box,
   CircleX
 } from "lucide-react";
-import Image from "next/image";
-import { getOrders } from "@/services/orderService";
+import { useGetAllOrders, useUpdateOrderItemStatus, useUpdateOrderStatus } from "@/hooks/useOrder";
+import { useMemo } from "react";
 
 // --- MOCK DATA ---
 type OrderStatus = "Pending" | "Preparing" | "Ready" | "Hold";
 type OrderType = "Dine In" | "Take Away" | "Delivery";
+
+interface Addon {
+  id: string;
+  name: string;
+  quantity: number;
+}
 
 interface OrderItem {
   id: string;
   quantity: number;
   name: string;
   size?: string;
-  addons?: string[];
+  addons?: Addon[];
   completed?: boolean;
 }
 
@@ -78,15 +84,37 @@ const mapBackendOrderToOrder = (backendOrder: any): Order => {
     minutesAgo: minutesAgo,
     customerName: backendOrder.customer?.name || "Walk-in Customer",
     type: type,
-    table: backendOrder.tableNumber || backendOrder.tableId ? `Table ${backendOrder.tableNumber || backendOrder.tableId}` : undefined,
-    items: (backendOrder.items || []).map((item: any) => ({
-      id: item.id?.toString() || Math.random().toString(),
-      quantity: item.quantity || 1,
-      name: item.product?.name || item.name || "Unknown Item",
-      size: item.variation?.name || item.size,
-      addons: item.modifications?.map((mod: any) => mod.modification?.name).filter(Boolean) || item.addons,
-      completed: item.status === 'completed' || false,
-    })),
+    table: backendOrder.tableNumber || (backendOrder.tableId ? `Table ${backendOrder.tableNumber || backendOrder.tableId}` : undefined),
+    items: (backendOrder.items || []).map((item: any) => {
+      // Group modifications by title to get quantities
+      const addonMap: Record<string, { id: string, quantity: number }> = {};
+      (item.modifications || []).forEach((mod: any) => {
+        const title = mod.modification?.title;
+        const modId = mod.modification?.id?.toString() || mod.id?.toString();
+        if (title) {
+          if (addonMap[title]) {
+            addonMap[title].quantity += 1;
+          } else {
+            addonMap[title] = { id: modId, quantity: 1 };
+          }
+        }
+      });
+
+      const addons: Addon[] = Object.entries(addonMap).map(([name, data]) => ({
+        id: data.id,
+        name,
+        quantity: data.quantity
+      }));
+
+      return {
+        id: item.id?.toString() || Math.random().toString(),
+        quantity: item.quantity || 1,
+        name: item.product?.name || item.name || "Unknown Item",
+        size: item.variation?.name || item.size,
+        addons: addons.length > 0 ? addons : undefined,
+        completed: item.status === 'complete' || false,
+      };
+    }),
     kitchenNote: backendOrder.kitchenNote || "",
     orderNote: backendOrder.orderNote || backendOrder.notes || "",
   };
@@ -107,7 +135,10 @@ const MOCK_ORDERS: Order[] = [
         id: "i1",
         quantity: 2,
         name: "Classic Beef Burger",
-        addons: ["Extra Cheese", "Bacon"],
+        addons: [
+          { id: "a1", name: "Extra Cheese", quantity: 1 },
+          { id: "a2", name: "Bacon", quantity: 1 }
+        ],
         completed: false,
       }
     ],
@@ -128,7 +159,10 @@ const MOCK_ORDERS: Order[] = [
         quantity: 1,
         name: "Pepperoni Pizza",
         size: "Large",
-        addons: ["Extra Pepperoni", "Mushrooms"],
+        addons: [
+          { id: "a3", name: "Extra Pepperoni", quantity: 2 },
+          { id: "a4", name: "Mushrooms", quantity: 1 }
+        ],
         completed: false,
       }
     ]
@@ -147,7 +181,7 @@ const MOCK_ORDERS: Order[] = [
         quantity: 1,
         name: "Pepperoni Pizza",
         size: "Medium",
-        addons: ["Olives"],
+        addons: [{ id: "a5", name: "Olives", quantity: 1 }],
         completed: false,
       },
       {
@@ -191,37 +225,35 @@ const MOCK_ORDERS: Order[] = [
 ];
 
 export default function KitchenPage() {
-  const [orders, setOrders] = useState<Order[]>(MOCK_ORDERS);
+  const { data: backendOrders, isLoading: isQueryLoading } = useGetAllOrders();
+  const updateItemStatus = useUpdateOrderItemStatus();
+  const updateOrderStatus = useUpdateOrderStatus();
+
   const [filter, setFilter] = useState<OrderStatus | "All Orders">("All Orders");
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [isLoading, setIsLoading] = useState(true);
+
+  const orders = useMemo(() => {
+    if (!backendOrders || !Array.isArray(backendOrders)) {
+      return [...MOCK_ORDERS].sort((a, b) => b.minutesAgo - a.minutesAgo);
+    }
+
+    return backendOrders
+      .map(mapBackendOrderToOrder)
+      .sort((a, b) => {
+        // ready orders should always be at the bottom
+        if (a.status === "Ready" && b.status !== "Ready") return 1;
+        if (a.status !== "Ready" && b.status === "Ready") return -1;
+
+        // sort by waiting time (oldest first -> highest minutesAgo first)
+        return b.minutesAgo - a.minutesAgo;
+      });
+  }, [backendOrders]);
+
+  const isLoading = isQueryLoading;
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
     return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        const data = await getOrders();
-        if (data && Array.isArray(data)) {
-          setOrders(data.map(mapBackendOrderToOrder));
-        }
-      } catch (error) {
-        console.error("Failed to fetch orders", error);
-        if (orders.length === 0) {
-          setOrders(MOCK_ORDERS);
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchOrders();
-
-    const interval = setInterval(fetchOrders, 30000);
-    return () => clearInterval(interval);
   }, []);
 
   const counts = {
@@ -243,19 +275,19 @@ export default function KitchenPage() {
   };
 
   const toggleItemCompletion = (orderId: string, itemId: string) => {
-    setOrders(prevOrders =>
-      prevOrders.map(order => {
-        if (order.id === orderId && order.status === "Preparing") {
-          return {
-            ...order,
-            items: order.items.map(item =>
-              item.id === itemId ? { ...item, completed: !item.completed } : item
-            )
-          };
-        }
-        return order;
-      })
-    );
+    const order = orders.find(o => o.id === orderId);
+    if (!order || order.status !== "Preparing") return;
+
+    const item = order.items.find(i => i.id === itemId);
+    if (!item) return;
+
+    const newStatus = item.completed ? "pending" : "complete";
+
+    updateItemStatus.mutate({ itemId, status: newStatus as any });
+  };
+
+  const handleUpdateStatus = (id: string | number, status: string) => {
+    updateOrderStatus.mutate({ id, data: { status: status as any } });
   };
 
   return (
@@ -336,6 +368,7 @@ export default function KitchenPage() {
                 key={order.id}
                 order={order}
                 onToggleItem={toggleItemCompletion}
+                onUpdateStatus={handleUpdateStatus}
               />
             ))}
           </div>
@@ -347,10 +380,12 @@ export default function KitchenPage() {
 
 function OrderCard({
   order,
-  onToggleItem
+  onToggleItem,
+  onUpdateStatus
 }: {
   order: Order;
   onToggleItem: (orderId: string, itemId: string) => void;
+  onUpdateStatus: (id: string | number, status: string) => void;
 }) {
   const getTheme = (status: OrderStatus) => {
     switch (status) {
@@ -438,10 +473,13 @@ function OrderCard({
               {item.addons && item.addons.length > 0 && (
                 <div className="mt-2">
                   <div className="text-[10px] uppercase font-bold text-gray-400 mb-1">ADD-ONS:</div>
-                  <div className="flex flex-wrap gap-1">
+                  <div className="flex flex-wrap gap-2">
                     {item.addons.map(addon => (
-                      <span key={addon} className="text-xs font-semibold text-[#B45309] bg-[#FEF3C7] border border-[#FDE68A] rounded px-2 py-0.5">
-                        {addon}
+                      <span key={addon.id || addon.name} className="flex items-center gap-1.5 text-xs font-semibold text-[#B45309] bg-[#FFFBEB] border border-[#FDE68A] rounded-lg pl-1 pr-2 py-1 shadow-sm">
+                        <span className="bg-[#FEF3C7] text-[#D97706] px-1.5 py-0.5 rounded-md text-[10px] border border-[#FDE68A]">
+                          {addon.quantity}x
+                        </span>
+                        {addon.name}
                       </span>
                     ))}
                   </div>
@@ -477,14 +515,23 @@ function OrderCard({
       <div className="p-4 bg-white border-t space-y-2 mt-auto shrink-0">
         {order.status === "Pending" && (
           <>
-            <button className={`w-full py-3 rounded-xl font-bold text-white shadow-sm transition-colors flex items-center justify-center gap-2 ${theme.button}`}>
+            <button
+              onClick={() => onUpdateStatus(order.id, "preparing")}
+              className={`w-full py-3 rounded-xl font-bold text-white shadow-sm transition-colors flex items-center justify-center gap-2 ${theme.button}`}
+            >
               <Play className="w-4 h-4" /> Start Preparing
             </button>
             <div className="flex gap-2">
-              <button className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl flex justify-center items-center gap-2 transition-colors">
+              <button
+                onClick={() => onUpdateStatus(order.id, "hold")}
+                className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl flex justify-center items-center gap-2 transition-colors"
+              >
                 <Pause className="w-4 h-4" /> Hold
               </button>
-              <button className="flex-1 py-3 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-xl flex justify-center items-center gap-2 border border-red-200 transition-colors">
+              <button
+                onClick={() => onUpdateStatus(order.id, "cancel")}
+                className="flex-1 py-3 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-xl flex justify-center items-center gap-2 border border-red-200 transition-colors"
+              >
                 <CircleX className="w-4 h-4" /> Cancel
               </button>
             </div>
@@ -494,30 +541,43 @@ function OrderCard({
           <>
             <button
               disabled={!allItemsCompleted}
+              onClick={() => onUpdateStatus(order.id, "ready")}
               className={`w-full py-3 rounded-xl font-bold text-white shadow-sm transition-colors flex items-center justify-center gap-2 ${allItemsCompleted ? theme.button : 'bg-gray-300 text-gray-500 cursor-not-allowed border border-gray-200'
                 }`}
             >
               <CircleCheck className="w-4 h-4" />
               {allItemsCompleted ? "Mark as Ready" : "Complete All Items"}
             </button>
-            <button className="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl flex justify-center items-center gap-2 transition-colors">
+            <button
+              onClick={() => onUpdateStatus(order.id, "hold")}
+              className="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl flex justify-center items-center gap-2 transition-colors"
+            >
               <Pause className="w-4 h-4" /> Hold
             </button>
           </>
         )}
         {order.status === "Ready" && (
           <>
-            <button className={`w-full py-3 rounded-xl font-bold text-white shadow-sm transition-colors flex items-center justify-center gap-2 ${theme.button}`}>
+            <button
+              onClick={() => onUpdateStatus(order.id, "delivered")}
+              className={`w-full py-3 rounded-xl font-bold text-white shadow-sm transition-colors flex items-center justify-center gap-2 ${theme.button}`}
+            >
               <CircleCheck className="w-4 h-4" /> Mark as Served
             </button>
           </>
         )}
         {order.status === "Hold" && (
           <>
-            <button className={`w-full py-3 rounded-xl font-bold text-white shadow-sm transition-colors flex items-center justify-center gap-2 ${theme.button}`}>
+            <button
+              onClick={() => onUpdateStatus(order.id, "preparing")}
+              className={`w-full py-3 rounded-xl font-bold text-white shadow-sm transition-colors flex items-center justify-center gap-2 ${theme.button}`}
+            >
               <Play className="w-4 h-4" /> Resume Order
             </button>
-            <button disabled className="w-full mt-2 py-3 bg-gray-50 text-gray-400 font-bold rounded-xl flex justify-center items-center gap-2 border border-gray-200 cursor-not-allowed">
+            <button
+              onClick={() => onUpdateStatus(order.id, "cancel")}
+              className="w-full mt-2 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl flex justify-center items-center gap-2 transition-colors"
+            >
               <CircleX className="w-4 h-4" /> Cancel Order
             </button>
           </>

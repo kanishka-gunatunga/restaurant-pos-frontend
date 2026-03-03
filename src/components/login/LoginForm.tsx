@@ -43,7 +43,8 @@ export default function LoginForm() {
   // Redirect when we have a valid mapped user
   useEffect(() => {
     if (user) {
-      if (user.role === "cashier") router.replace(ROUTES.DASHBOARD_MENU);
+      if (user.role === "kitchen") router.replace(ROUTES.KITCHEN);
+      else if (user.role === "cashier") router.replace(ROUTES.DASHBOARD_MENU);
       else router.replace(ROUTES.DASHBOARD);
     }
   }, [user, router]);
