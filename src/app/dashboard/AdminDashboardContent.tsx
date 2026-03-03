@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { getFirstName } from "@/lib/format";
 
 export default function AdminDashboardContent() {
   const { user } = useAuth();
@@ -12,7 +13,7 @@ export default function AdminDashboardContent() {
           Admin Dashboard
         </h2>
         <p className="mt-2 font-['Inter'] text-sm text-[#62748E]">
-          Welcome, {user?.name ?? "Admin"}! This dashboard is under development.
+          Welcome, {getFirstName(user?.name) || "Admin"}! This dashboard is under development.
         </p>
       </div>
     </div>

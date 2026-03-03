@@ -12,6 +12,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { ROUTES } from "@/lib/constants";
+import { getFirstName } from "@/lib/format";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
 
@@ -138,7 +139,7 @@ export default function CashierDashboardContent() {
       <header className="mt-2 flex shrink-0 flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <div>
           <h1 className="font-['Inter'] text-xl font-bold leading-tight text-[#1D293D] sm:text-3xl sm:leading-9">
-            {getGreeting()}, {user?.name ?? "Cashier"}!
+            {getGreeting()}, {getFirstName(user?.name) || "Cashier"}!
           </h1>
           <div className="mt-1 flex items-center gap-2 font-['Inter'] text-base font-normal leading-6 text-[#62748E]">
             <Calendar className="h-4 w-4" />
