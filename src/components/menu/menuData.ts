@@ -2,7 +2,7 @@ import type { MenuItem } from "./types";
 
 function getProdImage(id: string) {
   const num = parseInt(id, 10);
-  const imgNum = num <= 7 ? num : (num % 7) || 1;
+  const imgNum = num <= 7 ? num : num % 7 || 1;
   return `/prod/${imgNum}.png`;
 }
 

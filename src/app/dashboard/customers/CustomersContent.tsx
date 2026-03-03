@@ -35,10 +35,7 @@ export default function CustomersContent() {
       </div>
 
       {isAddModalOpen && (
-        <AddCustomerModal
-          onClose={() => setIsAddModalOpen(false)}
-          onAdd={handleAddCustomer}
-        />
+        <AddCustomerModal onClose={() => setIsAddModalOpen(false)} onAdd={handleAddCustomer} />
       )}
     </div>
   );

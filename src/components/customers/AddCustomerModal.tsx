@@ -48,9 +48,7 @@ export default function AddCustomerModal({ onClose, onAdd }: AddCustomerModalPro
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <label className="text-[12px] font-bold uppercase text-[#90A1B9]">
-              FULL NAME
-            </label>
+            <label className="text-[12px] font-bold uppercase text-[#90A1B9]">FULL NAME</label>
             <input
               type="text"
               name="name"
@@ -63,9 +61,7 @@ export default function AddCustomerModal({ onClose, onAdd }: AddCustomerModalPro
           </div>
 
           <div className="space-y-2">
-            <label className="text-[12px] font-bold uppercase text-[#90A1B9]">
-              MOBILE NUMBER
-            </label>
+            <label className="text-[12px] font-bold uppercase text-[#90A1B9]">MOBILE NUMBER</label>
             <input
               type="text"
               name="mobile"
@@ -77,9 +73,7 @@ export default function AddCustomerModal({ onClose, onAdd }: AddCustomerModalPro
           </div>
 
           <div className="space-y-2">
-            <label className="text-[12px] font-bold uppercase text-[#90A1B9]">
-              EMAIL ADDRESS
-            </label>
+            <label className="text-[12px] font-bold uppercase text-[#90A1B9]">EMAIL ADDRESS</label>
             <input
               type="email"
               name="email"
@@ -91,9 +85,7 @@ export default function AddCustomerModal({ onClose, onAdd }: AddCustomerModalPro
           </div>
 
           <div className="space-y-2">
-            <label className="text-[12px] font-bold uppercase text-[#90A1B9]">
-              ADDRESS
-            </label>
+            <label className="text-[12px] font-bold uppercase text-[#90A1B9]">ADDRESS</label>
             <input
               type="text"
               name="address"

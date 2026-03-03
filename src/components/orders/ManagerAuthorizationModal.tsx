@@ -10,12 +10,7 @@ type Props = {
   onVerify: (passcode: string) => void;
 };
 
-export default function ManagerAuthorizationModal({
-  orderNo,
-  isOpen,
-  onClose,
-  onVerify,
-}: Props) {
+export default function ManagerAuthorizationModal({ orderNo, isOpen, onClose, onVerify }: Props) {
   const [passcode, setPasscode] = useState("");
 
   if (!isOpen) return null;

@@ -2,15 +2,7 @@
 
 import { useState, useEffect, useSyncExternalStore } from "react";
 import Link from "next/link";
-import {
-  Calendar,
-  Clock,
-  ChefHat,
-  CheckCircle2,
-  Pause,
-  Wallet,
-  AlertTriangle,
-} from "lucide-react";
+import { Calendar, Clock, ChefHat, CheckCircle2, Pause, Wallet, AlertTriangle } from "lucide-react";
 import { ROUTES } from "@/lib/constants";
 import { getFirstName } from "@/lib/format";
 import { useAuth } from "@/contexts/AuthContext";
@@ -335,15 +327,39 @@ export default function CashierDashboardContent() {
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-2">
                     <div className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-[#FFE4E6]">
-                      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 20 20"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
                         <g clipPath="url(#clip0_hold_icon)">
-                          <path d="M9.99996 18.3332C14.6023 18.3332 18.3333 14.6022 18.3333 9.99984C18.3333 5.39746 14.6023 1.6665 9.99996 1.6665C5.39759 1.6665 1.66663 5.39746 1.66663 9.99984C1.66663 14.6022 5.39759 18.3332 9.99996 18.3332Z" stroke="#EC003F" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
-                          <path d="M8.33337 12.5V7.5" stroke="#EC003F" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
-                          <path d="M11.6666 12.5V7.5" stroke="#EC003F" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path
+                            d="M9.99996 18.3332C14.6023 18.3332 18.3333 14.6022 18.3333 9.99984C18.3333 5.39746 14.6023 1.6665 9.99996 1.6665C5.39759 1.6665 1.66663 5.39746 1.66663 9.99984C1.66663 14.6022 5.39759 18.3332 9.99996 18.3332Z"
+                            stroke="#EC003F"
+                            strokeWidth="1.66667"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d="M8.33337 12.5V7.5"
+                            stroke="#EC003F"
+                            strokeWidth="1.66667"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d="M11.6666 12.5V7.5"
+                            stroke="#EC003F"
+                            strokeWidth="1.66667"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
                         </g>
                         <defs>
                           <clipPath id="clip0_hold_icon">
-                            <rect width="20" height="20" fill="white"/>
+                            <rect width="20" height="20" fill="white" />
                           </clipPath>
                         </defs>
                       </svg>
@@ -403,12 +419,48 @@ export default function CashierDashboardContent() {
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-2">
                   <div className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-[#FFE2E2]">
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M17.5 8.33341V6.66675C17.4997 6.37448 17.4225 6.08742 17.2763 5.83438C17.13 5.58134 16.9198 5.37122 16.6667 5.22508L10.8333 1.89175C10.58 1.74547 10.2926 1.66846 10 1.66846C9.70744 1.66846 9.42003 1.74547 9.16667 1.89175L3.33333 5.22508C3.08022 5.37122 2.86998 5.58134 2.72372 5.83438C2.57745 6.08742 2.5003 6.37448 2.5 6.66675V13.3334C2.5003 13.6257 2.57745 13.9127 2.72372 14.1658C2.86998 14.4188 3.08022 14.6289 3.33333 14.7751L9.16667 18.1084C9.42003 18.2547 9.70744 18.3317 10 18.3317C10.2926 18.3317 10.58 18.2547 10.8333 18.1084L12.5 17.1584" stroke="#E7000B" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M6.25 3.55811L13.75 7.84977" stroke="#E7000B" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M2.74164 5.8335L9.99997 10.0002L17.2583 5.8335" stroke="#E7000B" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M10 18.3333V10" stroke="#E7000B" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M14.1667 10.8335L18.3334 15.0002M14.1667 15.0002L18.3334 10.8335" stroke="#E7000B" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 20 20"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M17.5 8.33341V6.66675C17.4997 6.37448 17.4225 6.08742 17.2763 5.83438C17.13 5.58134 16.9198 5.37122 16.6667 5.22508L10.8333 1.89175C10.58 1.74547 10.2926 1.66846 10 1.66846C9.70744 1.66846 9.42003 1.74547 9.16667 1.89175L3.33333 5.22508C3.08022 5.37122 2.86998 5.58134 2.72372 5.83438C2.57745 6.08742 2.5003 6.37448 2.5 6.66675V13.3334C2.5003 13.6257 2.57745 13.9127 2.72372 14.1658C2.86998 14.4188 3.08022 14.6289 3.33333 14.7751L9.16667 18.1084C9.42003 18.2547 9.70744 18.3317 10 18.3317C10.2926 18.3317 10.58 18.2547 10.8333 18.1084L12.5 17.1584"
+                        stroke="#E7000B"
+                        strokeWidth="1.66667"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M6.25 3.55811L13.75 7.84977"
+                        stroke="#E7000B"
+                        strokeWidth="1.66667"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M2.74164 5.8335L9.99997 10.0002L17.2583 5.8335"
+                        stroke="#E7000B"
+                        strokeWidth="1.66667"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M10 18.3333V10"
+                        stroke="#E7000B"
+                        strokeWidth="1.66667"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M14.1667 10.8335L18.3334 15.0002M14.1667 15.0002L18.3334 10.8335"
+                        stroke="#E7000B"
+                        strokeWidth="1.66667"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
                     </svg>
                   </div>
                   <div>
@@ -421,7 +473,7 @@ export default function CashierDashboardContent() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                <AlertTriangle className="h-5 w-5 text-[#FB2C36]" />
+                  <AlertTriangle className="h-5 w-5 text-[#FB2C36]" />
                   <div className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#FFE2E2]">
                     <span className="font-['Inter'] text-sm font-bold text-[#E7000B]">
                       {MOCK_LOW_STOCK.length}
@@ -447,8 +499,12 @@ export default function CashierDashboardContent() {
                       />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="font-['Inter'] text-base font-bold leading-6 text-[#1D293D]">{item.name}</p>
-                      <p className="font-['Inter'] text-xs font-normal leading-4 text-[#62748E]">{item.category}</p>
+                      <p className="font-['Inter'] text-base font-bold leading-6 text-[#1D293D]">
+                        {item.name}
+                      </p>
+                      <p className="font-['Inter'] text-xs font-normal leading-4 text-[#62748E]">
+                        {item.category}
+                      </p>
                       <span
                         className={`mt-2 inline-flex items-center gap-1 rounded-[10px] border px-2 py-0.5 font-['Inter'] text-xs font-bold leading-4 ${
                           item.status === "OUT"

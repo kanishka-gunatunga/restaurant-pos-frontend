@@ -14,36 +14,141 @@ type Props = {
 };
 
 const DineInIcon = ({ active }: { active: boolean }) => (
-  <svg className="h-6 w-6" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M14 2V4" stroke={active ? "#E26522" : "#62748E"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M16 8C16.2652 8 16.5196 8.10536 16.7071 8.29289C16.8946 8.48043 17 8.73478 17 9V17C17 18.0609 16.5786 19.0783 15.8284 19.8284C15.0783 20.5786 14.0609 21 13 21H7C5.93913 21 4.92172 20.5786 4.17157 19.8284C3.42143 19.0783 3 18.0609 3 17V9C3 8.73478 3.10536 8.48043 3.29289 8.29289C3.48043 8.10536 3.73478 8 4 8H18C19.0609 8 20.0783 8.42143 20.8284 9.17157C21.5786 9.92172 22 10.9391 22 12C22 13.0609 21.5786 14.0783 20.8284 14.8284C20.0783 15.5786 19.0609 16 18 16H17" stroke={active ? "#E26522" : "#62748E"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M6 2V4" stroke={active ? "#E26522" : "#62748E"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+  <svg
+    className="h-6 w-6"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M14 2V4"
+      stroke={active ? "#E26522" : "#62748E"}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M16 8C16.2652 8 16.5196 8.10536 16.7071 8.29289C16.8946 8.48043 17 8.73478 17 9V17C17 18.0609 16.5786 19.0783 15.8284 19.8284C15.0783 20.5786 14.0609 21 13 21H7C5.93913 21 4.92172 20.5786 4.17157 19.8284C3.42143 19.0783 3 18.0609 3 17V9C3 8.73478 3.10536 8.48043 3.29289 8.29289C3.48043 8.10536 3.73478 8 4 8H18C19.0609 8 20.0783 8.42143 20.8284 9.17157C21.5786 9.92172 22 10.9391 22 12C22 13.0609 21.5786 14.0783 20.8284 14.8284C20.0783 15.5786 19.0609 16 18 16H17"
+      stroke={active ? "#E26522" : "#62748E"}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M6 2V4"
+      stroke={active ? "#E26522" : "#62748E"}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
   </svg>
 );
 
 const TakeAwayIcon = ({ active }: { active: boolean }) => (
-  <svg className="h-6 w-6" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M15 11L14 20" stroke={active ? "#E26522" : "#62748E"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M19 11L15 4" stroke={active ? "#E26522" : "#62748E"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M2 11H22" stroke={active ? "#E26522" : "#62748E"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M3.5 11L5.1 18.4C5.19357 18.8585 5.44491 19.2697 5.81034 19.5621C6.17578 19.8545 6.63217 20.0094 7.1 20H16.9C17.3678 20.0094 17.8242 19.8545 18.1897 19.5621C18.5551 19.2697 18.8064 18.8585 18.9 18.4L20.6 11" stroke={active ? "#E26522" : "#62748E"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M4.5 15.5H19.5" stroke={active ? "#E26522" : "#62748E"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M5 11L9 4" stroke={active ? "#E26522" : "#62748E"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M9 11L10 20" stroke={active ? "#E26522" : "#62748E"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+  <svg
+    className="h-6 w-6"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M15 11L14 20"
+      stroke={active ? "#E26522" : "#62748E"}
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M19 11L15 4"
+      stroke={active ? "#E26522" : "#62748E"}
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M2 11H22"
+      stroke={active ? "#E26522" : "#62748E"}
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M3.5 11L5.1 18.4C5.19357 18.8585 5.44491 19.2697 5.81034 19.5621C6.17578 19.8545 6.63217 20.0094 7.1 20H16.9C17.3678 20.0094 17.8242 19.8545 18.1897 19.5621C18.5551 19.2697 18.8064 18.8585 18.9 18.4L20.6 11"
+      stroke={active ? "#E26522" : "#62748E"}
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M4.5 15.5H19.5"
+      stroke={active ? "#E26522" : "#62748E"}
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M5 11L9 4"
+      stroke={active ? "#E26522" : "#62748E"}
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M9 11L10 20"
+      stroke={active ? "#E26522" : "#62748E"}
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
   </svg>
 );
 
 const DeliveryIcon = ({ active }: { active: boolean }) => (
-  <svg className="h-6 w-6" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M14 18V6C14 5.46957 13.7893 4.96086 13.4142 4.58579C13.0391 4.21071 12.5304 4 12 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V15C2 15.5304 2.21071 16.0391 2.58579 16.4142C2.96086 16.7893 3.46957 17 4 17H5" stroke={active ? "#E26522" : "#62748E"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M14 8H17L20 11V17H19" stroke={active ? "#E26522" : "#62748E"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <circle cx="7.5" cy="18.5" r="1.5" stroke={active ? "#E26522" : "#62748E"} strokeWidth="1.5"/>
-    <circle cx="16.5" cy="18.5" r="1.5" stroke={active ? "#E26522" : "#62748E"} strokeWidth="1.5"/>
-    <path d="M9 18H15" stroke={active ? "#E26522" : "#62748E"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+  <svg
+    className="h-6 w-6"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M14 18V6C14 5.46957 13.7893 4.96086 13.4142 4.58579C13.0391 4.21071 12.5304 4 12 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V15C2 15.5304 2.21071 16.0391 2.58579 16.4142C2.96086 16.7893 3.46957 17 4 17H5"
+      stroke={active ? "#E26522" : "#62748E"}
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M14 8H17L20 11V17H19"
+      stroke={active ? "#E26522" : "#62748E"}
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <circle cx="7.5" cy="18.5" r="1.5" stroke={active ? "#E26522" : "#62748E"} strokeWidth="1.5" />
+    <circle cx="16.5" cy="18.5" r="1.5" stroke={active ? "#E26522" : "#62748E"} strokeWidth="1.5" />
+    <path
+      d="M9 18H15"
+      stroke={active ? "#E26522" : "#62748E"}
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
   </svg>
 );
 
-export default function NewOrderDetailsModal({ onSubmit, onClose, initialData, title = "New Order Details", submitButtonText = "Proceed to Menu" }: Props) {
+export default function NewOrderDetailsModal({
+  onSubmit,
+  onClose,
+  initialData,
+  title = "New Order Details",
+  submitButtonText = "Proceed to Menu",
+}: Props) {
   const [customerName, setCustomerName] = useState(initialData?.customerName ?? "");
   const [phone, setPhone] = useState(initialData?.phone ?? "");
   const [orderType, setOrderType] = useState<OrderType>(initialData?.orderType ?? "Dine In");
@@ -51,7 +156,9 @@ export default function NewOrderDetailsModal({ onSubmit, onClose, initialData, t
   const [deliveryAddress, setDeliveryAddress] = useState(initialData?.deliveryAddress ?? "");
   const [landmark, setLandmark] = useState(initialData?.landmark ?? "");
   const [zipCode, setZipCode] = useState(initialData?.zipCode ?? "");
-  const [deliveryInstructions, setDeliveryInstructions] = useState(initialData?.deliveryInstructions ?? "");
+  const [deliveryInstructions, setDeliveryInstructions] = useState(
+    initialData?.deliveryInstructions ?? ""
+  );
   const [toast, setToast] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
@@ -62,9 +169,12 @@ export default function NewOrderDetailsModal({ onSubmit, onClose, initialData, t
   const handleSubmit = () => {
     if (!customerName.trim()) return showToast("Please enter customer name.");
     if (!phone.trim()) return showToast("Please enter mobile number.");
-    if (!/^0{1}7{1}[01245678]{1}[0-9]{7}$/.test(phone.replace(/[-\s]/g, ""))) return showToast("Invalid mobile number.");
-    if (orderType === "Dine In" && !tableNumber.trim()) return showToast("Please enter table number.");
-    if (orderType === "Delivery" && !deliveryAddress.trim()) return showToast("Please enter delivery address.");
+    if (!/^0{1}7{1}[01245678]{1}[0-9]{7}$/.test(phone.replace(/[-\s]/g, "")))
+      return showToast("Invalid mobile number.");
+    if (orderType === "Dine In" && !tableNumber.trim())
+      return showToast("Please enter table number.");
+    if (orderType === "Delivery" && !deliveryAddress.trim())
+      return showToast("Please enter delivery address.");
 
     onSubmit({
       customerName,
@@ -76,13 +186,17 @@ export default function NewOrderDetailsModal({ onSubmit, onClose, initialData, t
   };
 
   const labelClass = "font-['Arial'] text-sm leading-5 text-[#62748E]";
-  const inputClass = "w-full rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFC] py-3 pr-4 pl-11 font-['Arial'] text-base leading-[100%] text-[#0A0A0A80] placeholder:text-[#0A0A0A80] focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C]/20";
+  const inputClass =
+    "w-full rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFC] py-3 pr-4 pl-11 font-['Arial'] text-base leading-[100%] text-[#0A0A0A80] placeholder:text-[#0A0A0A80] focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C]/20";
   const iconClass = "absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#90A1B9]";
 
   const orderTypes: OrderType[] = ["Dine In", "Take Away", "Delivery"];
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
+      onClick={onClose}
+    >
       <div
         className="relative w-full max-w-lg overflow-y-auto rounded-[16px] border border-[#F1F5F9] bg-white px-8 py-5 shadow-[0px_1px_2px_-1px_#0000001A,0px_1px_3px_0px_#0000001A] [scrollbar-color:#E2E8F0_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#E2E8F0] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-1.5"
         style={{ maxHeight: "85vh" }}
@@ -95,9 +209,7 @@ export default function NewOrderDetailsModal({ onSubmit, onClose, initialData, t
         >
           <X className="h-5 w-5" />
         </button>
-        <h2 className="font-['Arial'] text-2xl font-bold leading-8 text-[#1D293D]">
-          {title}
-        </h2>
+        <h2 className="font-['Arial'] text-2xl font-bold leading-8 text-[#1D293D]">{title}</h2>
 
         <div className="mt-6 grid grid-cols-2 gap-4">
           <div>
@@ -227,7 +339,15 @@ export default function NewOrderDetailsModal({ onSubmit, onClose, initialData, t
             <div className="mt-4">
               <label className={labelClass}>Delivery Instructions</label>
               <div className="relative mt-1.5">
-                <svg className={iconClass} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  className={iconClass}
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <circle cx="12" cy="12" r="10" />
                   <line x1="12" y1="16" x2="12" y2="12" />
                   <line x1="12" y1="8" x2="12.01" y2="8" />

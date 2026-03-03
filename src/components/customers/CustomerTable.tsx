@@ -66,9 +66,7 @@ interface CustomerTableProps {
 
 export default function CustomerTable({ searchTerm }: CustomerTableProps) {
   const filteredCustomers = MOCK_CUSTOMERS.filter(
-    (c) =>
-      c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.mobile.includes(searchTerm)
+    (c) => c.name.toLowerCase().includes(searchTerm.toLowerCase()) || c.mobile.includes(searchTerm)
   );
 
   return (
@@ -99,10 +97,7 @@ export default function CustomerTable({ searchTerm }: CustomerTableProps) {
           </thead>
           <tbody className="divide-y divide-[#F1F5F9]">
             {filteredCustomers.map((customer) => (
-              <tr
-                key={customer.id}
-                className="group hover:bg-[#F8FAFC] transition-colors"
-              >
+              <tr key={customer.id} className="group hover:bg-[#F8FAFC] transition-colors">
                 <td className="px-6 py-4 text-[11px] font-bold text-[#90A1B9]">
                   {customer.displayName}
                 </td>
@@ -112,12 +107,8 @@ export default function CustomerTable({ searchTerm }: CustomerTableProps) {
                       <User className="h-5 w-5" />
                     </div>
                     <div>
-                      <p className="text-[14px] font-bold text-[#314158]">
-                        {customer.name}
-                      </p>
-                      <p className="text-[10px] text-[#90A1B9]">
-                        Last visit: {customer.lastVisit}
-                      </p>
+                      <p className="text-[14px] font-bold text-[#314158]">{customer.name}</p>
+                      <p className="text-[10px] text-[#90A1B9]">Last visit: {customer.lastVisit}</p>
                     </div>
                   </div>
                 </td>

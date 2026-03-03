@@ -23,12 +23,18 @@ interface UserTableProps {
   onDelete: (id: string) => void;
 }
 
-export default function UserTable({ searchTerm, users = [], isLoading, onEdit, onDelete }: UserTableProps) {
+export default function UserTable({
+  searchTerm,
+  users = [],
+  isLoading,
+  onEdit,
+  onDelete,
+}: UserTableProps) {
   const filteredUsers = (users || []).filter((u) => {
     const nameMatch = u?.name?.toLowerCase().includes(searchTerm.toLowerCase());
     const roleMatch = u?.role?.toLowerCase().includes(searchTerm.toLowerCase());
 
-  console.log(filteredUsers);
+    console.log(filteredUsers);
 
     return nameMatch || roleMatch;
   });
@@ -75,9 +81,7 @@ export default function UserTable({ searchTerm, users = [], isLoading, onEdit, o
                 <td colSpan={5} className="px-6 py-12 text-center">
                   <div className="flex flex-col items-center justify-center gap-3">
                     <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-                    <p className="text-[14px] font-medium text-[#62748E]">
-                      Loading users...
-                    </p>
+                    <p className="text-[14px] font-medium text-[#62748E]">Loading users...</p>
                   </div>
                 </td>
               </tr>
@@ -91,22 +95,15 @@ export default function UserTable({ searchTerm, users = [], isLoading, onEdit, o
               </tr>
             ) : (
               filteredUsers.map((user) => (
-                <tr
-                  key={user.id}
-                  className="group hover:bg-[#F8FAFC] transition-colors"
-                >
+                <tr key={user.id} className="group hover:bg-[#F8FAFC] transition-colors">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="flex h-10 w-10 items-center border border-[#F1F5F9] justify-center rounded-full bg-[#F8FAFC] text-[#90A1B9]">
                         <UserIcon className="h-5 w-5" />
                       </div>
                       <div>
-                        <p className="text-[14px] font-bold text-[#314158]">
-                          {user.name}
-                        </p>
-                        <p className="text-[10px] text-[#90A1B9]">
-                          ID: {user.id}
-                        </p>
+                        <p className="text-[14px] font-bold text-[#314158]">{user.name}</p>
+                        <p className="text-[10px] text-[#90A1B9]">ID: {user.id}</p>
                       </div>
                     </div>
                   </td>
@@ -131,7 +128,7 @@ export default function UserTable({ searchTerm, users = [], isLoading, onEdit, o
                         <>
                           <Key className="h-3.5 w-3.5 text-[#90A1B9]" />
                           <span className="bg-[#F1F5F9] px-2 py-1 rounded-md text-[12px] font-bold">
-                             {user.passcode}
+                            {user.passcode}
                           </span>
                         </>
                       ) : (
@@ -141,13 +138,13 @@ export default function UserTable({ searchTerm, users = [], isLoading, onEdit, o
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2 text-[#90A1B9]">
-                      <button 
+                      <button
                         onClick={() => onEdit(user)}
                         className="flex h-8 w-8 items-center cursor-pointer justify-center rounded-xl border border-[#E2E8F0] hover:bg-white hover:text-primary transition-colors"
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
-                      <button 
+                      <button
                         onClick={() => onDelete(user.id)}
                         className="flex h-8 w-8 items-center cursor-pointer justify-center rounded-xl border border-[#E2E8F0] hover:bg-white hover:text-red-500 transition-colors"
                       >

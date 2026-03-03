@@ -103,10 +103,7 @@ export default function AddProductContent() {
   };
 
   const handleAddVariantGroup = () => {
-    setVariantGroups([
-      ...variantGroups,
-      { id: `vg-${Date.now()}`, name: "", options: [""] },
-    ]);
+    setVariantGroups([...variantGroups, { id: `vg-${Date.now()}`, name: "", options: [""] }]);
   };
 
   const handleRemoveVariantGroup = (groupId: string) => {
@@ -118,25 +115,19 @@ export default function AddProductContent() {
     field: "name" | "options",
     value: string | string[]
   ) => {
-    setVariantGroups(
-      variantGroups.map((g) => (g.id === groupId ? { ...g, [field]: value } : g))
-    );
+    setVariantGroups(variantGroups.map((g) => (g.id === groupId ? { ...g, [field]: value } : g)));
   };
 
   const handleAddVariantOption = (groupId: string) => {
     setVariantGroups(
-      variantGroups.map((g) =>
-        g.id === groupId ? { ...g, options: [...g.options, ""] } : g
-      )
+      variantGroups.map((g) => (g.id === groupId ? { ...g, options: [...g.options, ""] } : g))
     );
   };
 
   const handleRemoveVariantOption = (groupId: string, index: number) => {
     setVariantGroups(
       variantGroups.map((g) =>
-        g.id === groupId
-          ? { ...g, options: g.options.filter((_, i) => i !== index) }
-          : g
+        g.id === groupId ? { ...g, options: g.options.filter((_, i) => i !== index) } : g
       )
     );
   };
@@ -187,13 +178,8 @@ export default function AddProductContent() {
     });
   };
 
-  const handleToggleAddonGroup = (
-    branchId: string,
-    combination: string,
-    addonGroupId: string
-  ) => {
-    const current =
-      branchConfigs[branchId]?.variants[combination]?.addonGroups ?? [];
+  const handleToggleAddonGroup = (branchId: string, combination: string, addonGroupId: string) => {
+    const current = branchConfigs[branchId]?.variants[combination]?.addonGroups ?? [];
     const newGroups = current.includes(addonGroupId)
       ? current.filter((id) => id !== addonGroupId)
       : [...current, addonGroupId];
@@ -203,9 +189,7 @@ export default function AddProductContent() {
   const handleFinalSubmit = () => {
     for (const branchId of selectedBranches) {
       const config = branchConfigs[branchId];
-      const hasValid = Object.values(config?.variants ?? {}).some(
-        (v) => v.price && v.quantity
-      );
+      const hasValid = Object.values(config?.variants ?? {}).some((v) => v.price && v.quantity);
       if (!hasValid) return;
     }
     // TODO: API call to create product
@@ -355,11 +339,7 @@ export default function AddProductContent() {
                       className="flex min-w-0 flex-1 items-center gap-3 rounded-xl border-2 border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3 font-['Inter'] text-sm text-left transition-colors hover:border-[#CAD5E2] focus:border-[#EA580C] focus:outline-none focus:ring-2 focus:ring-[#EA580C]/20"
                     >
                       <span
-                        className={
-                          imageFile
-                            ? "min-w-0 truncate text-[#1D293D]"
-                            : "text-[#90A1B9]"
-                        }
+                        className={imageFile ? "min-w-0 truncate text-[#1D293D]" : "text-[#90A1B9]"}
                       >
                         {imageFile ? imageFile.name : "Attach Image here"}
                       </span>
@@ -403,14 +383,9 @@ export default function AddProductContent() {
                       }}
                       className="flex w-full items-center justify-between rounded-xl border-2 border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3 text-left font-['Inter'] text-sm focus:border-[#EA580C] focus:outline-none focus:ring-2 focus:ring-[#EA580C]/20"
                     >
-                      <span
-                        className={
-                          selectedCategory ? "text-[#1D293D]" : "text-[#90A1B9]"
-                        }
-                      >
+                      <span className={selectedCategory ? "text-[#1D293D]" : "text-[#90A1B9]"}>
                         {selectedCategory
-                          ? MOCK_CATEGORIES.find((c) => c.id === selectedCategory)
-                              ?.name
+                          ? MOCK_CATEGORIES.find((c) => c.id === selectedCategory)?.name
                           : "Select category..."}
                       </span>
                       <ChevronDown className="h-5 w-5 text-[#90A1B9]" />
@@ -448,11 +423,7 @@ export default function AddProductContent() {
                       disabled={!selectedCategory}
                       className="flex w-full items-center justify-between rounded-xl border-2 border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3 text-left font-['Inter'] text-sm focus:border-[#EA580C] focus:outline-none focus:ring-2 focus:ring-[#EA580C]/20 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      <span
-                        className={
-                          selectedSubCategory ? "text-[#1D293D]" : "text-[#90A1B9]"
-                        }
-                      >
+                      <span className={selectedSubCategory ? "text-[#1D293D]" : "text-[#90A1B9]"}>
                         {selectedSubCategory || "Select sub category..."}
                       </span>
                       <ChevronDown className="h-5 w-5 text-[#90A1B9]" />
@@ -569,9 +540,7 @@ export default function AddProductContent() {
                               {group.options.length > 1 && (
                                 <button
                                   type="button"
-                                  onClick={() =>
-                                    handleRemoveVariantOption(group.id, idx)
-                                  }
+                                  onClick={() => handleRemoveVariantOption(group.id, idx)}
                                   className="rounded-xl p-2 text-[#90A1B9] transition-colors hover:bg-red-50 hover:text-red-500"
                                 >
                                   <X className="h-4 w-4" />
@@ -673,14 +642,15 @@ export default function AddProductContent() {
 
                         <div className="space-y-4">
                           {variantCombinations.map((combo) => {
-                            const variantData =
-                              branchConfigs[branchId]?.variants[combo.combination] ?? {
-                                price: "",
-                                quantity: "",
-                                addonGroups: [],
-                                expireDate: "",
-                                batchNo: "",
-                              };
+                            const variantData = branchConfigs[branchId]?.variants[
+                              combo.combination
+                            ] ?? {
+                              price: "",
+                              quantity: "",
+                              addonGroups: [],
+                              expireDate: "",
+                              batchNo: "",
+                            };
 
                             return (
                               <div

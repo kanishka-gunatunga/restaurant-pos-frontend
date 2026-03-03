@@ -47,7 +47,9 @@ export default function OrderDistributionChart() {
         </div>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="text-[24px] font-bold text-[#1D293D]">642</span>
-          <span className="text-[10px] font-bold uppercase tracking-wider text-[#90A1B9]">Total</span>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-[#90A1B9]">
+            Total
+          </span>
         </div>
       </div>
 

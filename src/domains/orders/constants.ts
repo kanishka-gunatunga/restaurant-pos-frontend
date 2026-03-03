@@ -9,7 +9,10 @@ export const STATUS_STYLES: Record<OrderStatus, { bg: string; border: string; te
   CANCELED: { bg: "#FFE6EB", border: "#FFB3C1", text: "#EC003F" },
 };
 
-export const PAYMENT_STATUS_STYLES: Record<PaymentStatus, { bg: string; border: string; text: string }> = {
+export const PAYMENT_STATUS_STYLES: Record<
+  PaymentStatus,
+  { bg: string; border: string; text: string }
+> = {
   PENDING: { bg: "#FFF4E6", border: "#FFE0B3", text: "#E17100" },
   PAID: { bg: "#E6F7F0", border: "#B3E6D1", text: "#009966" },
   "PARTIAL REFUND": { bg: "#FFE6EB", border: "#FFB3C1", text: "#EC003F" },

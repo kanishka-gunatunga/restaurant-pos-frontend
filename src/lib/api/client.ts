@@ -42,10 +42,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
   return response.text() as Promise<T>;
 }
 
-export async function apiClient<T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<T> {
+export async function apiClient<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const baseUrl = getBaseUrl();
   const url = endpoint.startsWith("http") ? endpoint : `${baseUrl}${endpoint}`;
 

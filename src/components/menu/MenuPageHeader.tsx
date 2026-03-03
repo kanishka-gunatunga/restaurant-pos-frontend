@@ -53,17 +53,10 @@ export default function MenuPageHeader() {
           <div
             className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary"
             style={{
-              boxShadow:
-                "0px 4px 6px -4px #EA580C33, 0px 10px 15px -3px #EA580C33",
+              boxShadow: "0px 4px 6px -4px #EA580C33, 0px 10px 15px -3px #EA580C33",
             }}
           >
-            <Image
-              src="/house_icon.svg"
-              alt=""
-              width={24}
-              height={24}
-              className="h-6 w-6"
-            />
+            <Image src="/house_icon.svg" alt="" width={24} height={24} className="h-6 w-6" />
           </div>
           <div>
             <h1 className="text-lg font-bold leading-[22.5px] tracking-normal text-[#1D293D]">
@@ -81,15 +74,12 @@ export default function MenuPageHeader() {
             <div
               key={order.id}
               className={`flex items-center gap-1.5 rounded-[14px] px-2.5 py-1 transition-colors ${
-                activeOrderId === order.id
-                  ? "bg-white"
-                  : "bg-transparent hover:bg-white/50"
+                activeOrderId === order.id ? "bg-white" : "bg-transparent hover:bg-white/50"
               }`}
               style={
                 activeOrderId === order.id
                   ? {
-                      boxShadow:
-                        "0px 1px 2px -1px #0000001A, 0px 1px 3px 0px #0000001A",
+                      boxShadow: "0px 1px 2px -1px #0000001A, 0px 1px 3px 0px #0000001A",
                     }
                   : undefined
               }
@@ -106,9 +96,7 @@ export default function MenuPageHeader() {
                 />
                 <span
                   className={`text-sm font-medium ${
-                    activeOrderId === order.id
-                      ? "text-primary"
-                      : "text-[#62748E]"
+                    activeOrderId === order.id ? "text-primary" : "text-[#62748E]"
                   }`}
                 >
                   Order {index + 1}

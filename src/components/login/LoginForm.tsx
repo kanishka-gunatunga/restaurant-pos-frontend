@@ -16,8 +16,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   USER_NOT_FOUND: "User not found.",
   SERVER_ERROR: "Something went wrong. Try again later.",
   TIMEOUT: "Connection timed out. Check your network or try again.",
-  ROLE_NOT_SUPPORTED:
-    "Your account role is not set up for this app. Contact your manager.",
+  ROLE_NOT_SUPPORTED: "Your account role is not set up for this app. Contact your manager.",
 };
 
 const SIGN_IN_TIMEOUT_MS = 15000;
@@ -25,9 +24,7 @@ const SIGN_IN_TIMEOUT_MS = 15000;
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
   return Promise.race([
     promise,
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error(message)), ms)
-    ),
+    new Promise<never>((_, reject) => setTimeout(() => reject(new Error(message)), ms)),
   ]);
 }
 
@@ -106,13 +103,7 @@ export default function LoginForm() {
     >
       {/* Logo - Bistro/House icon */}
       <div className="mb-4 flex h-[52px] w-16 shrink-0 items-center justify-center rounded-2xl bg-primary shadow-[0px_4px_6px_-4px_rgba(0,0,0,0.1),0px_10px_15px_-3px_rgba(0,0,0,0.1)]">
-        <Image
-          src="/house_icon.svg"
-          alt=""
-          width={28}
-          height={28}
-          className="h-7 w-7"
-        />
+        <Image src="/house_icon.svg" alt="" width={28} height={28} className="h-7 w-7" />
       </div>
 
       <h1 className="text-center font-[Arial] text-[28px] font-black leading-[36px] tracking-[-0.75px] text-[#1D293D]">

@@ -58,10 +58,16 @@ export default function CategoriesTab({ onAddCategory }: CategoriesTabProps) {
               </div>
             </div>
             <div className="flex shrink-0 gap-1">
-              <button type="button" className="rounded-lg p-2 text-[#90A1B9] hover:bg-[#F1F5F9] hover:text-[#45556C]">
+              <button
+                type="button"
+                className="rounded-lg p-2 text-[#90A1B9] hover:bg-[#F1F5F9] hover:text-[#45556C]"
+              >
                 <Pencil className="h-4 w-4" />
               </button>
-              <button type="button" className="rounded-lg p-2 text-[#90A1B9] hover:bg-red-50 hover:text-red-600">
+              <button
+                type="button"
+                className="rounded-lg p-2 text-[#90A1B9] hover:bg-red-50 hover:text-red-600"
+              >
                 <Trash2 className="h-4 w-4" />
               </button>
             </div>

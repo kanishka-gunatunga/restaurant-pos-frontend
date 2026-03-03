@@ -1,7 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search, ChevronLeft, ChevronRight, Filter, Banknote, CreditCard, Globe } from "lucide-react";
+import {
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  Filter,
+  Banknote,
+  CreditCard,
+  Globe,
+} from "lucide-react";
 
 type PaymentStatus = "Paid" | "Pending" | "Cancelled" | "Refunded";
 
@@ -23,7 +31,7 @@ const MOCK_PAYMENTS: Payment[] = [
     orderId: "#1024",
     customer: "Michael Chen",
     telephone: "123-456-7890",
-    amount: 5230.00,
+    amount: 5230.0,
     method: "Credit Card",
     status: "Paid",
     date: "Oct 24, 2023",
@@ -34,7 +42,7 @@ const MOCK_PAYMENTS: Payment[] = [
     orderId: "#1025",
     customer: "John Doe",
     telephone: "123-456-7890",
-    amount: 12.00,
+    amount: 12.0,
     method: "Cash",
     status: "Paid",
     date: "Oct 24, 2023",
@@ -45,7 +53,7 @@ const MOCK_PAYMENTS: Payment[] = [
     orderId: "ORD-7831",
     customer: "John Doe",
     telephone: "123-456-7890",
-    amount: 45.00,
+    amount: 45.0,
     method: "Online",
     status: "Pending",
     date: "Oct 24, 2023",
@@ -56,7 +64,7 @@ const MOCK_PAYMENTS: Payment[] = [
     orderId: "ORD-7832",
     customer: "John Doe",
     telephone: "123-456-7890",
-    amount: 32.50,
+    amount: 32.5,
     method: "Credit Card",
     status: "Refunded",
     date: "Oct 23, 2023",
@@ -67,7 +75,7 @@ const MOCK_PAYMENTS: Payment[] = [
     orderId: "ORD-7833",
     customer: "John Doe",
     telephone: "123-456-7890",
-    amount: 120.00,
+    amount: 120.0,
     method: "Credit Card",
     status: "Paid",
     date: "Oct 23, 2023",
@@ -78,7 +86,7 @@ const MOCK_PAYMENTS: Payment[] = [
     orderId: "ORD-7834",
     customer: "John Doe",
     telephone: "123-456-7890",
-    amount: 60.00,
+    amount: 60.0,
     method: "Cash",
     status: "Paid",
     date: "Oct 22, 2023",
@@ -89,7 +97,7 @@ const MOCK_PAYMENTS: Payment[] = [
     orderId: "#1026",
     customer: "John Doe",
     telephone: "123-456-7890",
-    amount: 25.00,
+    amount: 25.0,
     method: "Credit Card",
     status: "Paid",
     date: "Oct 22, 2023",
@@ -145,8 +153,8 @@ export default function PaymentHistoryTable({ searchTerm }: PaymentHistoryTableP
   return (
     <div className="flex flex-col gap-4 rounded-xl bg-white shadow-sm ring-1 ring-zinc-200">
       {/* <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center"> */}
-        {/* <h2 className="text-lg font-bold text-zinc-900">Recent Transactions</h2> */}
-        {/* <div className="flex items-center gap-2">
+      {/* <h2 className="text-lg font-bold text-zinc-900">Recent Transactions</h2> */}
+      {/* <div className="flex items-center gap-2">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
             <input
@@ -182,16 +190,20 @@ export default function PaymentHistoryTable({ searchTerm }: PaymentHistoryTableP
             {paginatedPayments.length > 0 ? (
               paginatedPayments.map((payment) => (
                 <tr key={payment.id} className="group hover:bg-zinc-50/50">
-                  <td className="px-6 py-4 font-[400] text-[11px] text-[#62748E]">
-                    {payment.id}
+                  <td className="px-6 py-4 font-[400] text-[11px] text-[#62748E]">{payment.id}</td>
+                  <td className="px-6 py-4 text-[#314158] font-bold text-[16px]">
+                    {payment.orderId}
                   </td>
-                  <td className="px-6 py-4 text-[#314158] font-bold text-[16px]">{payment.orderId}</td>
                   <td className="px-6 py-4 font-bold text-[14px] text-[#314158] flex flex-col">
-                    {payment.customer} <span className="text-[#90A1B9] font-[400] font-[11px]">{payment.telephone}</span>
+                    {payment.customer}{" "}
+                    <span className="text-[#90A1B9] font-[400] font-[11px]">
+                      {payment.telephone}
+                    </span>
                   </td>
                   <td className="px-6 py-4 font-semibold text-[14px] text-[#314158]">
                     <div className="flex flex-col">
-                    {payment.date} <span className="text-[#90A1B9] text-[11px] font-[400]">{payment.time}</span>
+                      {payment.date}{" "}
+                      <span className="text-[#90A1B9] text-[11px] font-[400]">{payment.time}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4 text-[#45556C] font-[700] text-[14px]">

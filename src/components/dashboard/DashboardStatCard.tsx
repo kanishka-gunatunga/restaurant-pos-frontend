@@ -33,16 +33,17 @@ export default function DashboardStatCard({
         </div>
         <div className={`flex items-center gap-1 text-[12px] font-bold ${trendColor}`}>
           <TrendIcon className="h-3 w-3" />
-          <span>{trend.isPositive ? "+" : ""}{trend.value}%</span>
+          <span>
+            {trend.isPositive ? "+" : ""}
+            {trend.value}%
+          </span>
         </div>
       </div>
       <div className="mt-4">
         <p className="font-inter text-[12px] font-bold uppercase tracking-wider text-[#90A1B9]">
           {label}
         </p>
-        <p className="mt-1 text-[24px] font-[900] text-[#1D293D]">
-          {value}
-        </p>
+        <p className="mt-1 text-[24px] font-[900] text-[#1D293D]">{value}</p>
       </div>
     </div>
   );

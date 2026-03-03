@@ -55,13 +55,11 @@ export default function AddUserModal({ onClose, onAdd, initialData }: AddUserMod
     onAdd(formData);
   };
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: name === "branchId" ? (parseInt(value, 10) || 0) : value,
+      [name]: name === "branchId" ? parseInt(value, 10) || 0 : value,
     }));
   };
 
@@ -91,9 +89,7 @@ export default function AddUserModal({ onClose, onAdd, initialData }: AddUserMod
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-[12px] font-bold uppercase text-[#90A1B9]">
-                FULL NAME
-              </label>
+              <label className="text-[12px] font-bold uppercase text-[#90A1B9]">FULL NAME</label>
               <input
                 type="text"
                 name="name"
@@ -123,9 +119,7 @@ export default function AddUserModal({ onClose, onAdd, initialData }: AddUserMod
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-[12px] font-bold uppercase text-[#90A1B9]">
-                USERNAME
-              </label>
+              <label className="text-[12px] font-bold uppercase text-[#90A1B9]">USERNAME</label>
               <input
                 type="text"
                 name="username"
@@ -138,9 +132,7 @@ export default function AddUserModal({ onClose, onAdd, initialData }: AddUserMod
             </div>
 
             <div className="space-y-2">
-              <label className="text-[12px] font-bold uppercase text-[#90A1B9]">
-                PASSWORD
-              </label>
+              <label className="text-[12px] font-bold uppercase text-[#90A1B9]">PASSWORD</label>
               <input
                 type="password"
                 name="password"
@@ -155,9 +147,7 @@ export default function AddUserModal({ onClose, onAdd, initialData }: AddUserMod
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-[12px] font-bold uppercase text-[#90A1B9]">
-                EMPLOYEE ID
-              </label>
+              <label className="text-[12px] font-bold uppercase text-[#90A1B9]">EMPLOYEE ID</label>
               <input
                 type="text"
                 name="employeeId"
@@ -170,9 +160,7 @@ export default function AddUserModal({ onClose, onAdd, initialData }: AddUserMod
             </div>
 
             <div className="space-y-2">
-              <label className="text-[12px] font-bold uppercase text-[#90A1B9]">
-                BRANCH
-              </label>
+              <label className="text-[12px] font-bold uppercase text-[#90A1B9]">BRANCH</label>
               <div className="relative">
                 <select
                   name="branchId"
@@ -205,9 +193,7 @@ export default function AddUserModal({ onClose, onAdd, initialData }: AddUserMod
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-[12px] font-bold uppercase text-[#90A1B9]">
-                SYSTEM ROLE
-              </label>
+              <label className="text-[12px] font-bold uppercase text-[#90A1B9]">SYSTEM ROLE</label>
               <div className="relative">
                 <select
                   name="role"
@@ -226,7 +212,7 @@ export default function AddUserModal({ onClose, onAdd, initialData }: AddUserMod
             {showPasscode && (
               <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
                 <label className="text-[12px] font-bold uppercase text-[#90A1B9]">
-                   PASSCODE (ADMIN/MANAGER ONLY)
+                  PASSCODE (ADMIN/MANAGER ONLY)
                 </label>
                 <input
                   type="text"

@@ -63,10 +63,7 @@ function DiscountCard({ offer }: { offer: DiscountOffer }) {
       </div>
       <div className="mt-3 grid grid-cols-2 gap-3">
         {offer.items.map((item, idx) => (
-          <div
-            key={idx}
-            className="rounded-[14px] border border-[#E2E8F0] bg-white px-4 py-4"
-          >
+          <div key={idx} className="rounded-[14px] border border-[#E2E8F0] bg-white px-4 py-4">
             <p className="font-['Inter'] text-xs leading-4">
               <span className="font-bold text-[#314158]">{item.productName}</span>
               {item.variant && (

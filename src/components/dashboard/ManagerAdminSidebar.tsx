@@ -139,9 +139,11 @@ export default function ManagerAdminSidebar() {
               : isMenu
                 ? pathname === ROUTES.DASHBOARD_MENU
                 : isBranches
-                  ? pathname === ROUTES.DASHBOARD_BRANCHES || pathname.startsWith(`${ROUTES.DASHBOARD_BRANCHES}/`)
+                  ? pathname === ROUTES.DASHBOARD_BRANCHES ||
+                    pathname.startsWith(`${ROUTES.DASHBOARD_BRANCHES}/`)
                   : isInventory
-                    ? pathname === ROUTES.DASHBOARD_INVENTORY || pathname.startsWith(`${ROUTES.DASHBOARD_INVENTORY}/`)
+                    ? pathname === ROUTES.DASHBOARD_INVENTORY ||
+                      pathname.startsWith(`${ROUTES.DASHBOARD_INVENTORY}/`)
                     : pathname === href || pathname.startsWith(`${href}/`);
             return (
               <NavLink

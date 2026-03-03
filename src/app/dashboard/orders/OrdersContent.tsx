@@ -37,6 +37,7 @@ export default function OrdersContent() {
     closeViewModal,
     openEditFromView,
     openCancelFromView,
+    handlePayNow,
   } = useOrderModals();
 
   return (
@@ -77,12 +78,9 @@ export default function OrdersContent() {
         <OrderDetailsViewModal
           order={orderToView(viewOrder)}
           onClose={closeViewModal}
-          onEdit={
-            viewOrder.status === "PENDING"
-              ? () => openEditFromView(viewOrder)
-              : undefined
-          }
+          onEdit={viewOrder.status === "PENDING" ? () => openEditFromView(viewOrder) : undefined}
           onCancel={() => openCancelFromView(viewOrder.orderNo)}
+          onPayNow={viewOrder.paymentStatus === "PENDING" ? handlePayNow : undefined}
         />
       )}
 

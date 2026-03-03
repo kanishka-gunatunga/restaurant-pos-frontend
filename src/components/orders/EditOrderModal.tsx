@@ -2,15 +2,7 @@
 
 import { useState, useId } from "react";
 import Image from "next/image";
-import {
-  X,
-  ShoppingCart,
-  DollarSign,
-  Plus,
-  Trash2,
-  Minus,
-  ChevronDown,
-} from "lucide-react";
+import { X, ShoppingCart, DollarSign, Plus, Trash2, Minus, ChevronDown } from "lucide-react";
 import { MENU_ITEMS, getProdImage } from "@/components/menu/menuData";
 import type { MenuItem, ProductVariant, ProductAddOn } from "@/components/menu/types";
 
@@ -45,11 +37,19 @@ function AddItemCard({
   onAdd,
 }: {
   item: MenuItem;
-  onAdd: (params: { name: string; price: number; image: string; variant?: string; addOns?: string[] }) => void;
+  onAdd: (params: {
+    name: string;
+    price: number;
+    image: string;
+    variant?: string;
+    addOns?: string[];
+  }) => void;
 }) {
   const [variantOpen, setVariantOpen] = useState(false);
   const [addOnsOpen, setAddOnsOpen] = useState(false);
-  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(item.variants?.[0] ?? null);
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
+    item.variants?.[0] ?? null
+  );
   const [selectedAddOns, setSelectedAddOns] = useState<{ addOn: ProductAddOn; qty: number }[]>([]);
   const variantId = useId();
   const addOnsId = useId();
@@ -107,8 +107,12 @@ function AddItemCard({
       {/* Middle: details + dropdowns (wraps independently) */}
       <div className="ml-2 flex min-w-0 flex-1 flex-col">
         <div>
-          <p className="font-['Inter'] text-sm font-bold leading-4 text-[#1D293D] truncate">{item.name}</p>
-          <p className="mt-0.5 font-['Inter'] text-[11px] font-medium leading-tight text-[#62748E]">{item.category}</p>
+          <p className="font-['Inter'] text-sm font-bold leading-4 text-[#1D293D] truncate">
+            {item.name}
+          </p>
+          <p className="mt-0.5 font-['Inter'] text-[11px] font-medium leading-tight text-[#62748E]">
+            {item.category}
+          </p>
           <p className="mt-0.5 font-['Inter'] text-xs font-bold leading-4 text-[#EA580C]">
             Rs.{basePrice.toLocaleString("en-US", { minimumFractionDigits: 2 })}
           </p>
@@ -119,7 +123,10 @@ function AddItemCard({
             <div className="relative">
               <button
                 type="button"
-                onClick={() => { setVariantOpen(!variantOpen); setAddOnsOpen(false); }}
+                onClick={() => {
+                  setVariantOpen(!variantOpen);
+                  setAddOnsOpen(false);
+                }}
                 className="flex items-center gap-0.5 rounded-[8px] border border-[#E2E8F0] bg-[#F8FAFC] px-1.5 py-1 font-['Inter'] text-[11px] font-medium text-[#45556C]"
               >
                 {selectedVariant?.name ?? "Variant"}
@@ -134,9 +141,14 @@ function AddItemCard({
                     <button
                       key={v.name}
                       type="button"
-                      onClick={() => { setSelectedVariant(v); setVariantOpen(false); }}
+                      onClick={() => {
+                        setSelectedVariant(v);
+                        setVariantOpen(false);
+                      }}
                       className={`block w-full px-2 py-1 text-left font-['Inter'] text-[11px] ${
-                        selectedVariant?.name === v.name ? "bg-[#EFF6FF] font-bold text-[#155DFC]" : "text-[#45556C]"
+                        selectedVariant?.name === v.name
+                          ? "bg-[#EFF6FF] font-bold text-[#155DFC]"
+                          : "text-[#45556C]"
                       }`}
                     >
                       {v.name} — Rs.{v.price.toLocaleString("en-US", { minimumFractionDigits: 2 })}
@@ -150,7 +162,10 @@ function AddItemCard({
             <div className="relative">
               <button
                 type="button"
-                onClick={() => { setAddOnsOpen(!addOnsOpen); setVariantOpen(false); }}
+                onClick={() => {
+                  setAddOnsOpen(!addOnsOpen);
+                  setVariantOpen(false);
+                }}
                 className="flex items-center gap-0.5 rounded-[8px] border border-[#E2E8F0] bg-[#F8FAFC] px-1.5 py-1 font-['Inter'] text-[11px] font-medium text-[#45556C]"
               >
                 {selectedAddOns.length > 0 ? `Add-ons (${selectedAddOns.length})` : "Add-ons"}
@@ -173,10 +188,20 @@ function AddItemCard({
                           onClick={() => toggleAddOn(addOn)}
                           className="flex min-w-0 flex-1 items-center gap-1 text-left font-['Inter'] text-[11px] text-[#45556C]"
                         >
-                          <span className={`flex h-3 w-3 shrink-0 items-center justify-center rounded border ${sel ? "border-[#EA580C] bg-[#EA580C]" : "border-[#CBD5E1]"}`}>
+                          <span
+                            className={`flex h-3 w-3 shrink-0 items-center justify-center rounded border ${sel ? "border-[#EA580C] bg-[#EA580C]" : "border-[#CBD5E1]"}`}
+                          >
                             {sel && (
-                              <svg className="h-1.5 w-1.5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              <svg
+                                className="h-1.5 w-1.5 text-white"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                  clipRule="evenodd"
+                                />
                               </svg>
                             )}
                           </span>
@@ -185,11 +210,21 @@ function AddItemCard({
                         </button>
                         {sel && (
                           <div className="flex items-center gap-0.5">
-                            <button type="button" onClick={() => updateAddOnQty(addOn.id, -1)} className="p-0.5 text-[#90A1B9]">
+                            <button
+                              type="button"
+                              onClick={() => updateAddOnQty(addOn.id, -1)}
+                              className="p-0.5 text-[#90A1B9]"
+                            >
                               <Minus className="h-2.5 w-2.5" />
                             </button>
-                            <span className="min-w-[12px] text-center text-[11px] font-bold text-[#0A0A0A]">{sel.qty}</span>
-                            <button type="button" onClick={() => updateAddOnQty(addOn.id, 1)} className="p-0.5 text-[#90A1B9]">
+                            <span className="min-w-[12px] text-center text-[11px] font-bold text-[#0A0A0A]">
+                              {sel.qty}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => updateAddOnQty(addOn.id, 1)}
+                              className="p-0.5 text-[#90A1B9]"
+                            >
                               <Plus className="h-2.5 w-2.5" />
                             </button>
                           </div>
@@ -249,7 +284,13 @@ export default function EditOrderModal({ order, onClose, onSubmit }: Props) {
     setLineItems((prev) => prev.filter((it) => it.id !== id));
   };
 
-  const addItemFromMenu = (params: { name: string; price: number; image: string; variant?: string; addOns?: string[] }) => {
+  const addItemFromMenu = (params: {
+    name: string;
+    price: number;
+    image: string;
+    variant?: string;
+    addOns?: string[];
+  }) => {
     const newItem: EditOrderLineItem = {
       id: `line-${order.orderNo}-${Date.now()}-${params.name}`,
       name: params.name,
@@ -279,7 +320,9 @@ export default function EditOrderModal({ order, onClose, onSubmit }: Props) {
         {/* Header */}
         <div className="shrink-0 flex items-start justify-between border-b border-[#E2E8F0] p-5">
           <div>
-            <h2 className="font-['Inter'] text-2xl font-bold leading-8 text-[#1D293D]">Edit Order</h2>
+            <h2 className="font-['Inter'] text-2xl font-bold leading-8 text-[#1D293D]">
+              Edit Order
+            </h2>
             <p className="mt-1 font-['Inter'] text-sm font-normal leading-5 text-[#62748E]">
               Order #{order.orderNo} • {order.customerName}
             </p>
@@ -333,7 +376,9 @@ export default function EditOrderModal({ order, onClose, onSubmit }: Props) {
                     />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="font-['Inter'] text-base font-bold leading-6 text-[#1D293D]">{it.name}</p>
+                    <p className="font-['Inter'] text-base font-bold leading-6 text-[#1D293D]">
+                      {it.name}
+                    </p>
                     {(it.variant || (it.addOns && it.addOns.length > 0)) && (
                       <p className="mt-0.5 font-['Inter'] text-xs font-medium leading-4 text-[#62748E]">
                         {[it.variant, ...(it.addOns ?? [])].filter(Boolean).join(" • ")}
@@ -371,7 +416,9 @@ export default function EditOrderModal({ order, onClose, onSubmit }: Props) {
                       <Trash2 className="h-4 w-4" />
                     </button>
                     <div className="text-right">
-                      <p className="font-['Inter'] text-xs font-medium text-[#62748E]">Item Total</p>
+                      <p className="font-['Inter'] text-xs font-medium text-[#62748E]">
+                        Item Total
+                      </p>
                       <p className="font-['Inter'] text-base font-bold text-[#1D293D]">
                         {formatRs(it.qty * it.price)}
                       </p>
@@ -416,12 +463,20 @@ export default function EditOrderModal({ order, onClose, onSubmit }: Props) {
             </div>
             <div className="space-y-2 font-['Inter'] border-b border-[#CAD5E2]">
               <div className="flex justify-between">
-                <span className="text-sm font-normal leading-5 text-[#45556C]">Original Amount:</span>
-                <span className="text-sm font-semibold leading-5 text-[#314158]">{formatRs(originalAmount)}</span>
+                <span className="text-sm font-normal leading-5 text-[#45556C]">
+                  Original Amount:
+                </span>
+                <span className="text-sm font-semibold leading-5 text-[#314158]">
+                  {formatRs(originalAmount)}
+                </span>
               </div>
               <div className="flex justify-between mb-3">
-                <span className="text-sm font-normal leading-5 text-[#45556C]">Updated Amount:</span>
-                <span className="text-sm font-semibold leading-5 text-[#314158]">{formatRs(updatedAmount)}</span>
+                <span className="text-sm font-normal leading-5 text-[#45556C]">
+                  Updated Amount:
+                </span>
+                <span className="text-sm font-semibold leading-5 text-[#314158]">
+                  {formatRs(updatedAmount)}
+                </span>
               </div>
             </div>
 
@@ -434,11 +489,37 @@ export default function EditOrderModal({ order, onClose, onSubmit }: Props) {
             {paymentDiff < 0 && (
               <div className="flex items-center gap-3 rounded-[14px] border-2 border-[#FFCCD3] bg-[#FFF1F2] px-4 py-3">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#FFE4E6]">
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0" aria-hidden>
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="shrink-0"
+                    aria-hidden
+                  >
                     <g clipPath={`url(#${refundClipId})`}>
-                      <path d="M10.0001 18.3333C14.6025 18.3333 18.3334 14.6023 18.3334 9.99996C18.3334 5.39759 14.6025 1.66663 10.0001 1.66663C5.39771 1.66663 1.66675 5.39759 1.66675 9.99996C1.66675 14.6023 5.39771 18.3333 10.0001 18.3333Z" stroke="#EC003F" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round" />
-                      <path d="M10 6.66663V9.99996" stroke="#EC003F" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round" />
-                      <path d="M10 13.3334H10.0083" stroke="#EC003F" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round" />
+                      <path
+                        d="M10.0001 18.3333C14.6025 18.3333 18.3334 14.6023 18.3334 9.99996C18.3334 5.39759 14.6025 1.66663 10.0001 1.66663C5.39771 1.66663 1.66675 5.39759 1.66675 9.99996C1.66675 14.6023 5.39771 18.3333 10.0001 18.3333Z"
+                        stroke="#EC003F"
+                        strokeWidth="1.66667"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M10 6.66663V9.99996"
+                        stroke="#EC003F"
+                        strokeWidth="1.66667"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M10 13.3334H10.0083"
+                        stroke="#EC003F"
+                        strokeWidth="1.66667"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
                     </g>
                     <defs>
                       <clipPath id={refundClipId}>
@@ -476,7 +557,9 @@ export default function EditOrderModal({ order, onClose, onSubmit }: Props) {
         </div>
 
         {/* Footer */}
-        <div className={`flex items-center gap-3 border-t border-[#E2E8F0] p-5 ${hasAdditionalPayment ? "justify-end" : "w-full"}`}>
+        <div
+          className={`flex items-center gap-3 border-t border-[#E2E8F0] p-5 ${hasAdditionalPayment ? "justify-end" : "w-full"}`}
+        >
           {hasAdditionalPayment ? (
             <>
               <button

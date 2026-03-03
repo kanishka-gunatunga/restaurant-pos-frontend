@@ -28,24 +28,17 @@ export default function ProductModal({
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
     item.variants?.[0] ?? null
   );
-  const [selectedAddOns, setSelectedAddOns] = useState<
-    { addOn: ProductAddOn; qty: number }[]
-  >([]);
+  const [selectedAddOns, setSelectedAddOns] = useState<{ addOn: ProductAddOn; qty: number }[]>([]);
   const [qty, setQty] = useState(1);
   const [addOnSearch, setAddOnSearch] = useState("");
 
   const hasVariants = item.variants && item.variants.length > 0;
   const basePrice = selectedVariant?.price ?? item.price;
-  const addOnsTotal = selectedAddOns.reduce(
-    (sum, { addOn, qty: n }) => sum + addOn.price * n,
-    0
-  );
+  const addOnsTotal = selectedAddOns.reduce((sum, { addOn, qty: n }) => sum + addOn.price * n, 0);
   const totalPrice = (basePrice + addOnsTotal) * qty;
 
   const filteredAddOns =
-    item.addOns?.filter((a) =>
-      a.name.toLowerCase().includes(addOnSearch.toLowerCase())
-    ) ?? [];
+    item.addOns?.filter((a) => a.name.toLowerCase().includes(addOnSearch.toLowerCase())) ?? [];
 
   const toggleAddOn = (addOn: ProductAddOn) => {
     setSelectedAddOns((prev) => {
@@ -60,11 +53,7 @@ export default function ProductModal({
   const updateAddOnQty = (addOnId: string, delta: number) => {
     setSelectedAddOns((prev) =>
       prev
-        .map((p) =>
-          p.addOn.id === addOnId
-            ? { ...p, qty: Math.max(0, p.qty + delta) }
-            : p
-        )
+        .map((p) => (p.addOn.id === addOnId ? { ...p, qty: Math.max(0, p.qty + delta) } : p))
         .filter((p) => p.qty > 0)
     );
   };
@@ -92,7 +81,14 @@ export default function ProductModal({
     const variantName = selectedVariant?.name;
     const addOnsParsed = getAddOnsList();
     for (let i = 0; i < qty; i++) {
-      onAddToOrder(item.name, unitPrice, details, image, variantName, addOnsParsed.length > 0 ? addOnsParsed : undefined);
+      onAddToOrder(
+        item.name,
+        unitPrice,
+        details,
+        image,
+        variantName,
+        addOnsParsed.length > 0 ? addOnsParsed : undefined
+      );
     }
     onClose();
   };
@@ -196,16 +192,12 @@ export default function ProductModal({
                 </div>
                 <div className="space-y-1.5">
                   {filteredAddOns.map((addOn) => {
-                    const selected = selectedAddOns.find(
-                      (p) => p.addOn.id === addOn.id
-                    );
+                    const selected = selectedAddOns.find((p) => p.addOn.id === addOn.id);
                     return (
                       <div
                         key={addOn.id}
                         className={`flex items-center justify-between gap-2 rounded-md border p-2.5 ${
-                          selected
-                            ? "border-primary bg-primary-muted"
-                            : "border-[#E2E8F0] bg-white"
+                          selected ? "border-primary bg-primary-muted" : "border-[#E2E8F0] bg-white"
                         }`}
                       >
                         <button
@@ -233,11 +225,10 @@ export default function ProductModal({
                             )}
                           </div>
                           <div className="flex min-w-0 flex-col">
-                            <span className="text-sm font-medium text-zinc-800">
-                              {addOn.name}
-                            </span>
+                            <span className="text-sm font-medium text-zinc-800">{addOn.name}</span>
                             <span className="text-xs text-zinc-600">
-                              +{addOn.price.toLocaleString("en-US", { minimumFractionDigits: 2 })} LKR
+                              +{addOn.price.toLocaleString("en-US", { minimumFractionDigits: 2 })}{" "}
+                              LKR
                             </span>
                           </div>
                         </button>
@@ -304,12 +295,7 @@ export default function ProductModal({
               onClick={handleAddToOrder}
               className="mt-4 flex w-full items-center justify-center gap-2 rounded-[14px] bg-[#EA580C] py-3 font-['Arial'] text-sm font-bold leading-4 text-white shadow-[0px_4px_6px_-4px_#EA580C33,0px_10px_15px_-3px_#EA580C33] transition-all duration-300 ease-out hover:bg-[#DC4C04] active:scale-95"
             >
-              <svg
-                className="h-5 w-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
