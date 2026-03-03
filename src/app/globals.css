@@ -115,3 +115,26 @@ body {
   background-size: cover;
   background-position: center;
 }
+
+/* Subtle scrollbar - minimal, blends with UI */
+.scrollbar-subtle {
+  scrollbar-width: thin;
+  scrollbar-color: #e2e8f0 transparent;
+}
+.scrollbar-subtle::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.scrollbar-subtle::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-subtle::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 3px;
+}
+.scrollbar-subtle::-webkit-scrollbar-thumb:hover {
+  background: #cbd5e1;
+}
+.scrollbar-subtle::-webkit-scrollbar-thumb:active {
+  background: #94a3b8;
+}

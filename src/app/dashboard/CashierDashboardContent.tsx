@@ -10,9 +10,9 @@ import {
   Pause,
   Wallet,
   AlertTriangle,
-  Package,
 } from "lucide-react";
 import { ROUTES } from "@/lib/constants";
+import { getFirstName } from "@/lib/format";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
 
@@ -136,10 +136,10 @@ export default function CashierDashboardContent() {
     <div className="flex h-full flex-col overflow-hidden bg-[#F8FAFC]">
       {/* Header */}
       <DashboardPageHeader />
-      <header className="flex shrink-0 flex-col gap-4 px-6 py-4 sm:flex-row sm:items-center sm:justify-between mt-2">
+      <header className="mt-2 flex shrink-0 flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <div>
-          <h1 className="font-['Inter'] text-3xl font-bold leading-9 text-[#1D293D]">
-            {getGreeting()}, {user?.name ?? "Cashier"}!
+          <h1 className="font-['Inter'] text-xl font-bold leading-tight text-[#1D293D] sm:text-3xl sm:leading-9">
+            {getGreeting()}, {getFirstName(user?.name) || "Cashier"}!
           </h1>
           <div className="mt-1 flex items-center gap-2 font-['Inter'] text-base font-normal leading-6 text-[#62748E]">
             <Calendar className="h-4 w-4" />
@@ -186,11 +186,11 @@ export default function CashierDashboardContent() {
       </header>
 
       {/* Main content */}
-      <main className="flex-1 overflow-y-auto p-6">
-        <div className="mx-auto space-y-6">
+      <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+        <div className="mx-auto space-y-4 sm:space-y-6">
           {/* Metric cards */}
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-            <div className="rounded-[24px] border border-[#E2E8F0] bg-white p-5 shadow-[0px_1px_2px_-1px_#0000001A,0px_1px_3px_0px_#0000001A]">
+          <div className="grid min-w-0 grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-3 xl:grid-cols-5">
+            <div className="min-w-0 rounded-[24px] border border-[#E2E8F0] bg-white p-4 sm:p-5 shadow-[0px_1px_2px_-1px_#0000001A,0px_1px_3px_0px_#0000001A]">
               <div className="flex h-14 w-14 items-center justify-center rounded-[16px] bg-[#FEF3C6]">
                 <svg
                   width="28"
@@ -215,53 +215,55 @@ export default function CashierDashboardContent() {
                   />
                 </svg>
               </div>
-              <p className="mt-3 font-['Inter'] text-[30px] font-bold leading-9 text-[#1D293D]">
+              <p className="mt-3 font-['Inter'] text-[clamp(1.25rem,2.5vw+0.75rem,1.875rem)] font-bold leading-tight text-[#1D293D]">
                 {MOCK_METRICS.pending}
               </p>
               <p className="font-['Inter'] text-sm font-medium leading-5 text-[#62748E]">
                 Pending Orders
               </p>
             </div>
-            <div className="rounded-[24px] border border-[#E2E8F0] bg-white p-5 shadow-[0px_1px_2px_-1px_#0000001A,0px_1px_3px_0px_#0000001A]">
+            <div className="min-w-0 rounded-[24px] border border-[#E2E8F0] bg-white p-4 sm:p-5 shadow-[0px_1px_2px_-1px_#0000001A,0px_1px_3px_0px_#0000001A]">
               <div className="flex h-14 w-14 items-center justify-center rounded-[16px] bg-[#DBEAFE]">
                 <ChefHat className="h-7 w-7 text-[#155DFC]" />
               </div>
-              <p className="mt-3 font-['Inter'] text-[30px] font-bold leading-9 text-[#1D293D]">
+              <p className="mt-3 font-['Inter'] text-[clamp(1.25rem,2.5vw+0.75rem,1.875rem)] font-bold leading-tight text-[#1D293D]">
                 {MOCK_METRICS.preparing}
               </p>
               <p className="font-['Inter'] text-sm font-medium leading-5 text-[#62748E]">
                 Preparing Orders
               </p>
             </div>
-            <div className="rounded-[24px] border border-[#E2E8F0] bg-white p-5 shadow-[0px_1px_2px_-1px_#0000001A,0px_1px_3px_0px_#0000001A]">
+            <div className="min-w-0 rounded-[24px] border border-[#E2E8F0] bg-white p-4 sm:p-5 shadow-[0px_1px_2px_-1px_#0000001A,0px_1px_3px_0px_#0000001A]">
               <div className="flex h-14 w-14 items-center justify-center rounded-[16px] bg-[#F3E8FF]">
                 <CheckCircle2 className="h-7 w-7 text-[#9810FA]" />
               </div>
-              <p className="mt-3 font-['Inter'] text-[30px] font-bold leading-9 text-[#1D293D]">
+              <p className="mt-3 font-['Inter'] text-[clamp(1.25rem,2.5vw+0.75rem,1.875rem)] font-bold leading-tight text-[#1D293D]">
                 {MOCK_METRICS.ready}
               </p>
               <p className="font-['Inter'] text-sm font-medium leading-5 text-[#62748E]">
                 Ready Orders
               </p>
             </div>
-            <div className="rounded-[24px] border border-[#E2E8F0] bg-white p-5 shadow-[0px_1px_2px_-1px_#0000001A,0px_1px_3px_0px_#0000001A]">
+            <div className="min-w-0 rounded-[24px] border border-[#E2E8F0] bg-white p-4 sm:p-5 shadow-[0px_1px_2px_-1px_#0000001A,0px_1px_3px_0px_#0000001A]">
               <div className="flex h-14 w-14 items-center justify-center rounded-[16px] bg-[#FFE4E6]">
                 <Pause className="h-7 w-7 text-[#EC003F]" />
               </div>
-              <p className="mt-3 font-['Inter'] text-[30px] font-bold leading-9 text-[#1D293D]">
+              <p className="mt-3 font-['Inter'] text-[clamp(1.25rem,2.5vw+0.75rem,1.875rem)] font-bold leading-tight text-[#1D293D]">
                 {MOCK_METRICS.hold}
               </p>
               <p className="font-['Inter'] text-sm font-medium leading-5 text-[#62748E]">
                 Hold Orders
               </p>
             </div>
-            <div className="rounded-[24px] border border-white/20 p-5 shadow-[0px_1px_2px_-1px_#0000001A,0px_1px_3px_0px_#0000001A] bg-[linear-gradient(135deg,#00BC7D_0%,#009966_100%)]">
+            <div className="min-w-0 overflow-hidden rounded-[24px] border border-white/20 p-4 shadow-[0px_1px_2px_-1px_#0000001A,0px_1px_3px_0px_#0000001A] sm:p-5 bg-[linear-gradient(135deg,#00BC7D_0%,#009966_100%)]">
               <div className="flex h-14 w-14 items-center justify-center rounded-[16px] bg-white/20">
                 <Wallet className="h-8 w-8 text-white" />
               </div>
-              <p className="mt-3 font-['Inter'] text-[30px] font-bold leading-9 text-[#FFFFFF]">
-                {MOCK_METRICS.drawerCash}
-              </p>
+              <div className="scrollbar-subtle mt-3 min-w-0 overflow-x-auto">
+                <p className="whitespace-nowrap font-['Inter'] text-[clamp(1.25rem,2.5vw+0.75rem,1.875rem)] font-bold leading-tight text-[#FFFFFF]">
+                  {MOCK_METRICS.drawerCash}
+                </p>
+              </div>
               <p className="font-['Inter'] text-sm font-medium leading-5 text-[#D0FAE5]">
                 Drawer Cash
               </p>
@@ -292,7 +294,7 @@ export default function CashierDashboardContent() {
                     {MOCK_READY_ORDERS.length}
                   </span>
                 </div>
-                <div className="mt-4 space-y-3">
+                <div className="mt-7 space-y-3">
                   {MOCK_READY_ORDERS.map((order) => (
                     <div
                       key={order.id}
@@ -329,45 +331,67 @@ export default function CashierDashboardContent() {
               </div>
 
               {/* Hold Orders */}
-              <div className="rounded-2xl border border-[#E2E8F0] bg-white p-6 shadow-sm">
+              <div className="rounded-[24px] border border-[#E2E8F0] bg-white p-6 shadow-[0px_1px_2px_-1px_#0000001A,0px_1px_3px_0px_#0000001A]">
                 <div className="flex items-start justify-between">
-                  <div>
-                    <h2 className="flex items-center gap-2 font-['Inter'] text-lg font-bold text-[#1D293D]">
-                      <Pause className="h-5 w-5 text-[#EF4444]" />
-                      Hold Orders
-                    </h2>
-                    <p className="mt-1 font-['Inter'] text-sm text-[#90A1B9]">Orders on hold</p>
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-[#FFE4E6]">
+                      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <g clipPath="url(#clip0_hold_icon)">
+                          <path d="M9.99996 18.3332C14.6023 18.3332 18.3333 14.6022 18.3333 9.99984C18.3333 5.39746 14.6023 1.6665 9.99996 1.6665C5.39759 1.6665 1.66663 5.39746 1.66663 9.99984C1.66663 14.6022 5.39759 18.3332 9.99996 18.3332Z" stroke="#EC003F" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M8.33337 12.5V7.5" stroke="#EC003F" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M11.6666 12.5V7.5" stroke="#EC003F" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
+                        </g>
+                        <defs>
+                          <clipPath id="clip0_hold_icon">
+                            <rect width="20" height="20" fill="white"/>
+                          </clipPath>
+                        </defs>
+                      </svg>
+                    </div>
+                    <div>
+                      <h2 className="font-['Inter'] text-[18px] font-bold leading-7 text-[#1D293D]">
+                        Hold Orders
+                      </h2>
+                      <p className="font-['Inter'] text-xs font-normal leading-4 text-[#62748E]">
+                        Orders on hold
+                      </p>
+                    </div>
                   </div>
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#EF4444] font-['Inter'] text-sm font-bold text-white">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#FFE4E6] font-['Inter'] text-sm font-bold leading-5 text-[#EC003F]">
                     {MOCK_HOLD_ORDERS.length}
                   </span>
                 </div>
-                <div className="mt-4 space-y-3">
+                <div className="mt-7 space-y-3">
                   {MOCK_HOLD_ORDERS.map((order) => (
-                    <div key={order.id} className="rounded-xl bg-[#FEF2F2] p-4">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <span className="inline-block rounded-full bg-[#EF4444] px-2.5 py-0.5 font-['Inter'] text-xs font-bold text-white">
-                            #{order.id}
-                          </span>
-                          <p className="mt-2 font-['Inter'] text-base font-bold text-[#1D293D]">
-                            {order.customerName}
-                          </p>
-                          <span className="mt-1 inline-block rounded-full bg-[#EF4444] px-2 py-0.5 font-['Inter'] text-xs font-medium text-white">
-                            {order.type} • {order.table}
-                          </span>
-                          <span className="ml-2 inline-block rounded-full bg-[#22C55E] px-2 py-0.5 font-['Inter'] text-xs font-medium text-white">
-                            {order.status}
-                          </span>
-                          <p className="mt-2 flex items-center gap-1 font-['Inter'] text-xs text-[#90A1B9]">
-                            <Clock className="h-3.5 w-3.5" />
+                    <div
+                      key={order.id}
+                      className="flex items-center justify-between gap-4 rounded-[16px] border border-[#FFCCD3] bg-[#FFF1F2] px-4 py-4"
+                    >
+                      <div className="flex min-w-0 flex-1 items-center gap-3">
+                        <span className="shrink-0 rounded-[14px] border-2 border-[#FFA1AD] bg-white px-2.5 py-3 font-['Inter'] text-base font-bold leading-6 text-[#C70036]">
+                          #{order.id}
+                        </span>
+                        <div className="flex min-w-0 flex-1 flex-col gap-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-['Inter'] text-base font-bold leading-6 text-[#1D293D]">
+                              {order.customerName}
+                            </p>
+                            <span className="rounded-[10px] border border-[#FFCCD3] bg-white px-2 py-1 font-['Inter'] text-[10px] font-bold uppercase leading-[15px] text-[#C70036]">
+                              {order.type} • {order.table}
+                            </span>
+                            <span className="rounded-[10px] border border-[#A4F4CF] bg-[#ECFDF5] px-2 py-1 font-['Inter'] text-[10px] font-bold uppercase leading-[15px] text-[#009966]">
+                              {order.status}
+                            </span>
+                          </div>
+                          <p className="flex items-center gap-1 font-['Inter'] text-xs font-normal leading-4 text-[#62748E]">
+                            <Clock className="h-3.5 w-3.5 shrink-0" />
                             {order.time} • {order.itemCount} items
                           </p>
                         </div>
-                        <p className="font-['Inter'] text-base font-bold text-[#EF4444]">
-                          {order.amount}
-                        </p>
                       </div>
+                      <p className="shrink-0 font-['Inter'] text-right text-[20px] font-bold leading-7 text-[#C70036]">
+                        {order.amount}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -375,29 +399,45 @@ export default function CashierDashboardContent() {
             </div>
 
             {/* Right: Low / Out of Stock */}
-            <div className="rounded-2xl border border-[#E2E8F0] bg-white p-6 shadow-sm">
+            <div className="rounded-[24px] border border-[#E2E8F0] bg-white p-6 shadow-[0px_1px_2px_-1px_#0000001A,0px_1px_3px_0px_#0000001A]">
               <div className="flex items-start justify-between">
-                <div>
-                  <h2 className="flex items-center gap-2 font-['Inter'] text-lg font-bold text-[#1D293D]">
-                    <Package className="h-5 w-5 text-[#EA580C]" />
-                    Low / Out of Stock
-                  </h2>
-                  <p className="mt-1 font-['Inter'] text-sm text-[#90A1B9]">
-                    Items running low or unavailable
-                  </p>
+                <div className="flex items-center gap-2">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-[#FFE2E2]">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M17.5 8.33341V6.66675C17.4997 6.37448 17.4225 6.08742 17.2763 5.83438C17.13 5.58134 16.9198 5.37122 16.6667 5.22508L10.8333 1.89175C10.58 1.74547 10.2926 1.66846 10 1.66846C9.70744 1.66846 9.42003 1.74547 9.16667 1.89175L3.33333 5.22508C3.08022 5.37122 2.86998 5.58134 2.72372 5.83438C2.57745 6.08742 2.5003 6.37448 2.5 6.66675V13.3334C2.5003 13.6257 2.57745 13.9127 2.72372 14.1658C2.86998 14.4188 3.08022 14.6289 3.33333 14.7751L9.16667 18.1084C9.42003 18.2547 9.70744 18.3317 10 18.3317C10.2926 18.3317 10.58 18.2547 10.8333 18.1084L12.5 17.1584" stroke="#E7000B" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M6.25 3.55811L13.75 7.84977" stroke="#E7000B" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M2.74164 5.8335L9.99997 10.0002L17.2583 5.8335" stroke="#E7000B" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M10 18.3333V10" stroke="#E7000B" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M14.1667 10.8335L18.3334 15.0002M14.1667 15.0002L18.3334 10.8335" stroke="#E7000B" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 className="font-['Inter'] text-[18px] font-bold leading-7 text-[#1D293D]">
+                      Low / Out of Stock
+                    </h2>
+                    <p className="font-['Inter'] text-xs font-normal leading-4 text-[#62748E]">
+                      Items running low or unavailable
+                    </p>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  <AlertTriangle className="h-5 w-5 text-[#EF4444]" />
-                  <span className="font-['Inter'] text-sm font-bold text-[#EF4444]">
-                    {MOCK_LOW_STOCK.length}
-                  </span>
+                <div className="flex items-center gap-3">
+                <AlertTriangle className="h-5 w-5 text-[#FB2C36]" />
+                  <div className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#FFE2E2]">
+                    <span className="font-['Inter'] text-sm font-bold text-[#E7000B]">
+                      {MOCK_LOW_STOCK.length}
+                    </span>
+                  </div>
                 </div>
               </div>
-              <div className="mt-4 space-y-3">
+              <div className="scrollbar-subtle mt-7 max-h-[380px] space-y-3 overflow-y-auto pr-1">
                 {MOCK_LOW_STOCK.map((item) => (
                   <div
                     key={item.id}
-                    className="flex items-center gap-4 rounded-xl border border-[#E2E8F0] p-3"
+                    className={`flex items-center gap-4 rounded-[16px] border-2 px-4 py-4 ${
+                      item.status === "OUT"
+                        ? "border-[#FFC9C9] bg-[#FEF2F2]"
+                        : "border-[#FEE685] bg-[#FFFBEB]"
+                    }`}
                   >
                     <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg">
                       <img
@@ -407,11 +447,13 @@ export default function CashierDashboardContent() {
                       />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="font-['Inter'] text-sm font-bold text-[#1D293D]">{item.name}</p>
-                      <p className="font-['Inter'] text-xs text-[#90A1B9]">{item.category}</p>
+                      <p className="font-['Inter'] text-base font-bold leading-6 text-[#1D293D]">{item.name}</p>
+                      <p className="font-['Inter'] text-xs font-normal leading-4 text-[#62748E]">{item.category}</p>
                       <span
-                        className={`mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-['Inter'] text-xs font-medium text-white ${
-                          item.status === "OUT" ? "bg-[#EF4444]" : "bg-[#EAB308]"
+                        className={`mt-2 inline-flex items-center gap-1 rounded-[10px] border px-2 py-0.5 font-['Inter'] text-xs font-bold leading-4 ${
+                          item.status === "OUT"
+                            ? "border-[#FFC9C9] bg-[#FFE2E2] text-[#EC003F]"
+                            : "border-[#FEE685] bg-[#FEF3C6] text-[#E17100]"
                         }`}
                       >
                         {item.status === "OUT" ? (
@@ -425,9 +467,17 @@ export default function CashierDashboardContent() {
                         )}
                       </span>
                     </div>
-                    <p className="shrink-0 font-['Inter'] text-xs text-[#90A1B9]">
-                      This Week {item.salesThisWeek} units sold
-                    </p>
+                    <div className="flex shrink-0 flex-col items-end">
+                      <p className="font-['Inter'] text-sm font-normal leading-5 text-[#62748E]">
+                        This Week
+                      </p>
+                      <p className="font-['Inter'] text-2xl font-bold leading-8 text-[#1D293D]">
+                        {item.salesThisWeek}
+                      </p>
+                      <p className="font-['Inter'] text-xs font-normal leading-4 text-[#90A1B9]">
+                        units sold
+                      </p>
+                    </div>
                   </div>
                 ))}
               </div>
