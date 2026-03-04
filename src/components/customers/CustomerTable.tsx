@@ -18,9 +18,8 @@ export default function CustomerTable({
   isLoading,
   onEdit,
   onToggleStatus,
-  onTogglePromotion
+  onTogglePromotion,
 }: CustomerTableProps) {
-
   const displayCustomers = customers || [];
 
   return (
@@ -58,9 +57,7 @@ export default function CustomerTable({
                 <td colSpan={7} className="px-6 py-12 text-center">
                   <div className="flex flex-col items-center justify-center gap-3">
                     <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-                    <p className="text-[14px] font-medium text-[#62748E]">
-                      Loading customers...
-                    </p>
+                    <p className="text-[14px] font-medium text-[#62748E]">Loading customers...</p>
                   </div>
                 </td>
               </tr>
@@ -68,28 +65,23 @@ export default function CustomerTable({
               <tr>
                 <td colSpan={7} className="px-6 py-12 text-center">
                   <p className="text-[14px] font-medium text-[#62748E]">
-                    {searchTerm ? "No customers found matching your search." : "No customers available."}
+                    {searchTerm
+                      ? "No customers found matching your search."
+                      : "No customers available."}
                   </p>
                 </td>
               </tr>
             ) : (
               displayCustomers.map((customer) => (
-                <tr
-                  key={customer.id}
-                  className="group hover:bg-[#F8FAFC] transition-colors"
-                >
-                  <td className="px-6 py-4 text-[11px] font-bold text-[#90A1B9]">
-                    {customer.id}
-                  </td>
+                <tr key={customer.id} className="group hover:bg-[#F8FAFC] transition-colors">
+                  <td className="px-6 py-4 text-[11px] font-bold text-[#90A1B9]">{customer.id}</td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="flex h-10 w-10 items-center border border-[#F1F5F9] justify-center rounded-full bg-[#F8FAFC] text-[#90A1B9]">
                         <User className="h-5 w-5" />
                       </div>
                       <div>
-                        <p className="text-[14px] font-bold text-[#314158]">
-                          {customer.name}
-                        </p>
+                        <p className="text-[14px] font-bold text-[#314158]">{customer.name}</p>
                         {customer.latest_order_date && (
                           <p className="text-[10px] text-[#90A1B9]">
                             Last visit: {new Date(customer.latest_order_date).toLocaleDateString()}
@@ -113,10 +105,11 @@ export default function CustomerTable({
                   <td className="px-6 py-4">
                     <button
                       onClick={() => onTogglePromotion(customer)}
-                      className={`flex h-5 w-5 cursor-pointer items-center justify-center rounded-[4px] transition-all hover:scale-110 active:scale-95 ${customer.promotions_enabled
-                        ? "bg-[#EA580C] shadow-sm shadow-primary/20"
-                        : "border-2 border-[#E2E8F0] hover:border-[#EA580C]/30"
-                        }`}
+                      className={`flex h-5 w-5 cursor-pointer items-center justify-center rounded-[4px] transition-all hover:scale-110 active:scale-95 ${
+                        customer.promotions_enabled
+                          ? "bg-[#EA580C] shadow-sm shadow-primary/20"
+                          : "border-2 border-[#E2E8F0] hover:border-[#EA580C]/30"
+                      }`}
                     >
                       {customer.promotions_enabled && (
                         <Check className="h-3.5 w-3.5 text-white stroke-[3px]" />
@@ -138,11 +131,14 @@ export default function CustomerTable({
                       </button>
                       <button
                         onClick={() => onToggleStatus(customer)}
-                        title={customer.status === "active" ? "Deactivate Customer" : "Activate Customer"}
-                        className={`flex h-8 w-8 items-center cursor-pointer justify-center rounded-xl border border-[#E2E8F0] transition-colors ${customer.status === "active"
-                          ? "hover:bg-red-50 hover:text-red-500"
-                          : "hover:bg-green-50 hover:text-green-500"
-                          }`}
+                        title={
+                          customer.status === "active" ? "Deactivate Customer" : "Activate Customer"
+                        }
+                        className={`flex h-8 w-8 items-center cursor-pointer justify-center rounded-xl border border-[#E2E8F0] transition-colors ${
+                          customer.status === "active"
+                            ? "hover:bg-red-50 hover:text-red-500"
+                            : "hover:bg-green-50 hover:text-green-500"
+                        }`}
                       >
                         {customer.status === "active" ? (
                           <PowerOff className="h-3.5 w-3.5" />

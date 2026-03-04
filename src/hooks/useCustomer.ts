@@ -1,23 +1,23 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as customerService from "@/services/customerService";
-import { 
-  Customer, 
-  CreateCustomerData, 
-  UpdateCustomerData, 
-  CustomerSearchParams, 
+import {
+  Customer,
+  CreateCustomerData,
+  UpdateCustomerData,
+  CustomerSearchParams,
   CustomerFilterParams,
-  BulkPromotionData
+  BulkPromotionData,
 } from "@/types/customer";
 
 export const CUSTOMER_KEYS = {
   all: ["customers"] as const,
   lists: () => [...CUSTOMER_KEYS.all, "list"] as const,
-  list: (params: CustomerFilterParams | CustomerSearchParams) => [...CUSTOMER_KEYS.lists(), params] as const,
+  list: (params: CustomerFilterParams | CustomerSearchParams) =>
+    [...CUSTOMER_KEYS.lists(), params] as const,
   details: () => [...CUSTOMER_KEYS.all, "detail"] as const,
   detail: (id: string | number) => [...CUSTOMER_KEYS.details(), id] as const,
   byMobile: (mobile: string) => [...CUSTOMER_KEYS.all, "mobile", mobile] as const,
 };
-
 
 export const useGetAllCustomers = (params?: CustomerFilterParams) => {
   return useQuery({
@@ -50,7 +50,6 @@ export const useGetCustomerById = (id: string | number | undefined) => {
     enabled: !!id,
   });
 };
-
 
 export const useCreateCustomer = () => {
   const queryClient = useQueryClient();

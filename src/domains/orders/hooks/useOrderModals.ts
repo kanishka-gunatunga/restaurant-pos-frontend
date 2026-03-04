@@ -8,22 +8,26 @@ export function useOrderModals() {
   });
   const [editOrderModal, setEditOrderModal] = useState<OrderRow | null>(null);
   const [viewOrder, setViewOrder] = useState<OrderRow | null>(null);
+  const [paymentOrder, setPaymentOrder] = useState<OrderDetailsView | null>(null);
 
-  const orderToView = useCallback((order: OrderRow): OrderDetailsView => ({
-    orderNo: order.orderNo,
-    date: order.date,
-    time: order.time,
-    status: order.status,
-    paymentStatus: order.paymentStatus,
-    customerName: order.customerName,
-    phone: order.phone,
-    totalAmount: order.totalAmount,
-    orderType: order.orderType,
-    tableNumber: order.tableNumber,
-    items: order.items,
-    subtotal: order.subtotal,
-    discount: order.discount,
-  }), []);
+  const orderToView = useCallback(
+    (order: OrderRow): OrderDetailsView => ({
+      orderNo: order.orderNo,
+      date: order.date,
+      time: order.time,
+      status: order.status,
+      paymentStatus: order.paymentStatus,
+      customerName: order.customerName,
+      phone: order.phone,
+      totalAmount: order.totalAmount,
+      orderType: order.orderType,
+      tableNumber: order.tableNumber,
+      items: order.items,
+      subtotal: order.subtotal,
+      discount: order.discount,
+    }),
+    []
+  );
 
   const handleDeleteClick = useCallback((orderNo: string) => {
     setAuthModal({ isOpen: true, orderNo });
@@ -70,6 +74,18 @@ export function useOrderModals() {
     setViewOrder(null);
   }, []);
 
+  const handlePayNow = useCallback((order: OrderDetailsView) => {
+    setPaymentOrder(order);
+    setViewOrder(null);
+  }, []);
+
+  const closePaymentModal = useCallback(() => setPaymentOrder(null), []);
+
+  const handlePaymentComplete = useCallback(() => {
+    // TODO: Call API to mark order as paid
+    setPaymentOrder(null);
+  }, []);
+
   return {
     authModal,
     editOrderModal,
@@ -85,5 +101,9 @@ export function useOrderModals() {
     closeViewModal,
     openEditFromView,
     openCancelFromView,
+    handlePayNow,
+    paymentOrder,
+    closePaymentModal,
+    handlePaymentComplete,
   };
 }

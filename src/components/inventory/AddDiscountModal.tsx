@@ -69,20 +69,13 @@ export default function AddDiscountModal({
   };
 
   const isSelected = (productId: string, variantId?: string) =>
-    selectedDiscounts.some(
-      (s) => s.productId === productId && s.variantId === variantId
-    );
+    selectedDiscounts.some((s) => s.productId === productId && s.variantId === variantId);
 
-  const handleToggleSelect = (
-    product: ProductForDiscount,
-    variant?: ProductVariantForDiscount
-  ) => {
+  const handleToggleSelect = (product: ProductForDiscount, variant?: ProductVariantForDiscount) => {
     const variantId = variant?.id;
     if (isSelected(product.id, variantId)) {
       setSelectedDiscounts((prev) =>
-        prev.filter(
-          (s) => !(s.productId === product.id && s.variantId === variantId)
-        )
+        prev.filter((s) => !(s.productId === product.id && s.variantId === variantId))
       );
     } else {
       const basePrice = variant?.price ?? product.price;
@@ -103,9 +96,7 @@ export default function AddDiscountModal({
 
   const handleRemove = (productId: string, variantId?: string) => {
     setSelectedDiscounts((prev) =>
-      prev.filter(
-        (s) => !(s.productId === productId && s.variantId === variantId)
-      )
+      prev.filter((s) => !(s.productId === productId && s.variantId === variantId))
     );
   };
 
@@ -117,9 +108,7 @@ export default function AddDiscountModal({
   ) => {
     setSelectedDiscounts((prev) =>
       prev.map((s) =>
-        s.productId === productId && s.variantId === variantId
-          ? { ...s, [field]: value }
-          : s
+        s.productId === productId && s.variantId === variantId ? { ...s, [field]: value } : s
       )
     );
   };
@@ -137,11 +126,7 @@ export default function AddDiscountModal({
     const items: DiscountItem[] = selectedDiscounts.map((s) => {
       const baseNum = parsePrice(s.basePrice);
       const discountPercent =
-        s.type === "percentage"
-          ? s.value
-          : baseNum > 0
-            ? (s.value / baseNum) * 100
-            : 0;
+        s.type === "percentage" ? s.value : baseNum > 0 ? (s.value / baseNum) * 100 : 0;
       return {
         productName: s.productName,
         variant: s.variantName,
@@ -186,10 +171,7 @@ export default function AddDiscountModal({
       >
         <div className="mb-6 flex shrink-0 items-start justify-between">
           <div>
-            <h2
-              id="add-discount-title"
-              className="font-['Inter'] text-xl font-bold text-[#1D293D]"
-            >
+            <h2 id="add-discount-title" className="font-['Inter'] text-xl font-bold text-[#1D293D]">
               Create New Discount
             </h2>
             <p className="mt-1 font-['Inter'] text-sm text-[#90A1B9]">
@@ -260,9 +242,7 @@ export default function AddDiscountModal({
                 {filteredProducts.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8 text-center">
                     <Package className="mx-auto h-8 w-8 text-[#90A1B9] opacity-50" />
-                    <p className="mt-2 font-['Inter'] text-sm text-[#90A1B9]">
-                      No products found
-                    </p>
+                    <p className="mt-2 font-['Inter'] text-sm text-[#90A1B9]">No products found</p>
                   </div>
                 ) : (
                   filteredProducts.map((product) => {
@@ -291,8 +271,7 @@ export default function AddDiscountModal({
                             </p>
                             <p className="font-['Inter'] text-xs text-[#90A1B9]">
                               {product.price}
-                              {hasVariants &&
-                                ` • ${product.variants!.length} variants`}
+                              {hasVariants && ` • ${product.variants!.length} variants`}
                             </p>
                           </div>
                           <button
@@ -423,15 +402,12 @@ export default function AddDiscountModal({
                           <div>
                             <p className="font-['Inter'] text-sm font-bold text-[#1D293D]">
                               {config.productName}
-                              {config.variantName &&
-                                ` Variant: ${config.variantName}`}
+                              {config.variantName && ` Variant: ${config.variantName}`}
                             </p>
                           </div>
                           <button
                             type="button"
-                            onClick={() =>
-                              handleRemove(config.productId, config.variantId)
-                            }
+                            onClick={() => handleRemove(config.productId, config.variantId)}
                             className="rounded p-1 text-[#90A1B9] hover:bg-[#FEE2E2] hover:text-[#DC2626]"
                             aria-label="Remove"
                           >
@@ -505,15 +481,11 @@ export default function AddDiscountModal({
                         <div className="rounded-lg border border-[#D0FAE5] bg-[#D0FAE5]/30 p-2">
                           <div className="flex justify-between font-['Inter'] text-xs">
                             <span className="text-[#62748E]">Original:</span>
-                            <span className="text-[#90A1B9] line-through">
-                              {config.basePrice}
-                            </span>
+                            <span className="text-[#90A1B9] line-through">{config.basePrice}</span>
                           </div>
                           <div className="mt-1 flex justify-between font-['Inter'] text-xs font-bold">
                             <span className="text-[#1D293D]">Final Price:</span>
-                            <span className="text-[#009966]">
-                              {formatPrice(finalPrice)}
-                            </span>
+                            <span className="text-[#009966]">{formatPrice(finalPrice)}</span>
                           </div>
                         </div>
                       </div>

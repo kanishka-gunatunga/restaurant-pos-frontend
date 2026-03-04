@@ -7,6 +7,7 @@ import ManagerAuthorizationModal from "@/components/orders/ManagerAuthorizationM
 import OrdersHeader from "@/components/orders/OrdersHeader";
 import OrdersFilterSection from "@/components/orders/OrdersFilterSection";
 import OrdersTable from "@/components/orders/OrdersTable";
+import ProcessPaymentModal from "@/components/menu/ProcessPaymentModal";
 import { useOrdersFilters } from "@/domains/orders/hooks/useOrdersFilters";
 import { useOrderModals } from "@/domains/orders/hooks/useOrderModals";
 import { MOCK_ORDERS } from "@/domains/orders/mockOrders";
@@ -37,6 +38,10 @@ export default function OrdersContent() {
     closeViewModal,
     openEditFromView,
     openCancelFromView,
+    handlePayNow,
+    paymentOrder,
+    closePaymentModal,
+    handlePaymentComplete,
   } = useOrderModals();
 
   return (
@@ -77,12 +82,9 @@ export default function OrdersContent() {
         <OrderDetailsViewModal
           order={orderToView(viewOrder)}
           onClose={closeViewModal}
-          onEdit={
-            viewOrder.status === "PENDING"
-              ? () => openEditFromView(viewOrder)
-              : undefined
-          }
+          onEdit={viewOrder.status === "PENDING" ? () => openEditFromView(viewOrder) : undefined}
           onCancel={() => openCancelFromView(viewOrder.orderNo)}
+          onPayNow={viewOrder.paymentStatus === "PENDING" ? (order) => handlePayNow(order) : undefined}
         />
       )}
 
@@ -92,6 +94,15 @@ export default function OrdersContent() {
           isOpen={authModal.isOpen}
           onClose={handleCloseAuthModal}
           onVerify={handleVerify}
+        />
+      )}
+
+      {paymentOrder && (
+        <ProcessPaymentModal
+          customerName={paymentOrder.customerName}
+          total={paymentOrder.subtotal ?? paymentOrder.totalAmount}
+          onClose={closePaymentModal}
+          onComplete={handlePaymentComplete}
         />
       )}
     </div>

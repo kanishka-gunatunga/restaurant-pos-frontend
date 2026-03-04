@@ -29,11 +29,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function DashboardLayoutClient({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function DashboardLayoutClient({ children }: { children: React.ReactNode }) {
   const { user, isReady } = useAuth();
   const pathname = usePathname();
 

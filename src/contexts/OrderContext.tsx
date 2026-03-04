@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useState,
-  useCallback,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
 
 export type OrderType = "Dine In" | "Take Away" | "Delivery";
 
@@ -55,7 +49,14 @@ type OrderContextType = {
   activeOrderNote: string;
   setActiveKitchenNote: (value: string) => void;
   setActiveOrderNote: (value: string) => void;
-  addItem: (name: string, price: number, details?: string, image?: string, variant?: string, addOnsList?: string[]) => void;
+  addItem: (
+    name: string,
+    price: number,
+    details?: string,
+    image?: string,
+    variant?: string,
+    addOnsList?: string[]
+  ) => void;
   updateQty: (id: string, delta: number) => void;
   removeItem: (id: string) => void;
   canAddOrder: boolean;
@@ -91,11 +92,11 @@ const hasOrderData = (order: Order): boolean => {
       return true;
     }
   }
-  
+
   if (order.items && order.items.length > 0) return true;
   if (order.kitchenNote && order.kitchenNote.trim().length > 0) return true;
   if (order.orderNote && order.orderNote.trim().length > 0) return true;
-  
+
   return false;
 };
 
@@ -123,7 +124,7 @@ const saveOrdersToStorage = (orders: Order[]) => {
   if (typeof window === "undefined") return;
   try {
     const ordersWithData = orders.filter(hasOrderData);
-    
+
     if (ordersWithData.length > 0) {
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify(ordersWithData));
     } else {
@@ -160,7 +161,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   const initialOrders = (() => {
     const loaded = loadOrdersFromStorage();
     const ordersWithData = loaded.filter(hasOrderData);
-    
+
     if (ordersWithData.length === 0) {
       if (typeof window !== "undefined") {
         sessionStorage.removeItem(STORAGE_KEY);
@@ -168,15 +169,15 @@ export function OrderProvider({ children }: { children: ReactNode }) {
       }
       return [INITIAL_ORDER];
     }
-    
+
     const validated = ordersWithData.slice(0, 2);
     saveOrdersToStorage(validated);
-    
+
     return validated;
   })();
-  
+
   const [orders, setOrders] = useState<Order[]>(initialOrders);
-  
+
   const [activeOrderId, setActiveOrderIdState] = useState<string | null>(() => {
     const storedId = loadActiveOrderIdFromStorage();
     if (storedId && initialOrders.some((o) => o.id === storedId)) {
@@ -270,10 +271,10 @@ export function OrderProvider({ children }: { children: ReactNode }) {
         }
         return prev;
       }
-      
+
       const filtered = prev.filter((o) => o.id !== orderId);
       saveOrdersToStorage(filtered);
-      
+
       setActiveOrderIdState((current) => {
         if (current === orderId) {
           const newActiveId = filtered[0]?.id ?? null;
@@ -282,7 +283,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
         }
         return current;
       });
-      
+
       return filtered;
     });
   }, []);
@@ -313,7 +314,14 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   }, [activeOrderId]);
 
   const addItem = useCallback(
-    (name: string, price: number, details = "REGULAR", image?: string, variant?: string, addOnsList?: string[]) => {
+    (
+      name: string,
+      price: number,
+      details = "REGULAR",
+      image?: string,
+      variant?: string,
+      addOnsList?: string[]
+    ) => {
       const orderId = activeOrderId ?? orders[0]?.id;
       if (!orderId) return;
 
@@ -324,9 +332,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
           if (existing) {
             return {
               ...order,
-              items: order.items.map((i) =>
-                i.id === existing.id ? { ...i, qty: i.qty + 1 } : i
-              ),
+              items: order.items.map((i) => (i.id === existing.id ? { ...i, qty: i.qty + 1 } : i)),
             };
           }
           return {
@@ -364,9 +370,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
           return {
             ...order,
             items: order.items
-              .map((i) =>
-                i.id === itemId ? { ...i, qty: Math.max(0, i.qty + delta) } : i
-              )
+              .map((i) => (i.id === itemId ? { ...i, qty: Math.max(0, i.qty + delta) } : i))
               .filter((i) => i.qty > 0),
           };
         });
@@ -407,10 +411,15 @@ export function OrderProvider({ children }: { children: ReactNode }) {
               o.id === orderId
                 ? {
                     ...o,
-                    orderDetails: orderData.orderDetails !== undefined ? orderData.orderDetails : o.orderDetails,
+                    orderDetails:
+                      orderData.orderDetails !== undefined
+                        ? orderData.orderDetails
+                        : o.orderDetails,
                     items: orderData.items !== undefined ? orderData.items : o.items,
-                    kitchenNote: orderData.kitchenNote !== undefined ? orderData.kitchenNote : o.kitchenNote,
-                    orderNote: orderData.orderNote !== undefined ? orderData.orderNote : o.orderNote,
+                    kitchenNote:
+                      orderData.kitchenNote !== undefined ? orderData.kitchenNote : o.kitchenNote,
+                    orderNote:
+                      orderData.orderNote !== undefined ? orderData.orderNote : o.orderNote,
                   }
                 : o
             );

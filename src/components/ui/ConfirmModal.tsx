@@ -50,9 +50,7 @@ export default function ConfirmModal({
           </button>
         </div>
 
-        <p className="mt-4 font-['Inter'] text-sm leading-[22px] text-[#62748E]">
-          {message}
-        </p>
+        <p className="mt-4 font-['Inter'] text-sm leading-[22px] text-[#62748E]">{message}</p>
 
         <div className="mt-6 flex gap-3">
           <button

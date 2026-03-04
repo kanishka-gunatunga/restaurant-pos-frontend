@@ -45,8 +45,7 @@ export default function MenuContent() {
 
   const filteredItems = MENU_ITEMS.filter((item) => {
     const matchesSearch = item.name.toLowerCase().includes(search.toLowerCase());
-    const matchesCategory =
-      activeCategory === "All" || item.category === activeCategory;
+    const matchesCategory = activeCategory === "All" || item.category === activeCategory;
     const matchesSubCategory =
       activeSubCategory === "All" || item.subCategory === activeSubCategory;
     return matchesSearch && matchesCategory && matchesSubCategory;
@@ -55,7 +54,7 @@ export default function MenuContent() {
   const columnCount = useColumnCount();
 
   const columns = useMemo(() => {
-    const cols: typeof filteredItems[] = Array.from({ length: columnCount }, () => []);
+    const cols: (typeof filteredItems)[] = Array.from({ length: columnCount }, () => []);
     filteredItems.forEach((item, i) => {
       cols[i % columnCount].push(item);
     });
@@ -95,8 +94,7 @@ export default function MenuContent() {
               style={
                 activeCategory === cat
                   ? {
-                      boxShadow:
-                        "0px 2px 4px -2px #EA580C33, 0px 4px 6px -1px #EA580C33",
+                      boxShadow: "0px 2px 4px -2px #EA580C33, 0px 4px 6px -1px #EA580C33",
                     }
                   : undefined
               }
@@ -108,9 +106,7 @@ export default function MenuContent() {
 
         {/* Sub-category filter row - always visible */}
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-medium uppercase tracking-wider text-zinc-500">
-            SUB:
-          </span>
+          <span className="text-xs font-medium uppercase tracking-wider text-zinc-500">SUB:</span>
           {subCategories.map((sub) => (
             <button
               key={sub}

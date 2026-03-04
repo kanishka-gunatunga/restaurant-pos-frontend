@@ -57,7 +57,10 @@ export default function AddGroupModal({
 
         <div className="space-y-4">
           <div className="shrink-0">
-            <label htmlFor="group-name" className="mb-1.5 block font-['Inter'] text-xs font-bold uppercase tracking-wide text-[#45556C]">
+            <label
+              htmlFor="group-name"
+              className="mb-1.5 block font-['Inter'] text-xs font-bold uppercase tracking-wide text-[#45556C]"
+            >
               Group Name
             </label>
             <input

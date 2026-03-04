@@ -41,17 +41,10 @@ export default function DashboardPageHeader() {
           <div
             className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary"
             style={{
-              boxShadow:
-                "0px 4px 6px -4px #EA580C33, 0px 10px 15px -3px #EA580C33",
+              boxShadow: "0px 4px 6px -4px #EA580C33, 0px 10px 15px -3px #EA580C33",
             }}
           >
-            <Image
-              src="/house_icon.svg"
-              alt=""
-              width={24}
-              height={24}
-              className="h-6 w-6"
-            />
+            <Image src="/house_icon.svg" alt="" width={24} height={24} className="h-6 w-6" />
           </div>
           <div>
             <h1 className="text-lg font-bold leading-[22.5px] tracking-normal text-[#1D293D]">

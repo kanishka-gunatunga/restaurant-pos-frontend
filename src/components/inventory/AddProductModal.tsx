@@ -46,7 +46,10 @@ export default function AddProductModal({
       >
         <div className="mb-6 flex shrink-0 items-start justify-between">
           <div>
-            <h2 id="add-product-title" className="font-['Inter'] text-[20px] font-bold text-[#1D293D]">
+            <h2
+              id="add-product-title"
+              className="font-['Inter'] text-[20px] font-bold text-[#1D293D]"
+            >
               Create New Product
             </h2>
             <p className="mt-1 font-['Inter'] text-sm text-[#90A1B9]">
@@ -66,7 +69,10 @@ export default function AddProductModal({
         <div className="min-h-0 flex-1 space-y-6 overflow-y-auto [scrollbar-color:#E2E8F0_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#E2E8F0] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-1.5">
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label htmlFor="product-name" className="mb-1.5 block font-['Inter'] text-xs font-bold uppercase tracking-wide text-[#45556C]">
+              <label
+                htmlFor="product-name"
+                className="mb-1.5 block font-['Inter'] text-xs font-bold uppercase tracking-wide text-[#45556C]"
+              >
                 Product Name
               </label>
               <input
@@ -79,7 +85,10 @@ export default function AddProductModal({
               />
             </div>
             <div>
-              <label htmlFor="product-image" className="mb-1.5 block font-['Inter'] text-xs font-bold uppercase tracking-wide text-[#45556C]">
+              <label
+                htmlFor="product-image"
+                className="mb-1.5 block font-['Inter'] text-xs font-bold uppercase tracking-wide text-[#45556C]"
+              >
                 Product Image URL
               </label>
               <div className="relative">
@@ -87,7 +96,9 @@ export default function AddProductModal({
                   id="product-image"
                   type="url"
                   value={product.productImageUrl}
-                  onChange={(e) => onProductChange((p) => ({ ...p, productImageUrl: e.target.value }))}
+                  onChange={(e) =>
+                    onProductChange((p) => ({ ...p, productImageUrl: e.target.value }))
+                  }
                   placeholder="https://unsplash.com/..."
                   className="w-full rounded-[10px] border border-[#E2E8F0] bg-white py-2.5 pl-3 pr-10 font-['Inter'] text-sm text-[#1D293D] placeholder:text-[#90A1B9] focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C]"
                 />
@@ -95,7 +106,10 @@ export default function AddProductModal({
               </div>
             </div>
             <div>
-              <label htmlFor="base-price" className="mb-1.5 block font-['Inter'] text-xs font-bold uppercase tracking-wide text-[#45556C]">
+              <label
+                htmlFor="base-price"
+                className="mb-1.5 block font-['Inter'] text-xs font-bold uppercase tracking-wide text-[#45556C]"
+              >
                 Base Price (Rs.)
               </label>
               <input
@@ -109,7 +123,10 @@ export default function AddProductModal({
               />
             </div>
             <div>
-              <label htmlFor="quantity" className="mb-1.5 block font-['Inter'] text-xs font-bold uppercase tracking-wide text-[#45556C]">
+              <label
+                htmlFor="quantity"
+                className="mb-1.5 block font-['Inter'] text-xs font-bold uppercase tracking-wide text-[#45556C]"
+              >
                 Quantity (Stock)
               </label>
               <input
@@ -123,7 +140,10 @@ export default function AddProductModal({
               />
             </div>
             <div>
-              <label htmlFor="category" className="mb-1.5 block font-['Inter'] text-xs font-bold uppercase tracking-wide text-[#45556C]">
+              <label
+                htmlFor="category"
+                className="mb-1.5 block font-['Inter'] text-xs font-bold uppercase tracking-wide text-[#45556C]"
+              >
                 Category
               </label>
               <div className="relative">
@@ -135,14 +155,19 @@ export default function AddProductModal({
                 >
                   <option value="">Category</option>
                   {MOCK_CATEGORIES.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
                   ))}
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#90A1B9]" />
               </div>
             </div>
             <div>
-              <label htmlFor="sub-category" className="mb-1.5 block font-['Inter'] text-xs font-bold uppercase tracking-wide text-[#45556C]">
+              <label
+                htmlFor="sub-category"
+                className="mb-1.5 block font-['Inter'] text-xs font-bold uppercase tracking-wide text-[#45556C]"
+              >
                 Sub-Category
               </label>
               <div className="relative">
@@ -153,8 +178,12 @@ export default function AddProductModal({
                   className="w-full appearance-none rounded-[10px] border border-[#E2E8F0] bg-white py-2.5 pl-3 pr-10 font-['Inter'] text-sm text-[#1D293D] focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C]"
                 >
                   <option value="">Sub-Category</option>
-                  {MOCK_CATEGORIES.flatMap((c) => c.subCategories.map((s) => ({ cat: c.name, sub: s }))).map(({ cat, sub }) => (
-                    <option key={`${cat}-${sub}`} value={sub}>{sub}</option>
+                  {MOCK_CATEGORIES.flatMap((c) =>
+                    c.subCategories.map((s) => ({ cat: c.name, sub: s }))
+                  ).map(({ cat, sub }) => (
+                    <option key={`${cat}-${sub}`} value={sub}>
+                      {sub}
+                    </option>
                   ))}
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#90A1B9]" />
@@ -171,7 +200,10 @@ export default function AddProductModal({
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor="batch" className="mb-1.5 flex items-center gap-1 font-['Inter'] text-xs font-medium text-[#45556C]">
+                <label
+                  htmlFor="batch"
+                  className="mb-1.5 flex items-center gap-1 font-['Inter'] text-xs font-medium text-[#45556C]"
+                >
                   <span>#</span> Batch Number
                 </label>
                 <input
@@ -184,7 +216,10 @@ export default function AddProductModal({
                 />
               </div>
               <div>
-                <label htmlFor="expiry" className="mb-1.5 flex items-center gap-1 font-['Inter'] text-xs font-medium text-[#45556C]">
+                <label
+                  htmlFor="expiry"
+                  className="mb-1.5 flex items-center gap-1 font-['Inter'] text-xs font-medium text-[#45556C]"
+                >
                   <Calendar className="h-3.5 w-3.5" /> Expiry Date
                 </label>
                 <input
@@ -231,7 +266,9 @@ export default function AddProductModal({
                     </div>
                     <div className="w-28 shrink-0">
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 font-['Inter'] text-sm text-[#90A1B9]">Rs.</span>
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 font-['Inter'] text-sm text-[#90A1B9]">
+                          Rs.
+                        </span>
                         <input
                           type="text"
                           inputMode="decimal"
@@ -276,9 +313,13 @@ export default function AddProductModal({
                         : "border-[#E2E8F0] bg-white hover:border-[#CAD5E2]"
                     }`}
                   >
-                    <span className={`h-4 w-4 shrink-0 rounded-full border-2 ${selected ? "border-[#EA580C] bg-[#EA580C]" : "border-[#90A1B9]"}`} />
+                    <span
+                      className={`h-4 w-4 shrink-0 rounded-full border-2 ${selected ? "border-[#EA580C] bg-[#EA580C]" : "border-[#90A1B9]"}`}
+                    />
                     <div>
-                      <p className="font-['Inter'] text-xs text-[#90A1B9]">{g.items.length} items</p>
+                      <p className="font-['Inter'] text-xs text-[#90A1B9]">
+                        {g.items.length} items
+                      </p>
                       <p className="font-['Inter'] text-sm font-bold text-[#1D293D]">{g.name}</p>
                     </div>
                   </button>

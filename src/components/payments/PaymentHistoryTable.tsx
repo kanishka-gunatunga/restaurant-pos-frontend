@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { CreditCard, Banknote, Globe } from "lucide-react";
-import ProcessPaymentModal from "./ProcessPaymentModal";
+import ProcessPaymentModal from "@/components/menu/ProcessPaymentModal";
 
 export interface Payment {
   id: string;
@@ -124,9 +124,9 @@ export default function PaymentHistoryTable({ searchTerm, activeFilter }: Paymen
     return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
   };
 
-  const handleCompletePayment = (paymentId: string, method: string) => {
-    console.log(`Payment ${paymentId} completed with ${method}`);
-    // In a real app, this would trigger a mutation
+  const handleCompletePayment = () => {
+    // TODO: Call API to mark payment as completed
+    setProcessingPayment(null);
   };
 
   const getMethodDisplay = (payment: Payment) => {
@@ -250,7 +250,8 @@ export default function PaymentHistoryTable({ searchTerm, activeFilter }: Paymen
 
       {processingPayment && (
         <ProcessPaymentModal
-          payment={processingPayment}
+          customerName={processingPayment.customerName}
+          total={processingPayment.amount}
           onClose={() => setProcessingPayment(null)}
           onComplete={handleCompletePayment}
         />

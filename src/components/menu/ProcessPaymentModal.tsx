@@ -155,17 +155,50 @@ export default function ProcessPaymentModal({
             </div>
             <div className="mt-4">
               <label className="mb-2 flex items-center gap-2 font-['Inter'] text-sm font-bold leading-5 text-[#314158]">
-                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0" aria-hidden>
-                  <path d="M15 4.5H3C2.17157 4.5 1.5 5.17157 1.5 6V12C1.5 12.8284 2.17157 13.5 3 13.5H15C15.8284 13.5 16.5 12.8284 16.5 12V6C16.5 5.17157 15.8284 4.5 15 4.5Z" stroke="#009966" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M9 10.5C9.82843 10.5 10.5 9.82843 10.5 9C10.5 8.17157 9.82843 7.5 9 7.5C8.17157 7.5 7.5 8.17157 7.5 9C7.5 9.82843 8.17157 10.5 9 10.5Z" stroke="#009966" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M4.5 9H4.5075M13.5 9H13.5075" stroke="#009966" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 18 18"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="shrink-0"
+                  aria-hidden
+                >
+                  <path
+                    d="M15 4.5H3C2.17157 4.5 1.5 5.17157 1.5 6V12C1.5 12.8284 2.17157 13.5 3 13.5H15C15.8284 13.5 16.5 12.8284 16.5 12V6C16.5 5.17157 15.8284 4.5 15 4.5Z"
+                    stroke="#009966"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M9 10.5C9.82843 10.5 10.5 9.82843 10.5 9C10.5 8.17157 9.82843 7.5 9 7.5C8.17157 7.5 7.5 8.17157 7.5 9C7.5 9.82843 8.17157 10.5 9 10.5Z"
+                    stroke="#009966"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M4.5 9H4.5075M13.5 9H13.5075"
+                    stroke="#009966"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
                 Amount Given by Customer
               </label>
               <input
                 type="text"
+                inputMode="decimal"
                 value={amountGiven}
-                onChange={(e) => setAmountGiven(e.target.value)}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/[^0-9.]/g, "");
+                  const parts = v.split(".");
+                  if (parts.length > 2) return;
+                  if (parts[1]?.length > 2) return;
+                  setAmountGiven(v);
+                }}
                 placeholder="Rs.0.00"
                 className="w-full min-h-[80px] rounded-[16px] border-2 border-[#E2E8F0] bg-white py-4 pl-[27px] pr-6 font-['Inter'] text-2xl font-bold leading-[100%] text-[#1D293D] placeholder:text-[#90A1B9] focus:border-[#22C55E] focus:outline-none focus:ring-2 focus:ring-[#22C55E]/20"
               />
@@ -208,7 +241,11 @@ export default function ProcessPaymentModal({
                 Complete Payment
                 <span className="inline-block h-5 w-5 shrink-0">
                   <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
-                    <path fillRule="evenodd" d="M3 10a.75.75 0 01.75-.75h10.638L10.23 5.29a.75.75 0 111.04-1.08l5.5 5.25a.75.75 0 010 1.08l-5.5 5.25a.75.75 0 11-1.04-1.08l4.158-3.96H3.75A.75.75 0 013 10z" clipRule="evenodd" />
+                    <path
+                      fillRule="evenodd"
+                      d="M3 10a.75.75 0 01.75-.75h10.638L10.23 5.29a.75.75 0 111.04-1.08l5.5 5.25a.75.75 0 010 1.08l-5.5 5.25a.75.75 0 11-1.04-1.08l4.158-3.96H3.75A.75.75 0 013 10z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                 </span>
               </button>
@@ -219,9 +256,29 @@ export default function ProcessPaymentModal({
         {step === "success" && (
           <div className="flex flex-col items-center py-6">
             <span className="flex h-[104px] w-[104px] items-center justify-center rounded-full bg-[#00BC7D] text-white shadow-[0px_25px_50px_-12px_#A4F4CF]">
-              <svg width="52" height="52" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0" aria-hidden>
-                <path d="M25.8513 47.3939C37.7489 47.3939 47.3939 37.7489 47.3939 25.8512C47.3939 13.9535 37.7489 4.30856 25.8513 4.30856C13.9536 4.30856 4.30859 13.9535 4.30859 25.8512C4.30859 37.7489 13.9536 47.3939 25.8513 47.3939Z" stroke="white" strokeWidth="6.4628" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M19.3884 25.8512L23.697 30.1598L32.314 21.5427" stroke="white" strokeWidth="6.4628" strokeLinecap="round" strokeLinejoin="round"/>
+              <svg
+                width="52"
+                height="52"
+                viewBox="0 0 52 52"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                className="shrink-0"
+                aria-hidden
+              >
+                <path
+                  d="M25.8513 47.3939C37.7489 47.3939 47.3939 37.7489 47.3939 25.8512C47.3939 13.9535 37.7489 4.30856 25.8513 4.30856C13.9536 4.30856 4.30859 13.9535 4.30859 25.8512C4.30859 37.7489 13.9536 47.3939 25.8513 47.3939Z"
+                  stroke="white"
+                  strokeWidth="6.4628"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M19.3884 25.8512L23.697 30.1598L32.314 21.5427"
+                  stroke="white"
+                  strokeWidth="6.4628"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
               </svg>
             </span>
             <p className="mt-4 text-center font-['Inter'] text-2xl font-bold leading-8 text-[#1D293D]">

@@ -110,9 +110,7 @@ const MOCK_DISCOUNT_ALERTS = [
 export default function ManagerDashboardContent() {
   const { user } = useAuth();
   const branch =
-    user?.branchId != null
-      ? getBranchByNumericId(user.branchId) ?? BRANCHES[0]
-      : BRANCHES[0];
+    user?.branchId != null ? (getBranchByNumericId(user.branchId) ?? BRANCHES[0]) : BRANCHES[0];
 
   const mounted = useSyncExternalStore(
     () => () => {},
@@ -296,7 +294,7 @@ export default function ManagerDashboardContent() {
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
                     <div className="flex h-14 w-14 items-center justify-center rounded-[16px] bg-[#FFE4E6]">
-                    <ExpiredCalendarIcon className="h-6 w-6 text-[#E7000B]" />
+                      <ExpiredCalendarIcon className="h-6 w-6 text-[#E7000B]" />
                     </div>
                     <div>
                       <h2 className="font-['Inter'] text-[18px] font-bold leading-7 text-[#1D293D]">
@@ -332,12 +330,14 @@ export default function ManagerDashboardContent() {
                         {item.name}
                       </p>
                       <span className="flex flex-wrap items-center gap-x-2 font-['Inter'] text-xs font-normal leading-4 text-[#62748E]">
-                        {[item.category, item.variant, item.units, item.batch].filter(Boolean).map((part, i) => (
-                          <span key={i} className="contents">
-                            {i > 0 && <span className="text-[#CAD5E2]">•</span>}
-                            <span>{part}</span>
-                          </span>
-                        ))}
+                        {[item.category, item.variant, item.units, item.batch]
+                          .filter(Boolean)
+                          .map((part, i) => (
+                            <span key={i} className="contents">
+                              {i > 0 && <span className="text-[#CAD5E2]">•</span>}
+                              <span>{part}</span>
+                            </span>
+                          ))}
                       </span>
                       <span className="mt-2 inline-flex items-center gap-1 rounded-[10px] border border-[#FFC9C9] bg-[#FFE2E2] px-2 py-1 font-['Inter'] text-xs font-bold leading-4 text-[#C10007]">
                         <ExpiredBadgeIcon className="h-3 w-3 text-[#C10007]" />

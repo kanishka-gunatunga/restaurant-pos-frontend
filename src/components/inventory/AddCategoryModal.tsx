@@ -56,7 +56,10 @@ export default function AddCategoryModal({
 
         <div className="space-y-4">
           <div className="shrink-0">
-            <label htmlFor="category-name" className="mb-1.5 block font-['Inter'] text-xs font-medium uppercase tracking-wide text-[#90A1B9]">
+            <label
+              htmlFor="category-name"
+              className="mb-1.5 block font-['Inter'] text-xs font-medium uppercase tracking-wide text-[#90A1B9]"
+            >
               Category Name
             </label>
             <input

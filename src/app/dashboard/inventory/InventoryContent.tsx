@@ -20,7 +20,8 @@ export default function InventoryContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const branchIdParam = searchParams.get("branchId");
-  const branchId = branchIdParam && getBranchById(branchIdParam) ? branchIdParam : BRANCHES[0]?.id ?? "";
+  const branchId =
+    branchIdParam && getBranchById(branchIdParam) ? branchIdParam : (BRANCHES[0]?.id ?? "");
   const { isCashier } = useAuth();
   const [activeTab, setActiveTab] = useState<TabId>("products");
   const [searchQuery, setSearchQuery] = useState("");
@@ -50,7 +51,11 @@ export default function InventoryContent() {
 
   const openAddGroup = () => {
     setNewGroupName("");
-    setNewGroupItems([{ name: "", price: "" }, { name: "", price: "" }, { name: "", price: "" }]);
+    setNewGroupItems([
+      { name: "", price: "" },
+      { name: "", price: "" },
+      { name: "", price: "" },
+    ]);
     setAddGroupOverlayVisible(false);
     setAddGroupOpen(true);
   };
@@ -134,7 +139,9 @@ export default function InventoryContent() {
 
             {activeTab === "products" && (
               <div className="flex items-center justify-between border-b border-[#E2E8F0] px-4 py-3">
-                <h2 className="font-['Inter'] text-[16px] font-bold leading-6 text-[#314158]">Products</h2>
+                <h2 className="font-['Inter'] text-[16px] font-bold leading-6 text-[#314158]">
+                  Products
+                </h2>
                 <Link
                   href={ROUTES.DASHBOARD_INVENTORY_ADD_PRODUCT}
                   className="flex shrink-0 items-center gap-2 rounded-[14px] bg-[#EA580C] px-4 py-2.5 font-['Inter'] text-sm font-bold text-white shadow-[0px_4px_6px_-4px_#EA580C33,0px_10px_15px_-3px_#EA580C33] transition-opacity hover:bg-[#c2410c]"
@@ -163,7 +170,9 @@ export default function InventoryContent() {
         subCategories={newSubCategories}
         onCategoryNameChange={setNewCategoryName}
         onSubCategoryAdd={() => setNewSubCategories((prev) => [...prev, ""])}
-        onSubCategoryRemove={(index) => setNewSubCategories((prev) => prev.filter((_, i) => i !== index))}
+        onSubCategoryRemove={(index) =>
+          setNewSubCategories((prev) => prev.filter((_, i) => i !== index))
+        }
         onSubCategoryUpdate={(index, value) =>
           setNewSubCategories((prev) => {
             const next = [...prev];

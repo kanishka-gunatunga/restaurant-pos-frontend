@@ -1,15 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import {
-  Clock,
-  CheckCircle2,
-  XCircle,
-  Users,
-  Tag,
-  AlertTriangle,
-  TrendingUp,
-} from "lucide-react";
+import { Clock, CheckCircle2, XCircle, Users, Tag, AlertTriangle, TrendingUp } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import BranchBuildingIcon from "@/components/icons/BranchBuildingIcon";
 import ExpiredBadgeIcon from "@/components/icons/ExpiredBadgeIcon";
@@ -286,12 +278,14 @@ export default function AdminDashboardContent() {
                         {item.name}
                       </p>
                       <span className="flex flex-wrap items-center gap-x-2 font-['Inter'] text-xs font-normal leading-4 text-[#62748E]">
-                        {[item.category, item.variant, item.units, `${item.batch} ${item.branch}`].filter(Boolean).map((part, i) => (
-                          <span key={i} className="contents">
-                            {i > 0 && <span className="text-[#CAD5E2]">•</span>}
-                            <span>{part}</span>
-                          </span>
-                        ))}
+                        {[item.category, item.variant, item.units, `${item.batch} ${item.branch}`]
+                          .filter(Boolean)
+                          .map((part, i) => (
+                            <span key={i} className="contents">
+                              {i > 0 && <span className="text-[#CAD5E2]">•</span>}
+                              <span>{part}</span>
+                            </span>
+                          ))}
                       </span>
                       <span className="mt-2 inline-flex items-center gap-1 rounded-[10px] border border-[#FFC9C9] bg-[#FFE2E2] px-2 py-1 font-['Inter'] text-xs font-bold leading-4 text-[#C10007]">
                         <ExpiredBadgeIcon className="h-3 w-3 text-[#C10007]" />

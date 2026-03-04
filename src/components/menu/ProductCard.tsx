@@ -96,7 +96,14 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
     const variantName = selectedVariant?.name;
     const addOnsParsed = getAddOnsList();
     for (let i = 0; i < qty; i++) {
-      addItem(item.name, unitPrice, details, image, variantName, addOnsParsed.length > 0 ? addOnsParsed : undefined);
+      addItem(
+        item.name,
+        unitPrice,
+        details,
+        image,
+        variantName,
+        addOnsParsed.length > 0 ? addOnsParsed : undefined
+      );
     }
     setSelectedAddOns([]);
     setSelectedVariant(item.variants?.[0] ?? null);

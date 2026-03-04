@@ -2,16 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  LayoutGrid,
-  ShoppingBag,
-  CreditCard,
-  Users,
-  Calculator,
-  LogOut,
-  X,
-} from "lucide-react";
+import { LayoutGrid, ShoppingBag, CreditCard, Users, Calculator, LogOut, X } from "lucide-react";
 import OrdersIcon from "@/components/icons/OrdersIcon";
+import DrawerIcon from "@/components/icons/DrawerIcon";
 import { ROUTES } from "@/lib/constants";
 import { getFirstName } from "@/lib/format";
 import { useCalculator } from "@/contexts/CalculatorContext";
@@ -24,6 +17,7 @@ const navLinks = [
   { href: ROUTES.DASHBOARD_ORDERS, label: "Orders", icon: OrdersIcon },
   { href: ROUTES.DASHBOARD_PAYMENTS, label: "Payments", icon: CreditCard },
   { href: ROUTES.DASHBOARD_CUSTOMERS, label: "Customers", icon: Users },
+  { href: ROUTES.DASHBOARD_DRAWER, label: "Drawer", icon: DrawerIcon },
 ] as const;
 
 function NavLink({
@@ -126,15 +120,18 @@ export default function DashboardSidebar() {
         </div>
 
         {/* Nav items - scrollable when overflowing */}
-        <nav className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto overflow-x-hidden pt-5 pb-2 min-[1920px]:pt-6 min-[2560px]:pt-7 [scrollbar-width:thin] [scrollbar-color:#E2E8F0_transparent]">
+        <nav className="flex min-h-0 flex-1 flex-col items-center gap-2 overflow-y-auto overflow-x-hidden pt-5 pb-2 min-[1920px]:gap-3 min-[1920px]:pt-6 min-[2560px]:gap-4 min-[2560px]:pt-7 [scrollbar-width:thin] [scrollbar-color:#E2E8F0_transparent]">
           {navLinks.map(({ href, label, icon: Icon }) => {
             const isDashboard = label === "Dashboard";
             const isMenu = label === "Menu";
+            const isDrawer = label === "Drawer";
             const isActive = isDashboard
               ? pathname === ROUTES.DASHBOARD
               : isMenu
                 ? pathname === ROUTES.DASHBOARD_MENU
-                : pathname === href || pathname.startsWith(`${href}/`);
+                : isDrawer
+                  ? pathname === ROUTES.DASHBOARD_DRAWER
+                  : pathname === href || pathname.startsWith(`${href}/`);
             return (
               <NavLink
                 key={label}
@@ -149,33 +146,33 @@ export default function DashboardSidebar() {
           <CalculatorTab onToggle={close} />
         </nav>
 
-      {/* Bottom - User & Logout (fixed, no scroll) */}
-      <div className="shrink-0 flex flex-col items-center gap-4 pb-4 pt-2 border-t border-zinc-200 min-[1920px]:gap-5 min-[1920px]:pb-5 min-[2560px]:gap-6 min-[2560px]:pb-5">
-        <div className="flex flex-col items-center gap-1 min-[1920px]:gap-1.5 min-[2560px]:gap-2">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/profile.jpg"
-            alt="Profile"
-            width={40}
-            height={40}
-            className="h-10 w-10 rounded-xl border-2 border-black object-cover shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.1),0px_1px_3px_0px_rgba(0,0,0,0.1)] min-[1920px]:h-11 min-[1920px]:w-11 min-[2560px]:h-12 min-[2560px]:w-12"
-          />
-          <span className="text-[9px] font-medium uppercase tracking-wider text-[#90A1B9] min-[1920px]:text-[10px] min-[2560px]:text-[11px]">
-            {getFirstName(user?.name) || "Cashier"}
-          </span>
+        {/* Bottom - User & Logout (fixed, no scroll) */}
+        <div className="shrink-0 flex flex-col items-center gap-4 pb-4 pt-2 border-t border-zinc-200 min-[1920px]:gap-5 min-[1920px]:pb-5 min-[2560px]:gap-6 min-[2560px]:pb-5">
+          <div className="flex flex-col items-center gap-1 min-[1920px]:gap-1.5 min-[2560px]:gap-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/profile.jpg"
+              alt="Profile"
+              width={40}
+              height={40}
+              className="h-10 w-10 rounded-xl border-2 border-black object-cover shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.1),0px_1px_3px_0px_rgba(0,0,0,0.1)] min-[1920px]:h-11 min-[1920px]:w-11 min-[2560px]:h-12 min-[2560px]:w-12"
+            />
+            <span className="text-[9px] font-medium uppercase tracking-wider text-[#90A1B9] min-[1920px]:text-[10px] min-[2560px]:text-[11px]">
+              {getFirstName(user?.name) || "Cashier"}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={logout}
+            className="flex flex-col items-center gap-1 text-[#90A1B9] transition-colors hover:text-zinc-700 min-[1920px]:gap-1.5 min-[2560px]:gap-2"
+          >
+            <LogOut className="h-4 w-4 min-[1920px]:h-5 min-[1920px]:w-5 min-[2560px]:h-[22px] min-[2560px]:w-[22px]" />
+            <span className="text-[9px] font-medium uppercase tracking-wider min-[1920px]:text-[10px] min-[2560px]:text-[11px]">
+              Logout
+            </span>
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={logout}
-          className="flex flex-col items-center gap-1 text-[#90A1B9] transition-colors hover:text-zinc-700 min-[1920px]:gap-1.5 min-[2560px]:gap-2"
-        >
-          <LogOut className="h-4 w-4 min-[1920px]:h-5 min-[1920px]:w-5 min-[2560px]:h-[22px] min-[2560px]:w-[22px]" />
-          <span className="text-[9px] font-medium uppercase tracking-wider min-[1920px]:text-[10px] min-[2560px]:text-[11px]">
-            Logout
-          </span>
-        </button>
-      </div>
-    </aside>
+      </aside>
     </>
   );
 }

@@ -36,7 +36,7 @@ export default function OrdersTable({ orders, onView, onEdit, onDelete }: Props)
                 <th className="p-4 text-left font-['Inter'] text-[10px] font-bold leading-[15px] tracking-[1px] uppercase text-[#90A1B9]">
                   Payment Status
                 </th>
-                <th className="p-4 text-right font-['Inter'] text-[10px] font-bold leading-[15px] tracking-[1px] uppercase text-[#90A1B9]">
+                <th className="w-px whitespace-nowrap p-4 text-right font-['Inter'] text-[10px] font-bold leading-[15px] tracking-[1px] uppercase text-[#90A1B9]">
                   Actions
                 </th>
               </tr>
@@ -93,20 +93,20 @@ export default function OrdersTable({ orders, onView, onEdit, onDelete }: Props)
                     <td className="p-4">
                       <PaymentStatusPill status={order.paymentStatus} />
                     </td>
-                    <td className="p-4 text-right">
+                    <td className="w-px whitespace-nowrap p-4 text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onView(order);
-                          }}
-                          className="rounded-lg p-1.5 text-[#90A1B9] transition-colors hover:bg-[#F1F5F9] hover:text-[#45556C]"
-                          aria-label="View order"
-                          title="View order"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
+                        {order.paymentStatus === "PENDING" && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onView(order);
+                            }}
+                            className="flex h-[25px] min-w-[60px] shrink-0 items-center justify-center rounded-[14px] bg-[#00BC7D] px-4 font-['Inter'] text-sm font-bold leading-5 text-white transition-colors hover:bg-[#009966]"
+                          >
+                            Pay
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={(e) => {
@@ -127,6 +127,18 @@ export default function OrdersTable({ orders, onView, onEdit, onDelete }: Props)
                           }
                         >
                           <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onView(order);
+                          }}
+                          className="rounded-lg p-1.5 text-[#90A1B9] transition-colors hover:bg-[#F1F5F9] hover:text-[#45556C]"
+                          aria-label="View order"
+                          title="View order"
+                        >
+                          <Eye className="h-4 w-4" />
                         </button>
                         <button
                           type="button"
@@ -172,18 +184,19 @@ export default function OrdersTable({ orders, onView, onEdit, onDelete }: Props)
                     <PaymentStatusPill status={order.paymentStatus} />
                   </span>
                 </div>
-                <div className="flex gap-1">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onView(order);
-                    }}
-                    className="rounded-lg p-1.5 text-[#90A1B9] hover:bg-[#F1F5F9] hover:text-[#45556C]"
-                    aria-label="View order"
-                  >
-                    <Eye className="h-4 w-4" />
-                  </button>
+                <div className="flex items-center gap-1">
+                  {order.paymentStatus === "PENDING" && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onView(order);
+                      }}
+                      className="flex h-[25px] min-w-[60px] shrink-0 items-center justify-center rounded-[14px] bg-[#00BC7D] px-4 font-['Inter'] text-sm font-bold leading-5 text-white transition-colors hover:bg-[#009966]"
+                    >
+                      Pay
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={(e) => {
@@ -204,6 +217,17 @@ export default function OrdersTable({ orders, onView, onEdit, onDelete }: Props)
                     }
                   >
                     <Pencil className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onView(order);
+                    }}
+                    className="rounded-lg p-1.5 text-[#90A1B9] hover:bg-[#F1F5F9] hover:text-[#45556C]"
+                    aria-label="View order"
+                  >
+                    <Eye className="h-4 w-4" />
                   </button>
                   <button
                     type="button"

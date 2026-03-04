@@ -49,17 +49,20 @@ export default function Calculator() {
   const [operator, setOperator] = useState<string | null>(null);
   const [waitingForOperand, setWaitingForOperand] = useState(false);
 
-  const inputDigit = useCallback((digit: string) => {
-    setDisplay((prev) => {
-      if (waitingForOperand) return digit;
-      if (digit === "." && prev.includes(".")) return prev;
-      if (digit === "." && prev === "0") return "0.";
-      if (digit === "0" && prev === "0") return prev;
-      if (digit !== "." && prev === "0") return digit;
-      return prev + digit;
-    });
-    setWaitingForOperand(false);
-  }, [waitingForOperand]);
+  const inputDigit = useCallback(
+    (digit: string) => {
+      setDisplay((prev) => {
+        if (waitingForOperand) return digit;
+        if (digit === "." && prev.includes(".")) return prev;
+        if (digit === "." && prev === "0") return "0.";
+        if (digit === "0" && prev === "0") return prev;
+        if (digit !== "." && prev === "0") return digit;
+        return prev + digit;
+      });
+      setWaitingForOperand(false);
+    },
+    [waitingForOperand]
+  );
 
   const performOperation = useCallback(
     (nextOperator: string) => {
@@ -122,8 +125,7 @@ export default function Calculator() {
       {/* Buttons grid */}
       <div className="grid grid-cols-4 gap-2">
         {BUTTONS.map(({ value, type, span }) => {
-          const isOperator =
-            type === "operator" && value !== "±" && value !== "%";
+          const isOperator = type === "operator" && value !== "±" && value !== "%";
           const isEquals = type === "equals";
           const isClear = type === "clear";
           return (
