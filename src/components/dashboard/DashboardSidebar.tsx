@@ -10,11 +10,10 @@ import {
   Calculator,
   LogOut,
   X,
-  UserRound,
-  Boxes,
 } from "lucide-react";
 import OrdersIcon from "@/components/icons/OrdersIcon";
 import { ROUTES } from "@/lib/constants";
+import { getFirstName } from "@/lib/format";
 import { useCalculator } from "@/contexts/CalculatorContext";
 import { useSidebar } from "@/contexts/SidebarContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -25,8 +24,6 @@ const navLinks = [
   { href: ROUTES.DASHBOARD_ORDERS, label: "Orders", icon: OrdersIcon },
   { href: ROUTES.DASHBOARD_PAYMENTS, label: "Payments", icon: CreditCard },
   { href: ROUTES.DASHBOARD_CUSTOMERS, label: "Customers", icon: Users },
-  { href: ROUTES.DASHBOARD_USERS, label: "Users", icon: UserRound },
-  { href: ROUTES.DASHBOARD_INVENTORY, label: "Inventory", icon: Boxes },
 ] as const;
 
 function NavLink({
@@ -46,18 +43,18 @@ function NavLink({
     <Link
       href={href}
       onClick={onNavigate}
-      className={`flex flex-col items-center gap-1.5 py-2 min-[1920px]:gap-2 min-[1920px]:py-2.5 min-[2560px]:gap-2.5 min-[2560px]:py-3 transition-colors shrink-0 ${
+      className={`flex flex-col items-center gap-1 py-2.5 min-[1920px]:gap-1.5 min-[1920px]:py-3 min-[2560px]:gap-2 min-[2560px]:py-3.5 transition-colors shrink-0 ${
         isActive ? "text-primary" : "text-[#90A1B9] hover:text-zinc-700"
       }`}
     >
       <div
-        className={`flex items-center justify-center rounded-lg p-2 min-[1920px]:p-2.5 min-[2560px]:p-3 ${
+        className={`flex items-center justify-center rounded-lg p-1.5 min-[1920px]:p-2 min-[2560px]:p-2.5 ${
           isActive ? "bg-primary-muted" : ""
         }`}
       >
-        <Icon className="h-[22px] w-[22px] shrink-0 min-[1920px]:h-6 min-[1920px]:w-6 min-[2560px]:h-7 min-[2560px]:w-7" />
+        <Icon className="h-5 w-5 shrink-0 min-[1920px]:h-[22px] min-[1920px]:w-[22px] min-[2560px]:h-6 min-[2560px]:w-6" />
       </div>
-      <span className="text-[10px] font-medium uppercase tracking-wider leading-tight min-[1920px]:text-[11px] min-[2560px]:text-xs">
+      <span className="text-[9px] font-medium uppercase tracking-wider leading-tight min-[1920px]:text-[10px] min-[2560px]:text-[11px]">
         {label}
       </span>
     </Link>
@@ -76,18 +73,18 @@ function CalculatorTab({ onToggle }: { onToggle?: () => void }) {
     <button
       type="button"
       onClick={handleClick}
-      className={`flex flex-col items-center gap-1.5 py-2 min-[1920px]:gap-2 min-[1920px]:py-2.5 min-[2560px]:gap-2.5 min-[2560px]:py-3 transition-colors shrink-0 ${
+      className={`flex flex-col items-center gap-1 py-2.5 min-[1920px]:gap-1.5 min-[1920px]:py-3 min-[2560px]:gap-2 min-[2560px]:py-3.5 transition-colors shrink-0 ${
         isOpen ? "text-primary" : "text-[#90A1B9] hover:text-zinc-700"
       }`}
     >
       <div
-        className={`flex items-center justify-center rounded-lg p-2 min-[1920px]:p-2.5 min-[2560px]:p-3 ${
+        className={`flex items-center justify-center rounded-lg p-1.5 min-[1920px]:p-2 min-[2560px]:p-2.5 ${
           isOpen ? "bg-primary-muted" : ""
         }`}
       >
-        <Calculator className="h-[22px] w-[22px] shrink-0 min-[1920px]:h-6 min-[1920px]:w-6 min-[2560px]:h-7 min-[2560px]:w-7" />
+        <Calculator className="h-5 w-5 shrink-0 min-[1920px]:h-[22px] min-[1920px]:w-[22px] min-[2560px]:h-6 min-[2560px]:w-6" />
       </div>
-      <span className="text-[10px] font-medium uppercase tracking-wider leading-tight min-[1920px]:text-[11px] min-[2560px]:text-xs">
+      <span className="text-[9px] font-medium uppercase tracking-wider leading-tight min-[1920px]:text-[10px] min-[2560px]:text-[11px]">
         Calculator
       </span>
     </button>
@@ -153,27 +150,27 @@ export default function DashboardSidebar() {
         </nav>
 
       {/* Bottom - User & Logout (fixed, no scroll) */}
-      <div className="shrink-0 flex flex-col items-center gap-5 pb-5 pt-2 border-t border-zinc-200 min-[1920px]:gap-6 min-[1920px]:pb-6 min-[2560px]:gap-7 min-[2560px]:pb-6">
-        <div className="flex flex-col items-center gap-1.5 min-[1920px]:gap-2 min-[2560px]:gap-2.5">
+      <div className="shrink-0 flex flex-col items-center gap-4 pb-4 pt-2 border-t border-zinc-200 min-[1920px]:gap-5 min-[1920px]:pb-5 min-[2560px]:gap-6 min-[2560px]:pb-5">
+        <div className="flex flex-col items-center gap-1 min-[1920px]:gap-1.5 min-[2560px]:gap-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/profile.jpg"
             alt="Profile"
-            width={44}
-            height={44}
-            className="h-11 w-11 rounded-xl border-2 border-black object-cover shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.1),0px_1px_3px_0px_rgba(0,0,0,0.1)] min-[1920px]:h-12 min-[1920px]:w-12 min-[2560px]:h-14 min-[2560px]:w-14"
+            width={40}
+            height={40}
+            className="h-10 w-10 rounded-xl border-2 border-black object-cover shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.1),0px_1px_3px_0px_rgba(0,0,0,0.1)] min-[1920px]:h-11 min-[1920px]:w-11 min-[2560px]:h-12 min-[2560px]:w-12"
           />
-          <span className="text-[10px] font-medium uppercase tracking-wider text-[#90A1B9] min-[1920px]:text-[11px] min-[2560px]:text-xs">
-            {user?.name ?? "Cashier"}
+          <span className="text-[9px] font-medium uppercase tracking-wider text-[#90A1B9] min-[1920px]:text-[10px] min-[2560px]:text-[11px]">
+            {getFirstName(user?.name) || "Cashier"}
           </span>
         </div>
         <button
           type="button"
           onClick={logout}
-          className="flex flex-col items-center gap-1.5 text-[#90A1B9] transition-colors hover:text-zinc-700 min-[1920px]:gap-2 min-[2560px]:gap-2.5"
+          className="flex flex-col items-center gap-1 text-[#90A1B9] transition-colors hover:text-zinc-700 min-[1920px]:gap-1.5 min-[2560px]:gap-2"
         >
-          <LogOut className="h-5 w-5 min-[1920px]:h-6 min-[1920px]:w-6 min-[2560px]:h-7 min-[2560px]:w-7" />
-          <span className="text-[10px] font-medium uppercase tracking-wider min-[1920px]:text-[11px] min-[2560px]:text-xs">
+          <LogOut className="h-4 w-4 min-[1920px]:h-5 min-[1920px]:w-5 min-[2560px]:h-[22px] min-[2560px]:w-[22px]" />
+          <span className="text-[9px] font-medium uppercase tracking-wider min-[1920px]:text-[10px] min-[2560px]:text-[11px]">
             Logout
           </span>
         </button>

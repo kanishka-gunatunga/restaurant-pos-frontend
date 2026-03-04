@@ -39,6 +39,7 @@ export default function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loginSuccess, setLoginSuccess] = useState(false);
 
   // Redirect when we have a valid mapped user
   useEffect(() => {
@@ -46,6 +47,7 @@ export default function LoginForm() {
       if (user.role === "kitchen") router.replace(ROUTES.KITCHEN);
       else if (user.role === "cashier") router.replace(ROUTES.DASHBOARD_MENU);
       else router.replace(ROUTES.DASHBOARD);
+
     }
   }, [user, router]);
 
@@ -65,6 +67,7 @@ export default function LoginForm() {
       return;
     }
     setIsSubmitting(true);
+    let didSucceed = false;
     try {
       const result = await withTimeout(
         signIn("credentials", {
@@ -83,6 +86,8 @@ export default function LoginForm() {
       }
 
       if (result?.ok) {
+        didSucceed = true;
+        setLoginSuccess(true);
         await router.refresh();
         return;
       }
@@ -93,7 +98,7 @@ export default function LoginForm() {
       const msg = ERROR_MESSAGES[message] ?? ERROR_MESSAGES.SERVER_ERROR;
       setError(msg);
     } finally {
-      setIsSubmitting(false);
+      if (!didSucceed) setIsSubmitting(false);
     }
   };
 
@@ -143,7 +148,7 @@ export default function LoginForm() {
             value={employeeId}
             onChange={(e) => setEmployeeId(e.target.value)}
             autoComplete="username"
-            disabled={isSubmitting}
+            disabled={isSubmitting || loginSuccess}
             className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-3.5 pl-12 pr-4 text-zinc-800 placeholder:font-[Arial] placeholder:text-[16px] placeholder:leading-[100%] placeholder:text-[#31415880] focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
           />
         </div>
@@ -166,7 +171,7 @@ export default function LoginForm() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"
-            disabled={isSubmitting}
+            disabled={isSubmitting || loginSuccess}
             className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-3.5 pl-12 pr-4 text-zinc-800 placeholder:font-[Arial] placeholder:text-[16px] placeholder:leading-[100%] placeholder:text-[#31415880] focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
           />
         </div>
@@ -175,10 +180,10 @@ export default function LoginForm() {
       {/* Sign In Button */}
       <button
         type="submit"
-        disabled={isSubmitting}
+        disabled={isSubmitting || loginSuccess}
         className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 font-medium text-white shadow-[var(--shadow-primary)] transition-all hover:bg-primary-hover active:scale-[0.98] disabled:opacity-60 disabled:pointer-events-none"
       >
-        {isSubmitting ? "Signing in…" : "Sign In to Terminal"}
+        {loginSuccess ? "Redirecting…" : isSubmitting ? "Signing in…" : "Sign In to Terminal"}
         <ArrowRight className="h-5 w-5" />
       </button>
 

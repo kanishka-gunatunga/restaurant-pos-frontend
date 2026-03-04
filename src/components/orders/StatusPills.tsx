@@ -1,5 +1,5 @@
-import type { OrderStatus, PaymentStatus } from "../types";
-import { STATUS_STYLES, PAYMENT_STATUS_STYLES } from "../constants";
+import type { OrderStatus, PaymentStatus } from "@/domains/orders/types";
+import { STATUS_STYLES, PAYMENT_STATUS_STYLES } from "@/domains/orders/constants";
 
 export function StatusPill({ status }: { status: OrderStatus }) {
   const { bg, border, text } = STATUS_STYLES[status];

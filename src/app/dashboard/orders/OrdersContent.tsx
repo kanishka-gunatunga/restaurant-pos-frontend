@@ -4,12 +4,12 @@ import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
 import EditOrderModal from "@/components/orders/EditOrderModal";
 import OrderDetailsViewModal from "@/components/orders/OrderDetailsViewModal";
 import ManagerAuthorizationModal from "@/components/orders/ManagerAuthorizationModal";
-import OrdersHeader from "./components/OrdersHeader";
-import OrdersFilterSection from "./components/OrdersFilterSection";
-import OrdersTable from "./components/OrdersTable";
-import { useOrdersFilters } from "./hooks/useOrdersFilters";
-import { useOrderModals } from "./hooks/useOrderModals";
-import { MOCK_ORDERS } from "./mockOrders";
+import OrdersHeader from "@/components/orders/OrdersHeader";
+import OrdersFilterSection from "@/components/orders/OrdersFilterSection";
+import OrdersTable from "@/components/orders/OrdersTable";
+import { useOrdersFilters } from "@/domains/orders/hooks/useOrdersFilters";
+import { useOrderModals } from "@/domains/orders/hooks/useOrderModals";
+import { MOCK_ORDERS } from "@/domains/orders/mockOrders";
 
 export default function OrdersContent() {
   const {

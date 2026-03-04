@@ -1,7 +1,7 @@
 "use client";
 
 import { Plus, Pencil, Trash2 } from "lucide-react";
-import { MOCK_ADDON_GROUPS } from "../types";
+import { MOCK_ADDON_GROUPS } from "@/domains/inventory/types";
 
 type AddonsTabProps = {
   onAddGroup: () => void;
@@ -11,7 +11,7 @@ export default function AddonsTab({ onAddGroup }: AddonsTabProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="font-['Inter'] text-lg font-bold text-[#1D293D]">
+        <h2 className="font-['Inter'] text-[16px] font-bold leading-6 text-[#314158]">
           Add-on Groups
         </h2>
         <button
