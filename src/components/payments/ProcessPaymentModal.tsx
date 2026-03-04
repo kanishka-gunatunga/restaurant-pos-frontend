@@ -1,31 +1,45 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Banknote, CreditCard, ChevronRight, Check, ArrowLeft, Calculator, ArrowRight } from "lucide-react";
-import { Payment } from "./PaymentHistoryTable";
+import { X, Banknote, CreditCard, Check, Calculator, ArrowRight, Loader2 } from "lucide-react";
+import { Payment } from "@/types/payment";
+import { useCreatePayment } from "@/hooks/usePayment";
 
 interface ProcessPaymentModalProps {
     payment: Payment;
     onClose: () => void;
-    onComplete: (paymentId: string, method: string) => void;
 }
 
 type Step = "METHOD" | "INPUT" | "SUCCESS";
 
-export default function ProcessPaymentModal({ payment, onClose, onComplete }: ProcessPaymentModalProps) {
+export default function ProcessPaymentModal({ payment, onClose }: ProcessPaymentModalProps) {
     const [step, setStep] = useState<Step>("METHOD");
-    const [method, setMethod] = useState<"Cash" | "Card" | null>(null);
+    const [method, setMethod] = useState<"cash" | "card" | null>(null);
     const [amountGiven, setAmountGiven] = useState<string>(payment.amount.toString());
     const [changeToReturn, setChangeToReturn] = useState<number>(0);
+
+    const createPaymentMutation = useCreatePayment();
 
     useEffect(() => {
         const given = parseFloat(amountGiven) || 0;
         setChangeToReturn(Math.max(0, given - payment.amount));
     }, [amountGiven, payment.amount]);
 
-    const handleComplete = () => {
-        onComplete(payment.id, method!);
-        setStep("SUCCESS");
+    const handleComplete = async () => {
+        if (!method) return;
+
+        try {
+            await createPaymentMutation.mutateAsync({
+                orderId: payment.orderNo as number,
+                paymentMethod: method,
+                amount: payment.amount,
+                status: "paid"
+            });
+            setStep("SUCCESS");
+        } catch (error) {
+            console.error("Payment failed:", error);
+            // Handle error (could add an error state/toast here)
+        }
     };
 
     return (
@@ -46,7 +60,8 @@ export default function ProcessPaymentModal({ payment, onClose, onComplete }: Pr
                     </div>
                     <button
                         onClick={onClose}
-                        className="flex h-8 w-8 items-center justify-center rounded-full text-[#90A1B9] hover:bg-[#F8FAFC] transition-colors"
+                        disabled={createPaymentMutation.isPending}
+                        className="flex h-8 w-8 items-center justify-center rounded-full text-[#90A1B9] hover:bg-[#F8FAFC] transition-colors disabled:opacity-50"
                     >
                         <X className="h-5 w-5" />
                     </button>
@@ -58,7 +73,7 @@ export default function ProcessPaymentModal({ payment, onClose, onComplete }: Pr
                             <h3 className="text-[18px] font-bold text-[#314158]">Select Payment Method</h3>
                             <div className="grid grid-cols-2 gap-6">
                                 <button
-                                    onClick={() => { setMethod("Cash"); setStep("INPUT"); }}
+                                    onClick={() => { setMethod("cash"); setStep("INPUT"); }}
                                     className="group flex flex-col items-center gap-4 rounded-[24px] border-2 border-[#A4F4CF] bg-[#D0FAE580] p-8 transition-all hover:border-[#00BC7D] hover:bg-[#F1FDF9]"
                                 >
                                     <div className="flex h-16 w-16 items-center justify-center rounded-[18px] bg-[#00BC7D] text-white shadow-lg shadow-[#00BC7D]/20 transition-transform group-hover:scale-110">
@@ -71,11 +86,16 @@ export default function ProcessPaymentModal({ payment, onClose, onComplete }: Pr
                                 </button>
 
                                 <button
-                                    onClick={() => { setMethod("Card"); handleComplete(); }}
-                                    className="group flex flex-col items-center gap-4 rounded-[24px] border-2 bg-[#DBEAFE80] border-[#BEDBFF] p-8 transition-all hover:border-[#2B7FFF] hover:bg-[#F1F7FF]"
+                                    onClick={() => { setMethod("card"); handleComplete(); }}
+                                    disabled={createPaymentMutation.isPending}
+                                    className="group flex flex-col items-center gap-4 rounded-[24px] border-2 bg-[#DBEAFE80] border-[#BEDBFF] p-8 transition-all hover:border-[#2B7FFF] hover:bg-[#F1F7FF] disabled:opacity-50"
                                 >
                                     <div className="flex h-16 w-16 items-center justify-center rounded-[18px] bg-[#2B7FFF] text-white shadow-lg shadow-[#2B7FFF]/20 transition-transform group-hover:scale-110">
-                                        <CreditCard className="h-8 w-8" />
+                                        {createPaymentMutation.isPending && method === "card" ? (
+                                            <Loader2 className="h-8 w-8 animate-spin" />
+                                        ) : (
+                                            <CreditCard className="h-8 w-8" />
+                                        )}
                                     </div>
                                     <div className="text-center">
                                         <p className="text-[20px] font-bold text-[#1D293D]">Card</p>
@@ -127,16 +147,26 @@ export default function ProcessPaymentModal({ payment, onClose, onComplete }: Pr
                             <div className="grid grid-cols-2 gap-4 mt-8">
                                 <button
                                     onClick={() => setStep("METHOD")}
-                                    className="flex h-14 items-center justify-center gap-2 rounded-[18px] bg-[#E2E8F0] text-[16px] font-bold text-[#314158] transition-all hover:bg-[#E2E8F0] active:scale-95"
+                                    disabled={createPaymentMutation.isPending}
+                                    className="flex h-14 items-center justify-center gap-2 rounded-[18px] bg-[#E2E8F0] text-[16px] font-bold text-[#314158] transition-all hover:bg-[#E2E8F0] active:scale-95 disabled:opacity-50"
                                 >
                                     Back
                                 </button>
                                 <button
                                     onClick={handleComplete}
-                                    disabled={parseFloat(amountGiven) < payment.amount}
+                                    disabled={createPaymentMutation.isPending || parseFloat(amountGiven) < payment.amount}
                                     className="flex h-14 items-center justify-center gap-2 rounded-[18px] bg-[#00BC7D] text-[16px] font-bold text-white shadow-lg shadow-[#00BC7D]/20 transition-all hover:bg-[#009966] active:scale-95 disabled:opacity-50 disabled:scale-100"
                                 >
-                                    Complete Payment <ArrowRight className="h-4 w-4" />
+                                    {createPaymentMutation.isPending ? (
+                                        <>
+                                            <Loader2 className="h-5 w-5 animate-spin" />
+                                            Processing...
+                                        </>
+                                    ) : (
+                                        <>
+                                            Complete Payment <ArrowRight className="h-4 w-4" />
+                                        </>
+                                    )}
                                 </button>
                             </div>
                         </div>

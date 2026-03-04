@@ -1,31 +1,91 @@
 "use client";
 
-import { Plus, Trash2, X } from "lucide-react";
-import type { AddonGroupItem } from "@/domains/inventory/types";
+import { useState, useEffect } from "react";
+import { Plus, X, Loader2 } from "lucide-react";
+import { useCreateModification, useUpdateModification } from "@/hooks/useModification";
+import { Modification } from "@/types/product";
 
 type AddGroupModalProps = {
   open: boolean;
   overlayVisible: boolean;
-  groupName: string;
-  items: AddonGroupItem[];
-  onGroupNameChange: (value: string) => void;
-  onItemAdd: () => void;
-  onItemRemove: (index: number) => void;
-  onItemUpdate: (index: number, field: "name" | "price", value: string) => void;
+  editingModification?: Modification | null;
   onClose: () => void;
 };
 
 export default function AddGroupModal({
   open,
   overlayVisible,
-  groupName,
-  items,
-  onGroupNameChange,
-  onItemAdd,
-  onItemRemove,
-  onItemUpdate,
+  editingModification,
   onClose,
 }: AddGroupModalProps) {
+  const [groupName, setGroupName] = useState("");
+  const [items, setItems] = useState<{ id?: number; name: string; price: string }[]>([
+    { name: "", price: "" },
+    { name: "", price: "" },
+  ]);
+
+  const createMutation = useCreateModification();
+  const updateMutation = useUpdateModification();
+
+  const isEditing = !!editingModification;
+  const isLoading = createMutation.isPending || updateMutation.isPending;
+
+  useEffect(() => {
+    if (open) {
+      if (editingModification) {
+        setGroupName(editingModification.title);
+        setItems(
+          editingModification.items?.map((item) => ({
+            id: item.id,
+            name: item.title,
+            price: item.price.toString(),
+          })) || [
+            { name: "", price: "" },
+            { name: "", price: "" },
+          ]
+        );
+      } else {
+        setGroupName("");
+        setItems([
+          { name: "", price: "" },
+          { name: "", price: "" },
+        ]);
+      }
+    }
+  }, [open, editingModification]);
+
+  const handleSave = async () => {
+    if (!groupName.trim()) return;
+
+    const validItems = items
+      .filter((item) => item.name.trim() && item.price.trim())
+      .map((item) => ({
+        id: item.id,
+        title: item.name,
+        price: parseFloat(item.price) || 0,
+      }));
+
+    try {
+      if (isEditing && editingModification) {
+        await updateMutation.mutateAsync({
+          id: editingModification.id,
+          payload: {
+            title: groupName,
+            items: validItems,
+          },
+        });
+      } else {
+        await createMutation.mutateAsync({
+          title: groupName,
+          items: validItems,
+        });
+      }
+      onClose();
+    } catch (error) {
+      console.error("Failed to save addon group:", error);
+    }
+  };
+
   if (!open) return null;
 
   return (
@@ -43,7 +103,7 @@ export default function AddGroupModal({
       >
         <div className="mb-6 flex shrink-0 items-center justify-between">
           <h2 id="add-group-title" className="font-['Inter'] text-[20px] font-bold text-[#1D293D]">
-            New Add-on Group
+            {isEditing ? "Edit Add-on Group" : "New Add-on Group"}
           </h2>
           <button
             type="button"
@@ -55,7 +115,7 @@ export default function AddGroupModal({
           </button>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-4 overflow-y-auto pr-2 [scrollbar-color:#E2E8F0_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#E2E8F0] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-1.5">
           <div className="shrink-0">
             <label htmlFor="group-name" className="mb-1.5 block font-['Inter'] text-xs font-bold uppercase tracking-wide text-[#45556C]">
               Group Name
@@ -64,9 +124,10 @@ export default function AddGroupModal({
               id="group-name"
               type="text"
               value={groupName}
-              onChange={(e) => onGroupNameChange(e.target.value)}
+              onChange={(e) => setGroupName(e.target.value)}
               placeholder="e.g. Large Pizza Add-ons"
               className="w-full rounded-[10px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2.5 font-['Inter'] text-sm text-[#1D293D] placeholder:text-[#90A1B9] focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C]"
+              disabled={isLoading}
             />
           </div>
 
@@ -77,14 +138,15 @@ export default function AddGroupModal({
               </label>
               <button
                 type="button"
-                onClick={onItemAdd}
+                onClick={() => setItems([...items, { name: "", price: "" }])}
                 className="flex items-center gap-1 font-['Inter'] text-sm font-bold text-[#EA580C]"
+                disabled={isLoading}
               >
                 <Plus className="h-4 w-4" />
                 Add Another Item
               </button>
             </div>
-            <div className="max-h-48 min-h-0 space-y-4 overflow-y-auto [scrollbar-color:#E2E8F0_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#E2E8F0] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-1.5">
+            <div className="space-y-4">
               {items.map((item, index) => (
                 <div key={index} className="flex shrink-0 gap-3">
                   <div className="min-w-0 flex-1">
@@ -94,9 +156,14 @@ export default function AddGroupModal({
                     <input
                       type="text"
                       value={item.name}
-                      onChange={(e) => onItemUpdate(index, "name", e.target.value)}
+                      onChange={(e) => {
+                        const next = [...items];
+                        next[index].name = e.target.value;
+                        setItems(next);
+                      }}
                       placeholder="Item Name"
                       className="w-full rounded-[10px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2.5 font-['Inter'] text-sm text-[#1D293D] placeholder:text-[#90A1B9] focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C]"
+                      disabled={isLoading}
                     />
                   </div>
                   <div className="w-24 shrink-0">
@@ -105,21 +172,27 @@ export default function AddGroupModal({
                     </label>
                     <input
                       type="text"
-                      inputMode="numeric"
+                      inputMode="decimal"
                       value={item.price}
-                      onChange={(e) => onItemUpdate(index, "price", e.target.value)}
+                      onChange={(e) => {
+                        const next = [...items];
+                        next[index].price = e.target.value;
+                        setItems(next);
+                      }}
                       placeholder="1000"
                       className="w-full rounded-[10px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2.5 font-['Inter'] text-sm text-[#1D293D] placeholder:text-[#90A1B9] focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C]"
+                      disabled={isLoading}
                     />
                   </div>
                   <div className="flex items-end pb-1">
                     <button
                       type="button"
-                      onClick={() => onItemRemove(index)}
+                      onClick={() => setItems(items.filter((_, i) => i !== index))}
                       className="rounded-lg p-2 text-[#90A1B9] hover:bg-red-50 hover:text-red-600"
                       aria-label="Remove item"
+                      disabled={isLoading}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <X className="h-4 w-4" />
                     </button>
                   </div>
                 </div>
@@ -128,19 +201,23 @@ export default function AddGroupModal({
           </div>
         </div>
 
-        <div className="mt-6 flex shrink-0 justify-end gap-3">
+        <div className="mt-6 flex shrink-0 justify-end gap-3 border-t border-[#F1F5F9] pt-4">
           <button
             type="button"
             onClick={onClose}
             className="rounded-[14px] border border-[#E2E8F0] bg-white px-4 py-2.5 font-['Inter'] text-sm font-bold text-[#45556C] hover:bg-[#F8FAFC]"
+            disabled={isLoading}
           >
             Cancel
           </button>
           <button
             type="button"
-            className="rounded-[14px] bg-[#EA580C] px-4 py-2.5 font-['Inter'] text-sm font-bold text-white shadow-[0px_4px_6px_-4px_#EA580C33,0px_10px_15px_-3px_#EA580C33] hover:bg-[#c2410c]"
+            onClick={handleSave}
+            disabled={isLoading || !groupName.trim()}
+            className="flex items-center gap-2 rounded-[14px] bg-[#EA580C] px-4 py-2.5 font-['Inter'] text-sm font-bold text-white shadow-[0px_4px_6px_-4px_#EA580C33,0px_10px_15px_-3px_#EA580C33] hover:bg-[#c2410c] disabled:opacity-50"
           >
-            Create Group
+            {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+            {isEditing ? "Update Group" : "Create Group"}
           </button>
         </div>
       </div>

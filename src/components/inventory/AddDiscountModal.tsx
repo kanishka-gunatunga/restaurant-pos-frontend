@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   X,
   Search,
@@ -11,23 +11,26 @@ import {
   DollarSign,
   Calendar,
   Package,
+  Loader2,
 } from "lucide-react";
 import {
-  MOCK_PRODUCTS_FOR_DISCOUNT,
-  type ProductForDiscount,
-  type ProductVariantForDiscount,
-  type DiscountOffer,
-  type DiscountItem,
-} from "@/domains/inventory/types";
+  type Discount,
+  type Product,
+  type VariationOption,
+  type CreateDiscountPayload,
+  type UpdateDiscountPayload,
+} from "@/types/product";
+import { useGetAllProducts } from "@/hooks/useProduct";
+import { useCreateDiscount, useUpdateDiscount } from "@/hooks/useDiscount";
 
 type DiscountType = "percentage" | "fixed";
 
 type SelectedDiscount = {
-  productId: string;
-  variantId?: string;
+  productId: number;
+  variantId?: number;
   productName: string;
   variantName?: string;
-  basePrice: string;
+  basePrice: number;
   type: DiscountType;
   value: number;
 };
@@ -36,56 +39,82 @@ type AddDiscountModalProps = {
   open: boolean;
   overlayVisible: boolean;
   onClose: () => void;
-  onCreate: (offer: DiscountOffer) => void;
+  editingDiscount?: Discount | null;
 };
 
-function parsePrice(priceStr: string): number {
-  const num = parseFloat(priceStr.replace(/[^0-9.]/g, ""));
-  return isNaN(num) ? 0 : num;
-}
-
 function formatPrice(value: number): string {
-  return `Rs.${value.toFixed(2)}`;
+  return `Rs.${Number(value).toFixed(2)}`;
 }
 
 export default function AddDiscountModal({
   open,
   overlayVisible,
   onClose,
-  onCreate,
+  editingDiscount,
 }: AddDiscountModalProps) {
+  const { data: products } = useGetAllProducts({ status: "active" });
+  const createMutation = useCreateDiscount();
+  const updateMutation = useUpdateDiscount();
+
   const [discountName, setDiscountName] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [expandedProduct, setExpandedProduct] = useState<string | null>(null);
+  const [expandedProduct, setExpandedProduct] = useState<number | null>(null);
   const [selectedDiscounts, setSelectedDiscounts] = useState<SelectedDiscount[]>([]);
 
-  const filteredProducts = MOCK_PRODUCTS_FOR_DISCOUNT.filter((p) =>
-    p.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const isEditing = !!editingDiscount;
+  const isLoading = createMutation.isPending || updateMutation.isPending;
 
-  const handleToggleExpand = (productId: string) => {
-    setExpandedProduct((prev) => (prev === productId ? null : productId));
+  useEffect(() => {
+    if (open) {
+      if (editingDiscount) {
+        setDiscountName(editingDiscount.name);
+        setExpiryDate(editingDiscount.expiryDate || "");
+        setSelectedDiscounts(
+          editingDiscount.items?.map((item) => ({
+            productId: item.productId!,
+            variantId: item.variationOptionId!,
+            productName: item.product?.name || "Product",
+            variantName: item.variationOption?.name,
+            basePrice: Number(item.variationOption?.prices?.[0]?.price || item.product?.variations?.[0]?.options?.[0]?.prices?.[0]?.price || 0),
+            type: item.discountType as DiscountType,
+            value: Number(item.discountValue),
+          })) || []
+        );
+      } else {
+        setDiscountName("");
+        setExpiryDate("");
+        setSelectedDiscounts([]);
+      }
+    }
+  }, [open, editingDiscount]);
+
+  const filteredProducts = products?.filter((p) =>
+    p.name.toLowerCase().includes(searchTerm.toLowerCase())
+  ) || [];
+
+  const handleToggleExpand = (productId: number) => {
+    setExpandedProduct((prev: number | null) => (prev === productId ? null : productId));
   };
 
-  const isSelected = (productId: string, variantId?: string) =>
+  const isSelected = (productId: number, variantId?: number) =>
     selectedDiscounts.some(
       (s) => s.productId === productId && s.variantId === variantId
     );
 
   const handleToggleSelect = (
-    product: ProductForDiscount,
-    variant?: ProductVariantForDiscount
+    product: Product,
+    variant?: VariationOption
   ) => {
     const variantId = variant?.id;
     if (isSelected(product.id, variantId)) {
-      setSelectedDiscounts((prev) =>
+      setSelectedDiscounts((prev: SelectedDiscount[]) =>
         prev.filter(
-          (s) => !(s.productId === product.id && s.variantId === variantId)
+          (s: SelectedDiscount) => !(s.productId === product.id && s.variantId === variantId)
         )
       );
     } else {
-      const basePrice = variant?.price ?? product.price;
+      const basePrice = Number(variant?.prices?.[0]?.price || product.variations?.[0]?.options?.[0]?.prices?.[0]?.price || 0);
       setSelectedDiscounts((prev) => [
         ...prev,
         {
@@ -101,22 +130,22 @@ export default function AddDiscountModal({
     }
   };
 
-  const handleRemove = (productId: string, variantId?: string) => {
-    setSelectedDiscounts((prev) =>
+  const handleRemove = (productId: number, variantId?: number) => {
+    setSelectedDiscounts((prev: SelectedDiscount[]) =>
       prev.filter(
-        (s) => !(s.productId === productId && s.variantId === variantId)
+        (s: SelectedDiscount) => !(s.productId === productId && s.variantId === variantId)
       )
     );
   };
 
   const handleUpdateDiscount = (
-    productId: string,
-    variantId: string | undefined,
+    productId: number,
+    variantId: number | undefined,
     field: "type" | "value",
     value: DiscountType | number
   ) => {
-    setSelectedDiscounts((prev) =>
-      prev.map((s) =>
+    setSelectedDiscounts((prev: SelectedDiscount[]) =>
+      prev.map((s: SelectedDiscount) =>
         s.productId === productId && s.variantId === variantId
           ? { ...s, [field]: value }
           : s
@@ -124,7 +153,7 @@ export default function AddDiscountModal({
     );
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!discountName.trim()) return;
     if (selectedDiscounts.length === 0) return;
@@ -134,39 +163,27 @@ export default function AddDiscountModal({
       if (s.type === "fixed" && s.value <= 0) return;
     }
 
-    const items: DiscountItem[] = selectedDiscounts.map((s) => {
-      const baseNum = parsePrice(s.basePrice);
-      const discountPercent =
-        s.type === "percentage"
-          ? s.value
-          : baseNum > 0
-            ? (s.value / baseNum) * 100
-            : 0;
-      return {
-        productName: s.productName,
-        variant: s.variantName,
-        discountPercent: Math.min(100, Math.round(discountPercent * 10) / 10),
-      };
-    });
-
-    const uniqueProducts = new Set(selectedDiscounts.map((s) => s.productId));
-
-    const offer: DiscountOffer = {
-      id: `disc-${Date.now()}`,
+    const payload: CreateDiscountPayload = {
       name: discountName.trim(),
-      isActive: true,
-      productCount: uniqueProducts.size,
-      variantCount: selectedDiscounts.length,
-      items,
+      expiryDate: expiryDate || undefined,
+      items: selectedDiscounts.map((s) => ({
+        productId: s.productId,
+        variationOptionId: s.variantId,
+        discountType: s.type,
+        discountValue: s.value,
+      })),
     };
 
-    onCreate(offer);
-    setDiscountName("");
-    setExpiryDate("");
-    setSearchTerm("");
-    setSelectedDiscounts([]);
-    setExpandedProduct(null);
-    onClose();
+    try {
+      if (isEditing && editingDiscount) {
+        await updateMutation.mutateAsync({ id: editingDiscount.id, payload: payload as UpdateDiscountPayload });
+      } else {
+        await createMutation.mutateAsync(payload);
+      }
+      onClose();
+    } catch (err) {
+      console.error("Failed to save discount:", err);
+    }
   };
 
   if (!open) return null;
@@ -266,7 +283,8 @@ export default function AddDiscountModal({
                   </div>
                 ) : (
                   filteredProducts.map((product) => {
-                    const hasVariants = product.variants && product.variants.length > 0;
+                    const variants = product.variations?.[0]?.options || [];
+                    const hasVariants = variants.length > 1;
                     const isExpanded = expandedProduct === product.id;
 
                     return (
@@ -280,7 +298,7 @@ export default function AddDiscountModal({
                         >
                           <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-[#E2E8F0]">
                             <img
-                              src={product.image}
+                              src={product.image || ""}
                               alt={product.name}
                               className="h-full w-full object-cover"
                             />
@@ -290,9 +308,9 @@ export default function AddDiscountModal({
                               {product.name}
                             </p>
                             <p className="font-['Inter'] text-xs text-[#90A1B9]">
-                              {product.price}
-                              {hasVariants &&
-                                ` • ${product.variants!.length} variants`}
+                              {formatPrice(Number(product.variations?.[0]?.options?.[0]?.prices?.[0]?.price || 0))}
+                              {product.variations?.[0]?.options && product.variations[0].options.length > 1 &&
+                                ` • ${product.variations[0].options.length} variants`}
                             </p>
                           </div>
                           <button
@@ -317,18 +335,16 @@ export default function AddDiscountModal({
                                   e.stopPropagation();
                                   handleToggleSelect(product);
                                 }}
-                                className={`mt-2 flex w-full items-center gap-2 rounded-xl border p-3 text-left transition-colors ${
-                                  isSelected(product.id)
-                                    ? "border-[#EA580C] bg-[#EA580C]/10"
-                                    : "border-[#E2E8F0] hover:border-[#CBD5E1]"
-                                }`}
+                                className={`mt-2 flex w-full items-center gap-2 rounded-xl border p-3 text-left transition-colors ${isSelected(product.id)
+                                  ? "border-[#EA580C] bg-[#EA580C]/10"
+                                  : "border-[#E2E8F0] hover:border-[#CBD5E1]"
+                                  }`}
                               >
                                 <span
-                                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-lg border-2 ${
-                                    isSelected(product.id)
-                                      ? "border-[#EA580C] bg-[#EA580C]"
-                                      : "border-[#CBD5E1]"
-                                  }`}
+                                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-lg border-2 ${isSelected(product.id)
+                                    ? "border-[#EA580C] bg-[#EA580C]"
+                                    : "border-[#CBD5E1]"
+                                    }`}
                                 >
                                   {isSelected(product.id) && (
                                     <Check className="h-3 w-3 text-white" />
@@ -338,12 +354,12 @@ export default function AddDiscountModal({
                                   {product.name}
                                 </span>
                                 <span className="font-['Inter'] text-xs text-[#90A1B9]">
-                                  {product.price}
+                                  {formatPrice(Number(product.variations?.[0]?.options?.[0]?.prices?.[0]?.price || 0))}
                                 </span>
                               </button>
                             ) : (
                               <div className="mt-2 space-y-2">
-                                {product.variants!.map((variant) => (
+                                {variants.map((variant: VariationOption) => (
                                   <button
                                     key={variant.id}
                                     type="button"
@@ -351,18 +367,16 @@ export default function AddDiscountModal({
                                       e.stopPropagation();
                                       handleToggleSelect(product, variant);
                                     }}
-                                    className={`flex w-full items-center gap-2 rounded-xl border p-3 text-left transition-colors ${
-                                      isSelected(product.id, variant.id)
-                                        ? "border-[#EA580C] bg-[#EA580C]/10"
-                                        : "border-[#E2E8F0] hover:border-[#CBD5E1]"
-                                    }`}
+                                    className={`flex w-full items-center gap-2 rounded-xl border p-3 text-left transition-colors ${isSelected(product.id, variant.id)
+                                      ? "border-[#EA580C] bg-[#EA580C]/10"
+                                      : "border-[#E2E8F0] hover:border-[#CBD5E1]"
+                                      }`}
                                   >
                                     <span
-                                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-lg border-2 ${
-                                        isSelected(product.id, variant.id)
-                                          ? "border-[#EA580C] bg-[#EA580C]"
-                                          : "border-[#CBD5E1]"
-                                      }`}
+                                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-lg border-2 ${isSelected(product.id, variant.id)
+                                        ? "border-[#EA580C] bg-[#EA580C]"
+                                        : "border-[#CBD5E1]"
+                                        }`}
                                     >
                                       {isSelected(product.id, variant.id) && (
                                         <Check className="h-3 w-3 text-white" />
@@ -372,7 +386,7 @@ export default function AddDiscountModal({
                                       {variant.name}
                                     </span>
                                     <span className="font-['Inter'] text-xs text-[#90A1B9]">
-                                      {variant.price}
+                                      {formatPrice(Number(variant.prices?.[0]?.price || 0))}
                                     </span>
                                   </button>
                                 ))}
@@ -406,8 +420,8 @@ export default function AddDiscountModal({
                     </p>
                   </div>
                 ) : (
-                  selectedDiscounts.map((config) => {
-                    const basePriceNum = parsePrice(config.basePrice);
+                  selectedDiscounts.map((config: SelectedDiscount) => {
+                    const basePriceNum = config.basePrice;
                     const discountAmount =
                       config.type === "percentage"
                         ? (basePriceNum * config.value) / 100
@@ -450,11 +464,10 @@ export default function AddDiscountModal({
                                 "percentage"
                               )
                             }
-                            className={`flex flex-1 items-center justify-center gap-1 rounded-xl border px-3 py-2 font-['Inter'] text-xs font-bold transition-colors ${
-                              config.type === "percentage"
-                                ? "border-[#EA580C] bg-[#EA580C]/10 text-[#EA580C]"
-                                : "border-[#E2E8F0] text-[#90A1B9] hover:border-[#CBD5E1]"
-                            }`}
+                            className={`flex flex-1 items-center justify-center gap-1 rounded-xl border px-3 py-2 font-['Inter'] text-xs font-bold transition-colors ${config.type === "percentage"
+                              ? "border-[#EA580C] bg-[#EA580C]/10 text-[#EA580C]"
+                              : "border-[#E2E8F0] text-[#90A1B9] hover:border-[#CBD5E1]"
+                              }`}
                           >
                             <Percent className="h-3.5 w-3.5" />
                             Percentage
@@ -469,11 +482,10 @@ export default function AddDiscountModal({
                                 "fixed"
                               )
                             }
-                            className={`flex flex-1 items-center justify-center gap-1 rounded-xl border px-3 py-2 font-['Inter'] text-xs font-bold transition-colors ${
-                              config.type === "fixed"
-                                ? "border-[#EA580C] bg-[#EA580C]/10 text-[#EA580C]"
-                                : "border-[#E2E8F0] text-[#90A1B9] hover:border-[#CBD5E1]"
-                            }`}
+                            className={`flex flex-1 items-center justify-center gap-1 rounded-xl border px-3 py-2 font-['Inter'] text-xs font-bold transition-colors ${config.type === "fixed"
+                              ? "border-[#EA580C] bg-[#EA580C]/10 text-[#EA580C]"
+                              : "border-[#E2E8F0] text-[#90A1B9] hover:border-[#CBD5E1]"
+                              }`}
                           >
                             <DollarSign className="h-3.5 w-3.5" />
                             Fixed Price
@@ -534,9 +546,11 @@ export default function AddDiscountModal({
             </button>
             <button
               type="submit"
-              className="rounded-[14px] bg-[#EA580C] px-4 py-2.5 font-['Inter'] text-sm font-bold text-white shadow-[0px_4px_6px_-4px_#EA580C33,0px_10px_15px_-3px_#EA580C33] hover:bg-[#c2410c]"
+              disabled={isLoading || !discountName.trim() || selectedDiscounts.length === 0}
+              className="flex items-center gap-2 rounded-[14px] bg-[#EA580C] px-4 py-2.5 font-['Inter'] text-sm font-bold text-white shadow-[0px_4px_6px_-4px_#EA580C33,0px_10px_15px_-3px_#EA580C33] hover:bg-[#c2410c] disabled:opacity-50"
             >
-              Create Discount
+              {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+              {isEditing ? "Update Discount" : "Create Discount"}
             </button>
           </div>
         </form>

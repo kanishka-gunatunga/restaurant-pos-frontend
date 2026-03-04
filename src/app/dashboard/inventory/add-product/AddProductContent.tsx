@@ -18,8 +18,10 @@ import {
 import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
 import { ROUTES } from "@/lib/constants";
 import { useAuth } from "@/contexts/AuthContext";
-import { BRANCHES } from "@/lib/branchData";
-import { MOCK_CATEGORIES, MOCK_ADDON_GROUPS } from "@/domains/inventory/types";
+import { useGetAllCategories } from "@/hooks/useCategory";
+import { useGetAllModifications } from "@/hooks/useModification";
+import { useCreateProduct } from "@/hooks/useProduct";
+import { useGetAllBranches } from "@/hooks/useBranch";
 
 const PRIMARY = "#EA580C";
 
@@ -37,7 +39,7 @@ interface VariantCombination {
 interface BranchVariantConfig {
   price: string;
   quantity: string;
-  addonGroups: string[];
+  addonGroups: number[];
   expireDate: string;
   batchNo: string;
 }
@@ -49,6 +51,7 @@ export default function AddProductContent() {
 
   // Step 1
   const [productName, setProductName] = useState("");
+  const [productCode, setProductCode] = useState("");
   const [description, setDescription] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
@@ -59,8 +62,8 @@ export default function AddProductContent() {
       if (imagePreview) URL.revokeObjectURL(imagePreview);
     };
   }, [imagePreview]);
-  const [selectedCategory, setSelectedCategory] = useState("");
-  const [selectedSubCategory, setSelectedSubCategory] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
+  const [selectedSubCategory, setSelectedSubCategory] = useState<number | null>(null);
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [showSubCategoryDropdown, setShowSubCategoryDropdown] = useState(false);
 
@@ -71,7 +74,12 @@ export default function AddProductContent() {
     Record<string, { branchId: string; variants: Record<string, BranchVariantConfig> }>
   >({});
 
-  const selectedCategoryData = MOCK_CATEGORIES.find((c) => c.id === selectedCategory);
+  const { data: categories, isLoading: isCategoriesLoading } = useGetAllCategories("active");
+  const { data: modificationGroups } = useGetAllModifications("active");
+  const { data: allBranches } = useGetAllBranches("active");
+  const createProductMutation = useCreateProduct();
+
+  const selectedCategoryData = categories?.find((c) => c.id === selectedCategory);
 
   const generateVariantCombinations = (): VariantCombination[] => {
     if (variantGroups.length === 0) {
@@ -170,7 +178,7 @@ export default function AddProductContent() {
     branchId: string,
     combination: string,
     field: keyof BranchVariantConfig,
-    value: string | string[]
+    value: string | string[] | number[]
   ) => {
     setBranchConfigs({
       ...branchConfigs,
@@ -179,7 +187,13 @@ export default function AddProductContent() {
         variants: {
           ...branchConfigs[branchId]?.variants,
           [combination]: {
-            ...branchConfigs[branchId]?.variants[combination],
+            ...(branchConfigs[branchId]?.variants[combination] || {
+              price: "",
+              quantity: "",
+              addonGroups: [],
+              expireDate: "",
+              batchNo: "",
+            }),
             [field]: value,
           },
         },
@@ -190,26 +204,75 @@ export default function AddProductContent() {
   const handleToggleAddonGroup = (
     branchId: string,
     combination: string,
-    addonGroupId: string
+    addonGroupId: number
   ) => {
-    const current =
-      branchConfigs[branchId]?.variants[combination]?.addonGroups ?? [];
+    const config = branchConfigs[branchId]?.variants[combination];
+    const current = config?.addonGroups ?? [];
     const newGroups = current.includes(addonGroupId)
       ? current.filter((id) => id !== addonGroupId)
       : [...current, addonGroupId];
     handleUpdateBranchVariant(branchId, combination, "addonGroups", newGroups);
   };
 
-  const handleFinalSubmit = () => {
+  const handleFinalSubmit = async () => {
+    if (createProductMutation.isPending) return;
+
     for (const branchId of selectedBranches) {
       const config = branchConfigs[branchId];
       const hasValid = Object.values(config?.variants ?? {}).some(
         (v) => v.price && v.quantity
       );
-      if (!hasValid) return;
+      if (!hasValid) {
+        alert(`Please complete configuration for branch: ${allBranches?.find(b => b.id.toString() === branchId)?.name}`);
+        return;
+      }
     }
-    // TODO: API call to create product
-    router.push(ROUTES.DASHBOARD_INVENTORY);
+
+    try {
+      const payload = {
+        name: productName,
+        code: productCode,
+        shortDescription: description ? description.substring(0, 160) : "",
+        description: description,
+        sku: productCode,
+        categoryId: selectedCategory || undefined,
+        subCategoryId: selectedSubCategory || undefined,
+        branches: selectedBranches.map(id => parseInt(id)),
+        modifications: [],
+        variations: [
+          {
+            name: variantGroups.length > 0 ? "Variants" : "Standard",
+            options: variantCombinations.map(combo => ({
+              name: combo.combination,
+              prices: selectedBranches.map(branchId => {
+                const variantData = branchConfigs[branchId]?.variants[combo.combination];
+                return {
+                  branchId: parseInt(branchId),
+                  price: parseFloat(variantData?.price || "0"),
+                  discountPrice: 0, // Added discountPrice
+                  quantity: parseInt(variantData?.quantity || "0"),
+                  batchNo: variantData?.batchNo,
+                  expireDate: variantData?.expireDate || null,
+                };
+              })
+            })),
+            modifications: variantCombinations[0]
+              ? branchConfigs[selectedBranches[0]]?.variants[variantCombinations[0].combination]?.addonGroups.map(id => ({ modificationId: id }))
+              : []
+          }
+        ]
+      };
+
+      await createProductMutation.mutateAsync({
+        data: payload as any,
+        imageFile: imageFile || undefined
+      });
+
+      router.push(ROUTES.DASHBOARD_INVENTORY);
+    } catch (error) {
+      console.error("Failed to create product:", error);
+      alert("Failed to create product. Please try again.");
+    }
   };
 
   if (isCashier) {
@@ -265,9 +328,8 @@ export default function AddProductContent() {
           {/* Progress Bar */}
           <div className="mb-8 flex items-center gap-3">
             <div
-              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-['Inter'] text-sm font-bold transition-all ${
-                currentStep >= 1 ? "text-white shadow-lg" : "bg-[#E2E8F0] text-[#90A1B9]"
-              }`}
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-['Inter'] text-sm font-bold transition-all ${currentStep >= 1 ? "text-white shadow-lg" : "bg-[#E2E8F0] text-[#90A1B9]"
+                }`}
               style={{ backgroundColor: currentStep >= 1 ? PRIMARY : undefined }}
             >
               {currentStep > 1 ? <Check className="h-5 w-5" /> : "1"}
@@ -282,9 +344,8 @@ export default function AddProductContent() {
               />
             </div>
             <div
-              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-['Inter'] text-sm font-bold transition-all ${
-                currentStep >= 2 ? "text-white shadow-lg" : "bg-[#E2E8F0] text-[#90A1B9]"
-              }`}
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-['Inter'] text-sm font-bold transition-all ${currentStep >= 2 ? "text-white shadow-lg" : "bg-[#E2E8F0] text-[#90A1B9]"
+                }`}
               style={{ backgroundColor: currentStep >= 2 ? PRIMARY : undefined }}
             >
               2
@@ -303,18 +364,33 @@ export default function AddProductContent() {
               </h2>
 
               <div className="space-y-6">
-                <div>
-                  <label className="mb-2 block font-['Inter'] text-sm font-bold text-[#45556C]">
-                    Product Name <span className="text-[#EC003F]">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={productName}
-                    onChange={(e) => setProductName(e.target.value)}
-                    placeholder="Enter product name..."
-                    className="w-full rounded-xl border-2 border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3 font-['Inter'] text-sm text-[#1D293D] placeholder:text-[#90A1B9] focus:border-[#EA580C] focus:outline-none focus:ring-2 focus:ring-[#EA580C]/20"
-                    required
-                  />
+                <div className="grid gap-6 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-2 block font-['Inter'] text-sm font-bold text-[#45556C]">
+                      Product Name <span className="text-[#EC003F]">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={productName}
+                      onChange={(e) => setProductName(e.target.value)}
+                      placeholder="Enter product name..."
+                      className="w-full rounded-xl border-2 border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3 font-['Inter'] text-sm text-[#1D293D] placeholder:text-[#90A1B9] focus:border-[#EA580C] focus:outline-none focus:ring-2 focus:ring-[#EA580C]/20"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-2 block font-['Inter'] text-sm font-bold text-[#45556C]">
+                      Product Code <span className="text-[#EC003F]">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={productCode}
+                      onChange={(e) => setProductCode(e.target.value)}
+                      placeholder="e.g. PRD-001"
+                      className="w-full rounded-xl border-2 border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3 font-['Inter'] text-sm text-[#1D293D] placeholder:text-[#90A1B9] focus:border-[#EA580C] focus:outline-none focus:ring-2 focus:ring-[#EA580C]/20"
+                      required
+                    />
+                  </div>
                 </div>
 
                 <div>
@@ -409,21 +485,21 @@ export default function AddProductContent() {
                         }
                       >
                         {selectedCategory
-                          ? MOCK_CATEGORIES.find((c) => c.id === selectedCategory)
-                              ?.name
+                          ? categories?.find((c) => c.id === selectedCategory)
+                            ?.name
                           : "Select category..."}
                       </span>
                       <ChevronDown className="h-5 w-5 text-[#90A1B9]" />
                     </button>
                     {showCategoryDropdown && (
                       <div className="absolute top-full left-0 right-0 z-10 mt-2 max-h-60 overflow-auto rounded-xl border-2 border-[#E2E8F0] bg-white shadow-lg">
-                        {MOCK_CATEGORIES.map((cat) => (
+                        {categories?.map((cat) => (
                           <button
                             key={cat.id}
                             type="button"
                             onClick={() => {
                               setSelectedCategory(cat.id);
-                              setSelectedSubCategory("");
+                              setSelectedSubCategory(null);
                               setShowCategoryDropdown(false);
                             }}
                             className="w-full px-4 py-3 text-left font-['Inter'] text-sm font-medium text-[#45556C] transition-colors hover:bg-[#F8FAFC]"
@@ -453,23 +529,25 @@ export default function AddProductContent() {
                           selectedSubCategory ? "text-[#1D293D]" : "text-[#90A1B9]"
                         }
                       >
-                        {selectedSubCategory || "Select sub category..."}
+                        {selectedSubCategory
+                          ? selectedCategoryData?.subcategories?.find(s => s.id === selectedSubCategory)?.name
+                          : "Select sub category..."}
                       </span>
                       <ChevronDown className="h-5 w-5 text-[#90A1B9]" />
                     </button>
                     {showSubCategoryDropdown && selectedCategoryData && (
                       <div className="absolute top-full left-0 right-0 z-10 mt-2 max-h-60 overflow-auto rounded-xl border-2 border-[#E2E8F0] bg-white shadow-lg">
-                        {selectedCategoryData.subCategories.map((sub) => (
+                        {selectedCategoryData.subcategories?.map((sub) => (
                           <button
-                            key={sub}
+                            key={sub.id}
                             type="button"
                             onClick={() => {
-                              setSelectedSubCategory(sub);
+                              setSelectedSubCategory(sub.id);
                               setShowSubCategoryDropdown(false);
                             }}
                             className="w-full px-4 py-3 text-left font-['Inter'] text-sm font-medium text-[#45556C] transition-colors hover:bg-[#F8FAFC]"
                           >
-                            {sub}
+                            {sub.name}
                           </button>
                         ))}
                       </div>
@@ -624,25 +702,23 @@ export default function AddProductContent() {
                     Select Branches <span className="text-[#EC003F]">*</span>
                   </label>
                   <div className="grid gap-3 sm:grid-cols-2">
-                    {BRANCHES.map((branch) => (
+                    {allBranches?.map((branch) => (
                       <button
                         key={branch.id}
                         type="button"
-                        onClick={() => handleToggleBranch(branch.id)}
-                        className={`flex items-center gap-3 rounded-xl border-2 p-4 text-left transition-all ${
-                          selectedBranches.includes(branch.id)
-                            ? "border-[#EA580C] bg-[#EA580C]/5"
-                            : "border-[#E2E8F0] hover:border-[#CAD5E2]"
-                        }`}
+                        onClick={() => handleToggleBranch(branch.id.toString())}
+                        className={`flex items-center gap-3 rounded-xl border-2 p-4 text-left transition-all ${selectedBranches.includes(branch.id.toString())
+                          ? "border-[#EA580C] bg-[#EA580C]/5"
+                          : "border-[#E2E8F0] hover:border-[#CAD5E2]"
+                          }`}
                       >
                         <div
-                          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border-2 ${
-                            selectedBranches.includes(branch.id)
-                              ? "border-[#EA580C] bg-[#EA580C]"
-                              : "border-[#E2E8F0]"
-                          }`}
+                          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border-2 ${selectedBranches.includes(branch.id.toString())
+                            ? "border-[#EA580C] bg-[#EA580C]"
+                            : "border-[#E2E8F0]"
+                            }`}
                         >
-                          {selectedBranches.includes(branch.id) && (
+                          {selectedBranches.includes(branch.id.toString()) && (
                             <Check className="h-4 w-4 text-white" />
                           )}
                         </div>
@@ -651,7 +727,7 @@ export default function AddProductContent() {
                             {branch.name}
                           </div>
                           <div className="font-['Inter'] text-xs text-[#62748E]">
-                            {branch.address}
+                            {branch.location}
                           </div>
                         </div>
                       </button>
@@ -660,7 +736,7 @@ export default function AddProductContent() {
                 </div>
 
                 {selectedBranches.map((branchId) => {
-                  const branch = BRANCHES.find((b) => b.id === branchId);
+                  const branch = allBranches?.find((b) => b.id.toString() === branchId);
                   if (!branch) return null;
 
                   return (
@@ -673,14 +749,14 @@ export default function AddProductContent() {
 
                         <div className="space-y-4">
                           {variantCombinations.map((combo) => {
-                            const variantData =
-                              branchConfigs[branchId]?.variants[combo.combination] ?? {
-                                price: "",
-                                quantity: "",
-                                addonGroups: [],
-                                expireDate: "",
-                                batchNo: "",
-                              };
+                            const rawVariantData = branchConfigs[branchId]?.variants[combo.combination];
+                            const variantData: BranchVariantConfig = {
+                              price: rawVariantData?.price ?? "",
+                              quantity: rawVariantData?.quantity ?? "",
+                              addonGroups: rawVariantData?.addonGroups ?? [],
+                              expireDate: rawVariantData?.expireDate ?? "",
+                              batchNo: rawVariantData?.batchNo ?? "",
+                            };
 
                             return (
                               <div
@@ -775,7 +851,7 @@ export default function AddProductContent() {
                                       Add-on Groups
                                     </label>
                                     <div className="flex flex-wrap gap-2">
-                                      {MOCK_ADDON_GROUPS.map((g) => (
+                                      {modificationGroups?.map((g) => (
                                         <button
                                           key={g.id}
                                           type="button"
@@ -786,13 +862,12 @@ export default function AddProductContent() {
                                               g.id
                                             )
                                           }
-                                          className={`rounded-lg px-3 py-1.5 font-['Inter'] text-xs font-bold transition-all ${
-                                            variantData.addonGroups.includes(g.id)
-                                              ? "bg-[#EA580C] text-white"
-                                              : "bg-[#F1F5F9] text-[#45556C] hover:bg-[#E2E8F0]"
-                                          }`}
+                                          className={`rounded-lg px-3 py-1.5 font-['Inter'] text-xs font-bold transition-all ${variantData.addonGroups.includes(g.id)
+                                            ? "bg-[#EA580C] text-white"
+                                            : "bg-[#F1F5F9] text-[#45556C] hover:bg-[#E2E8F0]"
+                                            }`}
                                         >
-                                          {g.name}
+                                          {g.title}
                                         </button>
                                       ))}
                                     </div>

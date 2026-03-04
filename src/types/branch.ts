@@ -1,13 +1,17 @@
 export interface Branch {
-  id: string | number;
+  id: number;
   name: string;
-  address?: string;
-  phone?: string;
-  email?: string;
-  status?: string;
+  location: string | null;
+  status: "active" | "inactive";
   createdAt?: string;
   updatedAt?: string;
 }
 
-export interface CreateBranchData extends Omit<Branch, "id" | "createdAt" | "updatedAt"> {}
+export interface CreateBranchData {
+  name: string;
+  location?: string;
+}
+
 export interface UpdateBranchData extends Partial<CreateBranchData> {}
+
+export type BranchStatusQuery = "active" | "inactive" | "all";
