@@ -35,6 +35,10 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+## Documentation
+
+- **[Drawer Management & Device Registration](docs/DRAWER_MANAGEMENT_IMPLEMENTATION_GUIDE.md)** — Implementation guide for the cash drawer management system (multi-branch, multi-terminal).
+
 ## Project Structure
 
 ```

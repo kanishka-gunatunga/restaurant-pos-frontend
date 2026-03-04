@@ -128,7 +128,7 @@ export default function ManagerAdminSidebar() {
           </button>
         </div>
 
-        <nav className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto overflow-x-hidden pt-5 pb-2 min-[1920px]:pt-6 min-[2560px]:pt-7 [scrollbar-width:thin] [scrollbar-color:#E2E8F0_transparent]">
+        <nav className="flex min-h-0 flex-1 flex-col items-center gap-2 overflow-y-auto overflow-x-hidden pt-5 pb-2 min-[1920px]:gap-3 min-[1920px]:pt-6 min-[2560px]:gap-4 min-[2560px]:pt-7 [scrollbar-width:thin] [scrollbar-color:#E2E8F0_transparent]">
           {navLinks.map(({ href, label, icon: Icon }) => {
             const isDashboard = label === "Dashboard";
             const isMenu = label === "Menu";

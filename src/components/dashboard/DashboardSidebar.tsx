@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutGrid, ShoppingBag, CreditCard, Users, Calculator, LogOut, X } from "lucide-react";
 import OrdersIcon from "@/components/icons/OrdersIcon";
+import DrawerIcon from "@/components/icons/DrawerIcon";
 import { ROUTES } from "@/lib/constants";
 import { getFirstName } from "@/lib/format";
 import { useCalculator } from "@/contexts/CalculatorContext";
@@ -16,6 +17,7 @@ const navLinks = [
   { href: ROUTES.DASHBOARD_ORDERS, label: "Orders", icon: OrdersIcon },
   { href: ROUTES.DASHBOARD_PAYMENTS, label: "Payments", icon: CreditCard },
   { href: ROUTES.DASHBOARD_CUSTOMERS, label: "Customers", icon: Users },
+  { href: ROUTES.DASHBOARD_DRAWER, label: "Drawer", icon: DrawerIcon },
 ] as const;
 
 function NavLink({
@@ -118,15 +120,18 @@ export default function DashboardSidebar() {
         </div>
 
         {/* Nav items - scrollable when overflowing */}
-        <nav className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto overflow-x-hidden pt-5 pb-2 min-[1920px]:pt-6 min-[2560px]:pt-7 [scrollbar-width:thin] [scrollbar-color:#E2E8F0_transparent]">
+        <nav className="flex min-h-0 flex-1 flex-col items-center gap-2 overflow-y-auto overflow-x-hidden pt-5 pb-2 min-[1920px]:gap-3 min-[1920px]:pt-6 min-[2560px]:gap-4 min-[2560px]:pt-7 [scrollbar-width:thin] [scrollbar-color:#E2E8F0_transparent]">
           {navLinks.map(({ href, label, icon: Icon }) => {
             const isDashboard = label === "Dashboard";
             const isMenu = label === "Menu";
+            const isDrawer = label === "Drawer";
             const isActive = isDashboard
               ? pathname === ROUTES.DASHBOARD
               : isMenu
                 ? pathname === ROUTES.DASHBOARD_MENU
-                : pathname === href || pathname.startsWith(`${href}/`);
+                : isDrawer
+                  ? pathname === ROUTES.DASHBOARD_DRAWER
+                  : pathname === href || pathname.startsWith(`${href}/`);
             return (
               <NavLink
                 key={label}
