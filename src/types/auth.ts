@@ -2,7 +2,7 @@
  * Backend auth API types
  */
 
-export type BackendUserRole = "cashier" | "manager" | "admin";
+export type BackendUserRole = "cashier" | "manager" | "admin" | "kitchen";
 
 export type BackendUser = {
   id: number;

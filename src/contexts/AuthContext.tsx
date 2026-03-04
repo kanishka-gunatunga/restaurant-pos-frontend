@@ -11,7 +11,7 @@ import { useSession, signOut } from "next-auth/react";
 import Cookies from "js-cookie";
 import { ROUTES } from "@/lib/constants";
 
-export type UserRole = "cashier" | "manager" | "admin";
+export type UserRole = "cashier" | "manager" | "admin" | "kitchen";
 
 export type AuthUser = {
   id: string;
@@ -22,7 +22,7 @@ export type AuthUser = {
   branchId?: number | null;
 };
 
-const ALLOWED_ROLES: UserRole[] = ["admin", "manager", "cashier"];
+const ALLOWED_ROLES: UserRole[] = ["admin", "manager", "cashier", "kitchen"];
 
 function sessionUserToAuthUser(sessionUser: { id?: string; name?: string | null; role?: string } | null): AuthUser | null {
   if (!sessionUser?.id || !sessionUser?.name || !sessionUser?.role) return null;
@@ -45,6 +45,7 @@ type AuthContextType = {
   role: UserRole | null;
   isReady: boolean;
   isCashier: boolean;
+  isKitchen: boolean;
   isManagerOrAdmin: boolean;
   token: string | null;
   login: (role: UserRole, name?: string) => void;
@@ -81,6 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     role: user?.role ?? null,
     isReady,
     isCashier: user?.role === "cashier",
+    isKitchen: user?.role === "kitchen",
     isManagerOrAdmin: user?.role === "manager" || user?.role === "admin",
     token,
     login,

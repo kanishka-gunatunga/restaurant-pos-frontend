@@ -8,57 +8,80 @@ import { Search, UserPlus } from "lucide-react";
 import UserTable from "@/components/users/UserTable";
 import AddUserModal from "@/components/users/AddUserModal";
 import ConfirmModal from "@/components/ui/ConfirmModal";
-import type { UserRole, User } from "@/components/users/UserTable";
 import type { UserFormPayload } from "@/components/users/types";
 import { ROUTES } from "@/lib/constants";
 import { useAuth } from "@/contexts/AuthContext";
-import * as userService from "@/services/userService";
+import {
+  useGetUsers,
+  useSearchUsers,
+  useRegisterUser,
+  useUpdateUser,
+  useActivateUser,
+  useDeactivateUser
+} from "@/hooks/useUser";
+import type { User } from "@/types/user";
+// import { toast } from "sonner";
 
 export default function UsersContent() {
   const router = useRouter();
   const { isCashier } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [users, setUsers] = useState<User[]>([]);
-  const [isUsersLoading, setIsUsersLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; userId: string }>({
-    isOpen: false,
-    userId: "",
-  });
-
-  const fetchUsers = async () => {
-    setIsUsersLoading(true);
-    try {
-      const data = await userService.getUsers();
-      const list = Array.isArray(data) ? data : (data?.users ?? []);
-      const formattedUsers = list.map((u: Record<string, unknown>) => ({
-        id: String(u?.id ?? u?.employeeId ?? ""),
-        name: String(u?.name ?? ""),
-        displayName: String(u?.displayName ?? u?.name ?? ""),
-        email: String(u?.email ?? ""),
-        role: (String(u?.role ?? "").toUpperCase() || "CASHIER") as UserRole,
-        passcode: u?.passcode != null ? String(u.passcode) : null,
-        branchId: typeof u?.branchId === "number" ? u.branchId : undefined,
-        employeeId: u?.employeeId != null ? String(u.employeeId) : undefined,
-      }));
-      setUsers(formattedUsers);
-    } catch (error) {
-      console.error("Failed to fetch users:", error);
-      setUsers([]);
-    } finally {
-      setIsUsersLoading(false);
-    }
-  };
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+
+  const parsing = (() => {
+    const term = debouncedSearchTerm.toLowerCase().trim();
+    if (!term) return { name: "", role: "", status: "active" };
+
+    const parts = term.split(/\s+/);
+    let role = "";
+    let status = "all";
+
+    const roles = ["admin", "manager", "cashier", "kitchen"];
+    const statuses = ["active", "inactive", "all"];
+
+    const nameParts = parts.filter(part => {
+      if (roles.includes(part)) {
+        role = part;
+        return false;
+      }
+      if (statuses.includes(part)) {
+        status = part;
+        return false;
+      }
+      return true;
+    });
+
+    return {
+      name: nameParts.join(" "),
+      role,
+      status: status || "active"
+    };
+  })();
+
+  const { data: allUsers = [], isLoading: isAllUsersLoading } = useGetUsers(parsing.status);
+  const { data: searchResults = [], isLoading: isSearchLoading } = useSearchUsers(parsing);
+
+  const hasNameQuery = parsing.name.trim().length > 0 || parsing.role.length > 0;
+  const users = hasNameQuery ? searchResults : allUsers;
+  const isUsersLoading = hasNameQuery ? isSearchLoading : isAllUsersLoading;
+
+  const registerMutation = useRegisterUser();
+  const updateMutation = useUpdateUser();
+  const activateMutation = useActivateUser();
+  const deactivateMutation = useDeactivateUser();
 
   const handleSaveUser = async (user: UserFormPayload) => {
-    setLoading(true);
     setSaveError(null);
     try {
       const payload = {
@@ -67,18 +90,19 @@ export default function UsersContent() {
       };
 
       if (selectedUser && !payload.password) {
-        delete (payload as Record<string, unknown>).password;
+        delete (payload as Record<string, any>).password;
       }
 
       if (selectedUser) {
-        await userService.updateUser(selectedUser.id, payload);
+        await updateMutation.mutateAsync({ id: selectedUser.id, data: payload as any });
+        // toast.success("User updated successfully");
       } else {
-        await userService.registerUser(payload);
+        await registerMutation.mutateAsync(payload as any);
+        // toast.success("User registered successfully");
       }
 
       setIsAddModalOpen(false);
       setSelectedUser(null);
-      fetchUsers();
     } catch (error) {
       console.error("Failed to save user:", error);
       const message =
@@ -86,8 +110,6 @@ export default function UsersContent() {
           ? (error.response?.data as { message?: string })?.message
           : null;
       setSaveError(message || "Failed to save user. Please try again.");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -96,18 +118,18 @@ export default function UsersContent() {
     setIsAddModalOpen(true);
   };
 
-  const handleDeleteClick = (id: string) => {
-    setDeleteConfirm({ isOpen: true, userId: id });
-  };
-
-  const handleDeleteConfirm = async () => {
+  const handleToggleStatus = async (user: User) => {
     try {
-      await userService.deleteUser(deleteConfirm.userId);
-      setDeleteConfirm({ isOpen: false, userId: "" });
-      fetchUsers();
+      if (user.status === "active") {
+        await deactivateMutation.mutateAsync(user.id);
+        // toast.success("User deactivated successfully");
+      } else {
+        await activateMutation.mutateAsync(user.id);
+        // toast.success("User activated successfully");
+      }
     } catch (error) {
-      console.error("Failed to delete user:", error);
-      setDeleteConfirm({ isOpen: false, userId: "" });
+      console.error("Failed to toggle status:", error);
+      // toast.error("Failed to update user status");
     }
   };
 
@@ -166,7 +188,7 @@ export default function UsersContent() {
               <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#90A1B9]" />
               <input
                 type="text"
-                placeholder="Search users by name or role..."
+                placeholder="Search users by name, role or status..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="h-14 w-full rounded-[20px] border border-[#E2E8F0] bg-white pl-12 pr-4 text-[14px] text-[#1D293D] outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/5"
@@ -179,7 +201,7 @@ export default function UsersContent() {
             users={users}
             isLoading={isUsersLoading}
             onEdit={handleEditUserClick}
-            onDelete={handleDeleteClick}
+            onToggleStatus={handleToggleStatus}
           />
         </div>
       </div>
@@ -196,16 +218,7 @@ export default function UsersContent() {
         />
       )}
 
-      <ConfirmModal
-        isOpen={deleteConfirm.isOpen}
-        onClose={() => setDeleteConfirm({ isOpen: false, userId: "" })}
-        onConfirm={handleDeleteConfirm}
-        title="Delete User"
-        message="Are you sure you want to delete this user? This action cannot be undone."
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
-        variant="danger"
-      />
+      {/* ConfirmModal removed for activation/deactivation as it's a toggle */}
     </div>
   );
 }

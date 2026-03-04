@@ -27,7 +27,7 @@ export default function CustomerHeader({
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#90A1B9]" />
           <input
             type="text"
-            placeholder="Search by name or mobile..."
+            placeholder="Search by name or status..."
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
             className="h-11 w-full text-[#1D293D] rounded-xl border border-[#E2E8F0] bg-white pl-10 pr-4 text-[14px] outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10"

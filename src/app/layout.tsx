@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist_Mono } from "next/font/google";
 import "./globals.css";
 import MinWidthGuard from "@/components/MinWidthGuard";
+import QueryProvider from "@/utils/providers";
 import * as Auth from "@/contexts/AuthContext";
 import { SessionProvider } from "@/components/providers/SessionProvider";
 
@@ -25,7 +26,9 @@ export default function RootLayout({
       <body className={`${geistMono.variable} antialiased`}>
         <MinWidthGuard>
           <SessionProvider>
-            <Auth.AuthProvider>{children}</Auth.AuthProvider>
+            <QueryProvider>
+              <Auth.AuthProvider>{children}</Auth.AuthProvider>
+            </QueryProvider>
           </SessionProvider>
         </MinWidthGuard>
       </body>

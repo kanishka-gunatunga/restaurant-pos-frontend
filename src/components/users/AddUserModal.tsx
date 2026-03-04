@@ -2,14 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { X, ChevronDown, Loader2 } from "lucide-react";
-import { UserRole, User } from "./UserTable";
+import { UserRole, User } from "@/types/user";
 import type { UserFormPayload } from "./types";
-import axiosInstance from "@/lib/api/axiosInstance";
-
-interface Branch {
-  id: number;
-  name: string;
-}
+import { useGetBranches } from "@/hooks/useBranch";
+import { useGetUserPasscode } from "@/hooks/useUser";
 
 interface AddUserModalProps {
   onClose: () => void;
@@ -18,37 +14,41 @@ interface AddUserModalProps {
 }
 
 export default function AddUserModal({ onClose, onAdd, initialData }: AddUserModalProps) {
-  const [branches, setBranches] = useState<Branch[]>([]);
-  const [isBranchesLoading, setIsBranchesLoading] = useState(true);
+  const { data: branches = [], isLoading: isBranchesLoading } = useGetBranches();
   const [formData, setFormData] = useState<UserFormPayload>({
     id: initialData?.id,
     name: initialData?.name ?? "",
     email: initialData?.email ?? "",
-    username: initialData?.displayName ?? initialData?.name ?? "",
+    username: initialData?.name ?? "",
     password: "",
-    role: initialData?.role ?? "CASHIER",
+    role: initialData?.role ?? "cashier",
     employeeId: initialData?.employeeId ?? "",
     branchId: initialData?.branchId ?? 0,
-    passcode: initialData?.passcode ?? "",
+    passcode: "", // Will be fetched via hook if editing
   });
 
-  useEffect(() => {
-    const fetchBranches = async () => {
-      try {
-        const response = await axiosInstance.get("/branches");
-        setBranches(response.data);
-        if (response.data.length > 0 && !initialData?.branchId) {
-          setFormData((prev) => ({ ...prev, branchId: response.data[0].id }));
-        }
-      } catch (error) {
-        console.error("Failed to fetch branches:", error);
-      } finally {
-        setIsBranchesLoading(false);
-      }
-    };
+  const isPrivileged = formData.role === "admin" || formData.role === "manager";
 
-    fetchBranches();
-  }, []);
+  // Fetch passcode only when editing a privileged user
+  const { data: passcodeData } = useGetUserPasscode(
+    initialData?.id && isPrivileged ? initialData.id : undefined
+  );
+
+  useEffect(() => {
+    if (branches.length > 0 && !formData.branchId && !initialData?.branchId) {
+      const firstBranchId = branches[0]?.id;
+      if (firstBranchId !== undefined) {
+        setFormData((prev) => ({ ...prev, branchId: Number(firstBranchId) }));
+      }
+    }
+  }, [branches, initialData, formData.branchId]);
+
+  // Sync fetched passcode to formData when it arrives
+  useEffect(() => {
+    if (passcodeData?.passcode) {
+      setFormData((prev) => ({ ...prev, passcode: passcodeData.passcode }));
+    }
+  }, [passcodeData]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,7 +65,7 @@ export default function AddUserModal({ onClose, onAdd, initialData }: AddUserMod
     }));
   };
 
-  const showPasscode = formData.role === "ADMIN" || formData.role === "MANAGER";
+  const showPasscode = isPrivileged;
 
   return (
     <div
@@ -215,9 +215,10 @@ export default function AddUserModal({ onClose, onAdd, initialData }: AddUserMod
                   onChange={handleChange}
                   className="h-12 w-full appearance-none rounded-xl bg-[#F8FAFC] px-4 text-[14px] text-[#1D293D] outline-none transition-all focus:ring-2 focus:ring-primary/10"
                 >
-                  <option value="ADMIN">Admin</option>
-                  <option value="MANAGER">Manager</option>
-                  <option value="CASHIER">Cashier</option>
+                  <option value="admin">Admin</option>
+                  <option value="manager">Manager</option>
+                  <option value="cashier">Cashier</option>
+                  <option value="kitchen">Kitchen</option>
                 </select>
                 <ChevronDown className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#90A1B9] pointer-events-none" />
               </div>
@@ -226,7 +227,7 @@ export default function AddUserModal({ onClose, onAdd, initialData }: AddUserMod
             {showPasscode && (
               <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
                 <label className="text-[12px] font-bold uppercase text-[#90A1B9]">
-                   PASSCODE (ADMIN/MANAGER ONLY)
+                  PASSCODE (ADMIN/MANAGER ONLY)
                 </label>
                 <input
                   type="text"
