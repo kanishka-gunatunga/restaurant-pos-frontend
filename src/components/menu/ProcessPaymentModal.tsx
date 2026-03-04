@@ -190,8 +190,15 @@ export default function ProcessPaymentModal({
               </label>
               <input
                 type="text"
+                inputMode="decimal"
                 value={amountGiven}
-                onChange={(e) => setAmountGiven(e.target.value)}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/[^0-9.]/g, "");
+                  const parts = v.split(".");
+                  if (parts.length > 2) return;
+                  if (parts[1]?.length > 2) return;
+                  setAmountGiven(v);
+                }}
                 placeholder="Rs.0.00"
                 className="w-full min-h-[80px] rounded-[16px] border-2 border-[#E2E8F0] bg-white py-4 pl-[27px] pr-6 font-['Inter'] text-2xl font-bold leading-[100%] text-[#1D293D] placeholder:text-[#90A1B9] focus:border-[#22C55E] focus:outline-none focus:ring-2 focus:ring-[#22C55E]/20"
               />

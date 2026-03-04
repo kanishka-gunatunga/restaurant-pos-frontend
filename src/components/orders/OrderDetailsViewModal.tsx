@@ -21,7 +21,7 @@ type Props = {
   onClose: () => void;
   onEdit?: () => void;
   onCancel?: () => void;
-  onPayNow?: () => void;
+  onPayNow?: (order: OrderDetailsView) => void;
 };
 
 export default function OrderDetailsViewModal({ order, onClose, onEdit, onCancel, onPayNow }: Props) {
@@ -285,7 +285,7 @@ export default function OrderDetailsViewModal({ order, onClose, onEdit, onCancel
             {order.paymentStatus === "PENDING" && onPayNow && (
               <button
                 type="button"
-                onClick={onPayNow}
+                onClick={() => onPayNow(order)}
                 className="flex items-center gap-2 rounded-[14px] bg-[#009966] px-5 py-3 font-['Inter'] text-base font-bold leading-6 text-white shadow-[0px_4px_6px_-4px_#0099664D,0px_10px_15px_-3px_#0099664D] transition-colors hover:bg-[#007A55] hover:shadow-[0px_4px_6px_-4px_#00996666,0px_10px_15px_-3px_#00996666]"
               >
                 <CreditCard className="h-5 w-5 shrink-0" />

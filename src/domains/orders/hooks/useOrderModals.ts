@@ -8,6 +8,7 @@ export function useOrderModals() {
   });
   const [editOrderModal, setEditOrderModal] = useState<OrderRow | null>(null);
   const [viewOrder, setViewOrder] = useState<OrderRow | null>(null);
+  const [paymentOrder, setPaymentOrder] = useState<OrderDetailsView | null>(null);
 
   const orderToView = useCallback(
     (order: OrderRow): OrderDetailsView => ({
@@ -73,9 +74,16 @@ export function useOrderModals() {
     setViewOrder(null);
   }, []);
 
-  const handlePayNow = useCallback(() => {
-    // TODO: Open payment modal or navigate to payment flow
+  const handlePayNow = useCallback((order: OrderDetailsView) => {
+    setPaymentOrder(order);
     setViewOrder(null);
+  }, []);
+
+  const closePaymentModal = useCallback(() => setPaymentOrder(null), []);
+
+  const handlePaymentComplete = useCallback(() => {
+    // TODO: Call API to mark order as paid
+    setPaymentOrder(null);
   }, []);
 
   return {
@@ -94,5 +102,8 @@ export function useOrderModals() {
     openEditFromView,
     openCancelFromView,
     handlePayNow,
+    paymentOrder,
+    closePaymentModal,
+    handlePaymentComplete,
   };
 }
