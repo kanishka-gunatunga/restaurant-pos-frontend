@@ -2,24 +2,26 @@
 
 import { useState } from "react";
 import { X } from "lucide-react";
+import { Customer, CreateCustomerData } from "@/types/customer";
 
 interface AddCustomerModalProps {
   onClose: () => void;
-  onAdd: (customer: { name: string; mobile: string; email: string; address: string }) => void;
+  onSave: (customer: CreateCustomerData) => void;
+  initialData?: Customer | null;
 }
 
-export default function AddCustomerModal({ onClose, onAdd }: AddCustomerModalProps) {
-  const [formData, setFormData] = useState({
-    name: "",
-    mobile: "",
-    email: "",
-    address: "",
+export default function AddCustomerModal({ onClose, onSave, initialData }: AddCustomerModalProps) {
+  const [formData, setFormData] = useState<CreateCustomerData>({
+    name: initialData?.name || "",
+    mobile: initialData?.mobile || "",
+    email: initialData?.email || "",
+    address: initialData?.address || "",
+    promotions_enabled: initialData?.promotions_enabled ?? true,
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onAdd(formData);
-    onClose();
+    onSave(formData);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -44,7 +46,9 @@ export default function AddCustomerModal({ onClose, onAdd }: AddCustomerModalPro
           <X className="h-5 w-5" />
         </button>
 
-        <h2 className="mb-8 text-[20px] font-bold text-[#1D293D]">Create New User</h2>
+        <h2 className="mb-8 text-[20px] font-bold text-[#1D293D]">
+          {initialData ? "Edit Customer" : "Create New Customer"}
+        </h2>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
@@ -68,6 +72,7 @@ export default function AddCustomerModal({ onClose, onAdd }: AddCustomerModalPro
               placeholder="07XXXXXXXX"
               value={formData.mobile}
               onChange={handleChange}
+              required
               className="h-12 w-full rounded-xl bg-[#F8FAFC] px-4 text-[14px] text-[#1D293D] outline-none transition-all focus:ring-2 focus:ring-primary/10"
             />
           </div>
@@ -108,7 +113,7 @@ export default function AddCustomerModal({ onClose, onAdd }: AddCustomerModalPro
               type="submit"
               className="h-12 flex-1 rounded-xl cursor-pointer bg-[#EA580C] text-[14px] font-bold text-white shadow-lg shadow-[#EA580C]/20 transition-all hover:bg-[#DC4C04] hover:shadow-xl active:scale-95"
             >
-              Create User
+              {initialData ? "Save Changes" : "Create Customer"}
             </button>
           </div>
         </form>

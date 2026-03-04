@@ -1,6 +1,7 @@
 import axiosInstance from "@/lib/api/axiosInstance";
+import { Branch, CreateBranchData } from "@/types/branch";
 
-export const createBranch = async (data: any) => {
+export const createBranch = async (data: CreateBranchData): Promise<Branch> => {
   const res = await axiosInstance.post("/branches", data);
   return res.data;
 };
