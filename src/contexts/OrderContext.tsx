@@ -157,7 +157,15 @@ const saveActiveOrderIdToStorage = (orderId: string | null) => {
   }
 };
 
-export function OrderProvider({ children }: { children: ReactNode }) {
+type OrderProviderProps = {
+  children: ReactNode;
+  /** When provided, called before addItem. Return false to block the add. */
+  beforeAddItem?: () => boolean;
+  /** When provided, called before addOrder. Return false to block the add. */
+  beforeAddOrder?: () => boolean;
+};
+
+export function OrderProvider({ children, beforeAddItem, beforeAddOrder }: OrderProviderProps) {
   const initialOrders = (() => {
     const loaded = loadOrdersFromStorage();
     const ordersWithData = loaded.filter(hasOrderData);
@@ -246,6 +254,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   );
 
   const addOrder = useCallback(() => {
+    if (beforeAddOrder && !beforeAddOrder()) return;
     if (orders.length >= 2) return;
     const newOrder = createEmptyOrder();
     setOrders((prev) => {
@@ -260,7 +269,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     });
     setActiveOrderIdState(newOrder.id);
     saveActiveOrderIdToStorage(newOrder.id);
-  }, [orders.length]);
+  }, [orders.length, beforeAddOrder]);
 
   const closeOrder = useCallback((orderId: string) => {
     setOrders((prev) => {
@@ -322,6 +331,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
       variant?: string,
       addOnsList?: string[]
     ) => {
+      if (beforeAddItem && !beforeAddItem()) return;
       const orderId = activeOrderId ?? orders[0]?.id;
       if (!orderId) return;
 
@@ -356,7 +366,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
         return updated;
       });
     },
-    [activeOrderId, orders]
+    [activeOrderId, orders, beforeAddItem]
   );
 
   const updateQty = useCallback(

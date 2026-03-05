@@ -58,9 +58,11 @@ export default function ProcessPaymentModal({
           <h2 className="font-['Inter'] text-2xl font-bold leading-8 text-[#1D293D]">
             Process Payment
           </h2>
-          <p className="mt-1 font-['Inter'] text-sm font-normal leading-5 text-[#62748E]">
-            {customerName} • Total: {formatRs(total)}
-          </p>
+          <div className="scrollbar-subtle mt-1 min-w-0 overflow-x-auto">
+            <p className="whitespace-nowrap font-['Inter'] text-sm font-normal leading-5 text-[#62748E]">
+              {customerName} • Total: {formatRs(total)}
+            </p>
+          </div>
         </div>
         <button
           type="button"
@@ -145,13 +147,15 @@ export default function ProcessPaymentModal({
 
         {step === "cash" && (
           <>
-            <div className="mt-4 flex w-full items-center justify-between rounded-[16px] border border-[#E2E8F0] bg-[#F8FAFC] px-6 py-4 sm:px-[25px]">
-              <span className="font-['Inter'] text-sm font-bold uppercase leading-5 tracking-[0.7px] text-[#62748E]">
+            <div className="mt-4 flex w-full items-center justify-between gap-2 rounded-[16px] border border-[#E2E8F0] bg-[#F8FAFC] px-6 py-4 sm:px-[25px]">
+              <span className="shrink-0 font-['Inter'] text-sm font-bold uppercase leading-5 tracking-[0.7px] text-[#62748E]">
                 Order Total
               </span>
-              <span className="font-['Inter'] text-2xl font-bold leading-9 text-[#1D293D] sm:text-[30px] sm:leading-[36px]">
-                {formatRs(total)}
-              </span>
+              <div className="scrollbar-subtle min-w-0 overflow-x-auto text-right">
+                <span className="whitespace-nowrap font-['Inter'] text-2xl font-bold leading-9 text-[#1D293D] sm:text-[30px] sm:leading-[36px]">
+                  {formatRs(total)}
+                </span>
+              </div>
             </div>
             <div className="mt-4">
               <label className="mb-2 flex items-center gap-2 font-['Inter'] text-sm font-bold leading-5 text-[#314158]">
@@ -219,9 +223,11 @@ export default function ProcessPaymentModal({
                 <span className="font-['Inter'] text-xs font-bold uppercase leading-4 tracking-[0.6px] text-[#007A55]">
                   Change to Return
                 </span>
-                <span className="font-['Inter'] text-2xl font-bold leading-9 text-[#007A55] sm:text-[30px] sm:leading-[36px]">
-                  {formatRs(change)}
-                </span>
+                <div className="scrollbar-subtle min-w-0 overflow-x-auto">
+                  <span className="whitespace-nowrap font-['Inter'] text-2xl font-bold leading-9 text-[#007A55] sm:text-[30px] sm:leading-[36px]">
+                    {formatRs(change)}
+                  </span>
+                </div>
               </div>
             </div>
             <div className="mt-6 flex gap-3">
@@ -285,9 +291,11 @@ export default function ProcessPaymentModal({
               Payment Successful!
             </p>
             {changeReturned > 0 && (
-              <p className="mt-2 text-center font-['Inter'] text-base font-normal leading-6 text-[#62748E]">
-                Change returned: {formatRs(changeReturned)}
-              </p>
+              <div className="scrollbar-subtle mt-2 min-w-0 overflow-x-auto">
+                <p className="whitespace-nowrap text-center font-['Inter'] text-base font-normal leading-6 text-[#62748E]">
+                  Change returned: {formatRs(changeReturned)}
+                </p>
+              </div>
             )}
           </div>
         )}

@@ -122,9 +122,11 @@ export default function DrawerContent() {
                   <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20 sm:h-14 sm:w-14">
                     <Wallet className="h-6 w-6 text-white sm:h-7 sm:w-7" />
                   </div>
-                  <p className="mt-3 font-['Inter'] text-[clamp(1.5rem,3vw,1.875rem)] font-bold leading-9 text-white">
-                    {formatRs(expectedBalance)}
-                  </p>
+                  <div className="scrollbar-subtle mt-3 min-w-0 overflow-x-auto">
+                    <p className="whitespace-nowrap font-['Inter'] text-[clamp(1.5rem,3vw,1.875rem)] font-bold leading-9 text-white">
+                      {formatRs(expectedBalance)}
+                    </p>
+                  </div>
                   <p className="mt-1 font-['Inter'] text-sm font-medium leading-5 text-[#D0FAE5]">
                     Expected Balance
                   </p>
@@ -134,9 +136,11 @@ export default function DrawerContent() {
                   <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F3E8FF] sm:h-14 sm:w-14">
                     <CashSalesIcon className="h-6 w-6 sm:h-7 sm:w-7" />
                   </div>
-                  <p className="mt-3 font-['Inter'] text-[clamp(1.5rem,3vw,1.875rem)] font-bold leading-9 text-[#1D293D]">
-                    {formatRs(cashSales)}
-                  </p>
+                  <div className="scrollbar-subtle mt-3 min-w-0 overflow-x-auto">
+                    <p className="whitespace-nowrap font-['Inter'] text-[clamp(1.5rem,3vw,1.875rem)] font-bold leading-9 text-[#1D293D]">
+                      {formatRs(cashSales)}
+                    </p>
+                  </div>
                   <p className="mt-1 font-['Inter'] text-sm font-medium leading-5 text-[#62748E]">
                     Cash Sales
                   </p>
@@ -146,9 +150,11 @@ export default function DrawerContent() {
                   <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FFEDD4] sm:h-14 sm:w-14">
                     <ArrowUpCircle className="h-6 w-6 text-[#EA580C] sm:h-7 sm:w-7" />
                   </div>
-                  <p className="mt-3 font-['Inter'] text-[clamp(1.5rem,3vw,1.875rem)] font-bold leading-9 text-[#1D293D]">
-                    {formatRs(cashOuts)}
-                  </p>
+                  <div className="scrollbar-subtle mt-3 min-w-0 overflow-x-auto">
+                    <p className="whitespace-nowrap font-['Inter'] text-[clamp(1.5rem,3vw,1.875rem)] font-bold leading-9 text-[#1D293D]">
+                      {formatRs(cashOuts)}
+                    </p>
+                  </div>
                   <p className="mt-1 font-['Inter'] text-sm font-medium leading-5 text-[#62748E]">
                     Cash Outs
                   </p>
@@ -175,21 +181,25 @@ export default function DrawerContent() {
                         {sessionData?.startedAt ?? "—"}
                       </span>
                     </div>
-                    <div className="flex h-14 w-full max-w-[399px] items-center justify-between rounded-2xl bg-[#F8FAFC] px-4">
-                      <span className="font-['Inter'] text-sm font-normal leading-5 text-[#62748E]">
+                    <div className="flex h-14 w-full max-w-[399px] items-center justify-between gap-2 rounded-2xl bg-[#F8FAFC] px-4">
+                      <span className="shrink-0 font-['Inter'] text-sm font-normal leading-5 text-[#62748E]">
                         Initial Amount
                       </span>
-                      <span className="flex items-center gap-1.5 font-['Inter'] text-base font-bold leading-6 text-[#1D293D]">
-                        {sessionData ? formatRs(sessionData.initialAmount) : "—"}
+                      <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5">
+                        <div className="scrollbar-subtle overflow-x-auto text-right">
+                          <span className="whitespace-nowrap font-['Inter'] text-base font-bold leading-6 text-[#1D293D]">
+                            {sessionData ? formatRs(sessionData.initialAmount) : "—"}
+                          </span>
+                        </div>
                         <button
                           type="button"
                           onClick={() => setIsEditAmountModalOpen(true)}
-                          className="rounded p-1 text-[#90A1B9] hover:bg-[#F8FAFC] hover:text-[#45556C]"
+                          className="shrink-0 rounded p-1 text-[#90A1B9] hover:bg-[#F8FAFC] hover:text-[#45556C]"
                           aria-label="Edit initial amount"
                         >
                           <Pencil className="h-4 w-4" />
                         </button>
-                      </span>
+                      </div>
                     </div>
                     <div className="flex h-[58px] w-full max-w-[399px] items-center justify-between rounded-2xl border border-[#A4F4CF] bg-[#ECFDF5] px-4">
                       <span className="font-['Inter'] text-sm font-bold leading-5 text-[#007A55]">
@@ -401,9 +411,11 @@ export default function DrawerContent() {
                             Cash Out by {entry.by}
                           </p>
                         </div>
-                        <p className="font-['Inter'] text-[18px] font-bold leading-[28px] text-right text-[#1D293D]">
-                          {formatRs(entry.amount)}
-                        </p>
+                        <div className="scrollbar-subtle min-w-0 overflow-x-auto text-right">
+                          <p className="whitespace-nowrap font-['Inter'] text-[18px] font-bold leading-[28px] text-[#1D293D]">
+                            {formatRs(entry.amount)}
+                          </p>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -474,9 +486,11 @@ export default function DrawerContent() {
                             Closed by {session.closedBy}
                           </p>
                         </div>
-                        <p className="font-bold text-[#1D293D] font-['Inter'] text-[clamp(0.9375rem,1.5vw,1.125rem)] leading-[1.56] sm:text-right">
-                          {formatRs(session.closingAmount)}
-                        </p>
+                        <div className="scrollbar-subtle min-w-0 overflow-x-auto sm:text-right">
+                          <p className="whitespace-nowrap font-bold text-[#1D293D] font-['Inter'] text-[clamp(0.9375rem,1.5vw,1.125rem)] leading-[1.56]">
+                            {formatRs(session.closingAmount)}
+                          </p>
+                        </div>
                       </div>
                     ))}
                   </div>

@@ -86,16 +86,20 @@ export default function CloseDrawerSessionModal({
             {error}
           </div>
         )}
-        <div className="flex h-[134px] w-full max-w-[384px] flex-col gap-2 rounded-2xl border border-[#BEDBFF] bg-[#EFF6FF] p-[17px]">
+        <div className="flex min-h-[134px] w-full max-w-[384px] flex-col gap-2 rounded-2xl border border-[#BEDBFF] bg-[#EFF6FF] p-[17px]">
           <p className="font-['Inter'] text-sm font-normal leading-5 text-[#1447E6]">
             Expected Balance
           </p>
-          <p className="font-['Inter'] text-2xl font-bold leading-8 text-[#1C398E]">
-            {formatRs(expectedBalance)}
-          </p>
-          <p className="font-['Inter'] text-xs font-normal leading-4 text-[#155DFC]">
-            Initial: {formatRs(initialAmount)} + Sales: {formatRs(cashSales)} - Cash Outs: {formatRs(cashOuts)}
-          </p>
+          <div className="scrollbar-subtle min-w-0 overflow-x-auto">
+            <p className="whitespace-nowrap font-['Inter'] text-2xl font-bold leading-8 text-[#1C398E]">
+              {formatRs(expectedBalance)}
+            </p>
+          </div>
+          <div className="scrollbar-subtle min-w-0 overflow-x-auto">
+            <p className="whitespace-nowrap font-['Inter'] text-xs font-normal leading-4 text-[#155DFC]">
+              Initial: {formatRs(initialAmount)} + Sales: {formatRs(cashSales)} - Cash Outs: {formatRs(cashOuts)}
+            </p>
+          </div>
         </div>
         <div className="space-y-2">
           <label className="block font-['Inter'] text-sm font-bold leading-5 text-[#314158]">

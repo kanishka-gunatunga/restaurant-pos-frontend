@@ -139,3 +139,14 @@ body {
 .scrollbar-subtle::-webkit-scrollbar-thumb:active {
   background: #94a3b8;
 }
+
+/* Badge amount scroll - overlay scrollbar = no extra height = text stays centered */
+.badge-amount-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+@supports (overflow-x: overlay) {
+  .badge-amount-scroll {
+    overflow-x: overlay;
+  }
+}
