@@ -1,11 +1,9 @@
-import type { UserRole } from "./UserTable";
+import type { UserRole } from "@/types/user";
 
 export type UserFormPayload = {
-  id?: string;
+  id?: string | number;
   name: string;
-  email: string;
-  username: string;
-  password: string;
+  password?: string;
   role: UserRole;
   employeeId: string;
   branchId: number;

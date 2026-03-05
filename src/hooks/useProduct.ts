@@ -88,3 +88,15 @@ export const useGetProductsByCategory = (categoryId: number, status?: string) =>
     enabled: !!categoryId,
   });
 };
+
+export const useGetProductsByBranch = (
+  branchId: number,
+  params: { categoryId?: number; subCategoryId?: number; status?: string } = {}
+) => {
+  return useQuery({
+    queryKey: [...PRODUCT_KEYS.all, "byBranch", branchId, params],
+    queryFn: () => productService.getProductsByBranch(branchId, params),
+    enabled: !!branchId,
+    staleTime: 5 * 60 * 1000,
+  });
+};

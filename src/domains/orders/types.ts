@@ -1,6 +1,9 @@
-export type OrderStatus = "PREPARING" | "PENDING" | "COMPLETE" | "HOLD" | "READY" | "CANCELED";
-export type PaymentStatus = "PENDING" | "PAID" | "PARTIAL REFUND" | "FULL REFUND";
-export type OrderType = "Dine In" | "Take Away" | "Delivery";
+import type { Order as ApiOrder, OrderItem as ApiOrderItem } from "@/types/order";
+import { formatDate, formatTime } from "@/lib/format";
+
+export type OrderStatus = "pending" | "preparing" | "ready" | "hold" | "complete" | "cancel";
+export type PaymentStatus = "pending" | "paid" | "refund" | "partial_refund";
+export type OrderType = "takeaway" | "dining" | "delivery";
 
 export type OrderDetailItem = {
   name: string;
@@ -40,3 +43,30 @@ export type OrderRow = {
   subtotal?: number;
   discount?: number;
 };
+
+export function mapOrderToRow(apiOrder: ApiOrder): OrderRow {
+  return {
+    id: String(apiOrder.id),
+    orderNo: String(apiOrder.id), // Using ID as Order No if not separate
+    date: formatDate(apiOrder.createdAt),
+    time: formatTime(apiOrder.createdAt),
+    customerName: apiOrder.customer?.name || "Guest",
+    phone: apiOrder.customer?.mobile || "N/A",
+    totalAmount: Number(apiOrder.totalAmount),
+    status: apiOrder.status,
+    paymentStatus: apiOrder.paymentStatus as PaymentStatus,
+    orderType: apiOrder.orderType === "dining" ? "takeaway" : apiOrder.orderType as any, // Simple mapping for now
+    tableNumber: apiOrder.tableNumber,
+    items: apiOrder.items?.map(mapOrderItemToDetail),
+    subtotal: Number(apiOrder.totalAmount) - Number(apiOrder.tax || 0) + Number(apiOrder.orderDiscount || 0),
+    discount: Number(apiOrder.orderDiscount),
+  };
+}
+
+function mapOrderItemToDetail(item: ApiOrderItem): OrderDetailItem {
+  return {
+    name: (item.product as any)?.name || "Unknown Product",
+    qty: item.quantity,
+    price: Number(item.unitPrice),
+  };
+}

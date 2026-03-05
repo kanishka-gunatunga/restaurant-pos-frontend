@@ -1,27 +1,39 @@
 import { useState, useMemo } from "react";
 import type { OrderRow, OrderStatus, PaymentStatus } from "../types";
+import { mapOrderToRow } from "../types";
+import { useGetAllOrders, useSearchOrders, useFilterOrders } from "@/hooks/useOrder";
 
-export function useOrdersFilters(orders: OrderRow[]) {
+export function useOrdersFilters() {
   const [search, setSearch] = useState("");
   const [orderStatusFilter, setOrderStatusFilter] = useState<OrderStatus | "All">("All");
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<PaymentStatus | "All">("All");
 
+  const isSearching = !!search.trim();
+  const isFiltering = orderStatusFilter !== "All" || paymentStatusFilter !== "All";
+
+  // Hook selection logic
+  const { data: allOrders, isLoading: isLoadingAll } = useGetAllOrders();
+  
+  const { data: searchResults, isLoading: isLoadingSearch } = useSearchOrders({
+    q: search.trim(),
+  });
+
+  const { data: filteredResults, isLoading: isLoadingFilter } = useFilterOrders({
+    status: orderStatusFilter !== "All" ? orderStatusFilter : undefined,
+    paymentStatus: paymentStatusFilter !== "All" ? paymentStatusFilter : undefined,
+  });
+
+  const ordersData = useMemo(() => {
+    if (isSearching) return searchResults || [];
+    if (isFiltering) return filteredResults || [];
+    return allOrders || [];
+  }, [allOrders, searchResults, filteredResults, isSearching, isFiltering]);
+
   const filteredOrders = useMemo(() => {
-    let list = orders;
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      list = list.filter(
-        (o) =>
-          o.orderNo.toLowerCase().includes(q) ||
-          o.customerName.toLowerCase().includes(q) ||
-          o.phone.includes(q)
-      );
-    }
-    if (orderStatusFilter !== "All") list = list.filter((o) => o.status === orderStatusFilter);
-    if (paymentStatusFilter !== "All")
-      list = list.filter((o) => o.paymentStatus === paymentStatusFilter);
-    return list;
-  }, [orders, search, orderStatusFilter, paymentStatusFilter]);
+    return (ordersData || []).map(mapOrderToRow);
+  }, [ordersData]);
+
+  const isLoading = isLoadingAll || isLoadingSearch || isLoadingFilter;
 
   return {
     search,
@@ -31,5 +43,6 @@ export function useOrdersFilters(orders: OrderRow[]) {
     paymentStatusFilter,
     setPaymentStatusFilter,
     filteredOrders,
+    isLoading,
   };
 }

@@ -16,7 +16,6 @@ import AddonsTab from "@/components/inventory/AddonsTab";
 import ProductsTab from "@/components/inventory/ProductsTab";
 import DiscountsTab from "@/components/inventory/DiscountsTab";
 import { Category, Modification, Product } from "@/types/product";
-import AddProductModal from "@/components/inventory/AddProductModal";
 
 export default function InventoryContent() {
   const router = useRouter();
@@ -38,9 +37,7 @@ export default function InventoryContent() {
   const [addGroupOverlayVisible, setAddGroupOverlayVisible] = useState(false);
   const [editingModification, setEditingModification] = useState<Modification | null>(null);
 
-  const [addProductOpen, setAddProductOpen] = useState(false);
-  const [addProductOverlayVisible, setAddProductOverlayVisible] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [addProductOpen, textAddProductOpen] = useState(false); // Kept for other uses if any, but product editing now uses full page
 
   const openAddCategory = () => {
     setEditingCategory(null);
@@ -67,9 +64,7 @@ export default function InventoryContent() {
   };
 
   const openEditProduct = (product: Product) => {
-    setEditingProduct(product);
-    setAddProductOverlayVisible(false);
-    setAddProductOpen(true);
+    router.push(`${ROUTES.DASHBOARD_INVENTORY_ADD_PRODUCT}?id=${product.id}`);
   };
 
   useEffect(() => {
@@ -84,11 +79,6 @@ export default function InventoryContent() {
     return () => cancelAnimationFrame(raf);
   }, [addGroupOpen]);
 
-  useEffect(() => {
-    if (!addProductOpen) return;
-    const raf = requestAnimationFrame(() => setAddProductOverlayVisible(true));
-    return () => cancelAnimationFrame(raf);
-  }, [addProductOpen]);
 
   useEffect(() => {
     if (isCashier) router.replace(ROUTES.DASHBOARD_MENU);
@@ -205,14 +195,6 @@ export default function InventoryContent() {
         onClose={() => setAddGroupOpen(false)}
       />
 
-      <AddProductModal
-        open={addProductOpen}
-        overlayVisible={addProductOverlayVisible}
-        branchId={branchId}
-        branchName={branch?.name || ""}
-        product={editingProduct as any}
-        onClose={() => setAddProductOpen(false)}
-      />
     </div>
   );
 }

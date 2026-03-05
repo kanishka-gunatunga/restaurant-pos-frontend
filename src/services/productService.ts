@@ -99,3 +99,15 @@ export const getProductsByCategory = async (categoryId: number, status?: string)
   });
   return res.data;
 };
+
+export const getProductsByBranch = async (
+  branchId: number,
+  params: {
+    categoryId?: number;
+    subCategoryId?: number;
+    status?: string;
+  } = {}
+): Promise<Product[]> => {
+  const res = await axiosInstance.get(`/products/branch/${branchId}`, { params });
+  return res.data;
+};

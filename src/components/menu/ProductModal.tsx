@@ -9,12 +9,15 @@ type ProductModalProps = {
   item: MenuItem;
   onClose: () => void;
   onAddToOrder: (
+    productId: number,
     name: string,
     price: number,
     details: string,
     image?: string,
     variant?: string,
-    addOnsList?: string[]
+    addOnsList?: string[],
+    variationId?: number,
+    modifications?: { modificationId: number; price: number }[]
   ) => void;
   getProdImage: (id: string) => string;
 };
@@ -91,8 +94,22 @@ export default function ProductModal({
     const image = getProdImage(item.id);
     const variantName = selectedVariant?.name;
     const addOnsParsed = getAddOnsList();
+    const modifications = selectedAddOns.map((a) => ({
+      modificationId: Number(a.addOn.id),
+      price: a.addOn.price,
+    }));
     for (let i = 0; i < qty; i++) {
-      onAddToOrder(item.name, unitPrice, details, image, variantName, addOnsParsed.length > 0 ? addOnsParsed : undefined);
+      onAddToOrder(
+        item.productId,
+        item.name,
+        unitPrice,
+        details,
+        image,
+        variantName,
+        addOnsParsed.length > 0 ? addOnsParsed : undefined,
+        selectedVariant?.id,
+        modifications.length > 0 ? modifications : undefined
+      );
     }
     onClose();
   };
@@ -143,16 +160,14 @@ export default function ProductModal({
                       key={v.name}
                       type="button"
                       onClick={() => setSelectedVariant(v)}
-                      className={`rounded-[14px] px-3 py-2 text-left transition-colors ${
-                        selectedVariant?.name === v.name
-                          ? "border-2 border-primary bg-primary-muted"
-                          : "border border-[#E2E8F0] bg-white text-zinc-700 hover:bg-zinc-50"
-                      }`}
+                      className={`rounded-[14px] px-3 py-2 text-left transition-colors ${selectedVariant?.name === v.name
+                        ? "border-2 border-primary bg-primary-muted"
+                        : "border border-[#E2E8F0] bg-white text-zinc-700 hover:bg-zinc-50"
+                        }`}
                     >
                       <span
-                        className={`block text-sm font-semibold ${
-                          selectedVariant?.name === v.name ? "text-primary" : ""
-                        }`}
+                        className={`block text-sm font-semibold ${selectedVariant?.name === v.name ? "text-primary" : ""
+                          }`}
                       >
                         {v.name}
                       </span>
@@ -202,11 +217,10 @@ export default function ProductModal({
                     return (
                       <div
                         key={addOn.id}
-                        className={`flex items-center justify-between gap-2 rounded-md border p-2.5 ${
-                          selected
-                            ? "border-primary bg-primary-muted"
-                            : "border-[#E2E8F0] bg-white"
-                        }`}
+                        className={`flex items-center justify-between gap-2 rounded-md border p-2.5 ${selected
+                          ? "border-primary bg-primary-muted"
+                          : "border-[#E2E8F0] bg-white"
+                          }`}
                       >
                         <button
                           type="button"
@@ -214,9 +228,8 @@ export default function ProductModal({
                           className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
                         >
                           <div
-                            className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
-                              selected ? "border-primary bg-primary" : "border-zinc-300"
-                            }`}
+                            className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${selected ? "border-primary bg-primary" : "border-zinc-300"
+                              }`}
                           >
                             {selected && (
                               <svg

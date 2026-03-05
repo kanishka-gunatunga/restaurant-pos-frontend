@@ -15,12 +15,13 @@ import {
   Check,
   ChevronDown,
 } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
 import { ROUTES } from "@/lib/constants";
 import { useAuth } from "@/contexts/AuthContext";
 import { useGetAllCategories } from "@/hooks/useCategory";
 import { useGetAllModifications } from "@/hooks/useModification";
-import { useCreateProduct } from "@/hooks/useProduct";
+import { useCreateProduct, useUpdateProduct, useGetProductById } from "@/hooks/useProduct";
 import { useGetAllBranches } from "@/hooks/useBranch";
 
 const PRIMARY = "#EA580C";
@@ -46,6 +47,10 @@ interface BranchVariantConfig {
 
 export default function AddProductContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const productId = searchParams.get("id");
+  const isEditing = !!productId;
+
   const { isCashier } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
 
@@ -77,7 +82,75 @@ export default function AddProductContent() {
   const { data: categories, isLoading: isCategoriesLoading } = useGetAllCategories("active");
   const { data: modificationGroups } = useGetAllModifications("active");
   const { data: allBranches } = useGetAllBranches("active");
+
+  const { data: productData, isLoading: isProductLoading } = useGetProductById(
+    productId ? parseInt(productId) : 0
+  );
+
   const createProductMutation = useCreateProduct();
+  const updateProductMutation = useUpdateProduct();
+
+  const isMutating = createProductMutation.isPending || updateProductMutation.isPending;
+
+  useEffect(() => {
+    if (isEditing && productData) {
+      setProductName(productData.name);
+      setProductCode(productData.code);
+      setDescription(productData.description || "");
+      setSelectedCategory(productData.categoryId ?? null);
+      setSelectedSubCategory(productData.subCategoryId ?? null);
+
+      if (productData.image) {
+        setImagePreview(productData.image);
+      }
+
+      const branchIds = productData.branches?.map(b => b.branchId.toString()) || [];
+      setSelectedBranches(branchIds);
+
+      // Reconstruct variant groups if possible
+      // For now, let's at least populate the configs
+      if (productData.variations && productData.variations.length > 0) {
+        const variation = productData.variations[0];
+        const configs: Record<string, { branchId: string; variants: Record<string, BranchVariantConfig> }> = {};
+
+        // Attempt to reconstruct groups from variation options if they are not just "Standard"
+        const options = variation.options || [];
+        if (options.length > 0) {
+          if (options.length === 1 && options[0].name === "Standard") {
+            setVariantGroups([]);
+          } else {
+            // Very basic reconstruction: one group with all options
+            // This is better than nothing, but multi-dim is still hard without metadata
+            // For now, let's just use the option names as they are
+            setVariantGroups([{
+              id: "vg-reconstructed",
+              name: "Options",
+              options: options.map(o => o.name)
+            }]);
+          }
+
+          branchIds.forEach(bId => {
+            const bIdNum = parseInt(bId);
+            const branchVariantConfig: Record<string, BranchVariantConfig> = {};
+
+            options.forEach(opt => {
+              const priceData = opt.prices?.find(p => p.branchId === bIdNum);
+              branchVariantConfig[opt.name] = {
+                price: priceData?.price?.toString() || "",
+                quantity: priceData?.quantity?.toString() || "",
+                addonGroups: variation.variationModifications?.map(m => m.modificationId) || [], // This is a bit simplified
+                expireDate: priceData?.expireDate || "",
+                batchNo: priceData?.batchNo || "",
+              };
+            });
+
+            configs[bId] = { branchId: bId, variants: branchVariantConfig };
+          });
+        }
+        setBranchConfigs(configs);
+      }
+    }
+  }, [isEditing, productData]);
 
   const selectedCategoryData = categories?.find((c) => c.id === selectedCategory);
 
@@ -215,7 +288,7 @@ export default function AddProductContent() {
   };
 
   const handleFinalSubmit = async () => {
-    if (createProductMutation.isPending) return;
+    if (isMutating) return;
 
     for (const branchId of selectedBranches) {
       const config = branchConfigs[branchId];
@@ -263,15 +336,23 @@ export default function AddProductContent() {
         ]
       };
 
-      await createProductMutation.mutateAsync({
-        data: payload as any,
-        imageFile: imageFile || undefined
-      });
+      if (isEditing && productId) {
+        await updateProductMutation.mutateAsync({
+          id: parseInt(productId),
+          data: payload as any,
+          imageFile: imageFile || undefined
+        });
+      } else {
+        await createProductMutation.mutateAsync({
+          data: payload as any,
+          imageFile: imageFile || undefined
+        });
+      }
 
       router.push(ROUTES.DASHBOARD_INVENTORY);
     } catch (error) {
-      console.error("Failed to create product:", error);
-      alert("Failed to create product. Please try again.");
+      console.error(`Failed to ${isEditing ? "update" : "create"} product:`, error);
+      alert(`Failed to ${isEditing ? "update" : "create"} product. Please try again.`);
     }
   };
 
@@ -314,7 +395,7 @@ export default function AddProductContent() {
               </div>
               <div>
                 <h1 className="font-['Inter'] text-2xl font-bold text-[#1D293D]">
-                  Add New Product
+                  {isEditing ? "Edit Product" : "Add New Product"}
                 </h1>
                 <p className="font-['Inter'] text-sm text-[#62748E]">
                   Step {currentStep} of 2:{" "}

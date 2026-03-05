@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { MapPin, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -8,6 +8,8 @@ import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
 import { ROUTES } from "@/lib/constants";
 import { useAuth } from "@/contexts/AuthContext";
 import { useGetAllBranches } from "@/hooks/useBranch";
+import { Branch } from "@/types/branch";
+import AddBranchModal from "@/components/branches/AddBranchModal";
 
 const BuildingIconSmall = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
@@ -35,10 +37,16 @@ const ArrowRightIcon = () => (
   </svg>
 );
 
-function BranchCard({ branchId, name, location }: { branchId: string; name: string; location: string | null }) {
+function BranchCard({
+  branch,
+  onEdit
+}: {
+  branch: Branch;
+  onEdit: (branch: Branch) => void
+}) {
   return (
-    <Link
-      href={`${ROUTES.DASHBOARD_INVENTORY}?branchId=${branchId}`}
+    <div
+      // href={`${ROUTES.DASHBOARD_INVENTORY}?branchId=${branchId}`}
       className="relative flex min-h-[246px] flex-col rounded-[40px] border border-[#E2E8F0] bg-white p-[33px] transition-all duration-300 ease-out hover:shadow-md"
     >
       <div className="absolute right-0.5 top-0.5 h-32 w-32 opacity-[0.05] pt-6 pr-1 pl-6">
@@ -48,24 +56,28 @@ function BranchCard({ branchId, name, location }: { branchId: string; name: stri
         <BuildingIconSmall />
       </div>
       <h2 className="mt-4 font-['Inter'] text-[20px] font-bold leading-7 text-[#1D293D]">
-        {name}
+        {branch.name}
       </h2>
       <div className="mt-1.5 flex items-center gap-1.5 font-['Inter'] text-[14px] font-medium leading-5 text-[#90A1B9]">
         <MapPin className="h-4 w-4 shrink-0 text-[#90A1B9]" />
-        <span>{location || "No location set"}</span>
+        <span>{branch.location || "No location set"}</span>
       </div>
-      <div className="mt-auto pt-4 flex items-center gap-1.5 font-['Inter'] text-[14px] font-bold leading-5 text-[#EA580C]">
-        <span>Manage Menu</span>
+      <button
+        className="mt-auto pt-4 flex items-center gap-1.5 font-['Inter'] cursor-pointer text-[14px] font-bold leading-5 text-[#EA580C]"
+        onClick={() => onEdit(branch)}
+      >
+        <span>Edit Details</span>
         <ArrowRightIcon />
-      </div>
-    </Link>
+      </button>
+    </div>
   );
 }
 
-function AddBranchCard() {
+function AddBranchCard({ onClick }: { onClick: () => void }) {
   return (
     <button
       type="button"
+      onClick={onClick}
       className="flex min-h-[140px] w-full flex-col items-center justify-center gap-3 rounded-[16px] border border-dashed border-[#CAD5E2] bg-[#F1F5F9]/60 p-5 transition-colors hover:border-[#90A1B9] hover:bg-[#F1F5F9]"
     >
       <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#E2E8F0]">
@@ -82,6 +94,28 @@ export default function BranchesContent() {
   const router = useRouter();
   const { isCashier } = useAuth();
   const { data: branches = [], isLoading } = useGetAllBranches("active");
+
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [addModalOverlayVisible, setAddModalOverlayVisible] = useState(false);
+  const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
+
+  const openAddModal = () => {
+    setEditingBranch(null);
+    setAddModalOverlayVisible(false);
+    setAddModalOpen(true);
+  };
+
+  const openEditModal = (branch: Branch) => {
+    setEditingBranch(branch);
+    setAddModalOverlayVisible(false);
+    setAddModalOpen(true);
+  };
+
+  useEffect(() => {
+    if (!addModalOpen) return;
+    const raf = requestAnimationFrame(() => setAddModalOverlayVisible(true));
+    return () => cancelAnimationFrame(raf);
+  }, [addModalOpen]);
 
   useEffect(() => {
     if (isCashier) router.replace(ROUTES.DASHBOARD_MENU);
@@ -113,17 +147,23 @@ export default function BranchesContent() {
                 {branches.map((branch) => (
                   <BranchCard
                     key={branch.id}
-                    branchId={branch.id.toString()}
-                    name={branch.name}
-                    location={branch.location}
+                    branch={branch}
+                    onEdit={openEditModal}
                   />
                 ))}
-                <AddBranchCard />
+                <AddBranchCard onClick={openAddModal} />
               </>
             )}
           </div>
         </div>
       </div>
+
+      <AddBranchModal
+        open={addModalOpen}
+        overlayVisible={addModalOverlayVisible}
+        branch={editingBranch}
+        onClose={() => setAddModalOpen(false)}
+      />
     </div>
   );
 }

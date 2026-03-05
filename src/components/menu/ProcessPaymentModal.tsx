@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { X, Wallet, CreditCard, Calculator } from "lucide-react";
+import { useCreatePayment } from "@/hooks/usePayment";
 
 const formatRs = (n: number) =>
   `Rs.${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -11,6 +12,7 @@ type Step = "method" | "cash" | "success";
 type ProcessPaymentModalProps = {
   customerName: string;
   total: number;
+  orderId?: number;
   onClose: () => void;
   onComplete: () => void;
 };
@@ -18,6 +20,7 @@ type ProcessPaymentModalProps = {
 export default function ProcessPaymentModal({
   customerName,
   total,
+  orderId,
   onClose,
   onComplete,
 }: ProcessPaymentModalProps) {
@@ -25,15 +28,34 @@ export default function ProcessPaymentModal({
   const [amountGiven, setAmountGiven] = useState("");
   const [changeReturned, setChangeReturned] = useState(0);
 
+  const { mutateAsync: createPayment, isPending: isSavingPayment } = useCreatePayment();
+
   const amountNum = parseFloat(amountGiven.replace(/[^0-9.]/g, "")) || 0;
   const change = step === "cash" ? Math.max(0, amountNum - total) : changeReturned;
 
-  const handleCompletePayment = () => {
-    if (step === "cash") {
-      if (amountNum < total) return;
-      setChangeReturned(change);
-      setStep("success");
+  const handleCompletePayment = async (method: "cash" | "card") => {
+    if (method === "cash" && amountNum < total) return;
+
+    if (orderId) {
+      try {
+        await createPayment({
+          orderId,
+          paymentMethod: method,
+          amount: total,
+          status: "paid",
+        });
+      } catch (err: any) {
+        alert("Failed to save payment: " + (err.response?.data?.message || err.message));
+        return;
+      }
     }
+
+    if (method === "cash") {
+      setChangeReturned(change);
+    } else {
+      setChangeReturned(0);
+    }
+    setStep("success");
   };
 
   const handleSuccessClose = () => {
@@ -118,8 +140,7 @@ export default function ProcessPaymentModal({
               <button
                 type="button"
                 onClick={() => {
-                  setChangeReturned(0);
-                  setStep("success");
+                  handleCompletePayment("card");
                 }}
                 className="flex flex-col items-center justify-center rounded-[24px] border-2 border-[#BEDBFF] mb-2 p-4 transition-all duration-300 ease-out hover:opacity-95 sm:p-5 min-[1200px]:p-6"
                 style={{
@@ -156,9 +177,9 @@ export default function ProcessPaymentModal({
             <div className="mt-4">
               <label className="mb-2 flex items-center gap-2 font-['Inter'] text-sm font-bold leading-5 text-[#314158]">
                 <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0" aria-hidden>
-                  <path d="M15 4.5H3C2.17157 4.5 1.5 5.17157 1.5 6V12C1.5 12.8284 2.17157 13.5 3 13.5H15C15.8284 13.5 16.5 12.8284 16.5 12V6C16.5 5.17157 15.8284 4.5 15 4.5Z" stroke="#009966" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M9 10.5C9.82843 10.5 10.5 9.82843 10.5 9C10.5 8.17157 9.82843 7.5 9 7.5C8.17157 7.5 7.5 8.17157 7.5 9C7.5 9.82843 8.17157 10.5 9 10.5Z" stroke="#009966" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M4.5 9H4.5075M13.5 9H13.5075" stroke="#009966" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M15 4.5H3C2.17157 4.5 1.5 5.17157 1.5 6V12C1.5 12.8284 2.17157 13.5 3 13.5H15C15.8284 13.5 16.5 12.8284 16.5 12V6C16.5 5.17157 15.8284 4.5 15 4.5Z" stroke="#009966" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M9 10.5C9.82843 10.5 10.5 9.82843 10.5 9C10.5 8.17157 9.82843 7.5 9 7.5C8.17157 7.5 7.5 8.17157 7.5 9C7.5 9.82843 8.17157 10.5 9 10.5Z" stroke="#009966" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M4.5 9H4.5075M13.5 9H13.5075" stroke="#009966" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
                 Amount Given by Customer
               </label>
@@ -201,7 +222,7 @@ export default function ProcessPaymentModal({
               </button>
               <button
                 type="button"
-                onClick={handleCompletePayment}
+                onClick={() => handleCompletePayment("cash")}
                 disabled={amountNum < total}
                 className="flex flex-1 items-center justify-center gap-2 rounded-[16px] bg-[#00BC7D] py-3.5 font-['Inter'] text-base font-bold leading-6 text-white shadow-[0px_4px_6px_-4px_#0000001A,0px_10px_15px_-3px_#0000001A] transition-all duration-300 ease-out hover:bg-[#00A66D] disabled:opacity-50 disabled:pointer-events-none min-[400px]:min-h-[56px]"
               >
@@ -220,8 +241,8 @@ export default function ProcessPaymentModal({
           <div className="flex flex-col items-center py-6">
             <span className="flex h-[104px] w-[104px] items-center justify-center rounded-full bg-[#00BC7D] text-white shadow-[0px_25px_50px_-12px_#A4F4CF]">
               <svg width="52" height="52" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0" aria-hidden>
-                <path d="M25.8513 47.3939C37.7489 47.3939 47.3939 37.7489 47.3939 25.8512C47.3939 13.9535 37.7489 4.30856 25.8513 4.30856C13.9536 4.30856 4.30859 13.9535 4.30859 25.8512C4.30859 37.7489 13.9536 47.3939 25.8513 47.3939Z" stroke="white" strokeWidth="6.4628" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M19.3884 25.8512L23.697 30.1598L32.314 21.5427" stroke="white" strokeWidth="6.4628" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M25.8513 47.3939C37.7489 47.3939 47.3939 37.7489 47.3939 25.8512C47.3939 13.9535 37.7489 4.30856 25.8513 4.30856C13.9536 4.30856 4.30859 13.9535 4.30859 25.8512C4.30859 37.7489 13.9536 47.3939 25.8513 47.3939Z" stroke="white" strokeWidth="6.4628" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M19.3884 25.8512L23.697 30.1598L32.314 21.5427" stroke="white" strokeWidth="6.4628" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </span>
             <p className="mt-4 text-center font-['Inter'] text-2xl font-bold leading-8 text-[#1D293D]">

@@ -16,6 +16,8 @@ import type { MenuItem, ProductVariant, ProductAddOn } from "@/components/menu/t
 
 export type EditOrderLineItem = {
   id: string;
+  productId?: string;
+  variationId?: string;
   name: string;
   qty: number;
   price: number;
@@ -25,10 +27,11 @@ export type EditOrderLineItem = {
 };
 
 type OrderForEdit = {
+  id: string;
   orderNo: string;
   customerName: string;
   totalAmount: number;
-  items?: { name: string; qty: number; price: number }[];
+  items?: { id: string; productId: string; variationId?: string; name: string; qty: number; price: number }[];
 };
 
 type Props = {
@@ -45,7 +48,7 @@ function AddItemCard({
   onAdd,
 }: {
   item: MenuItem;
-  onAdd: (params: { name: string; price: number; image: string; variant?: string; addOns?: string[] }) => void;
+  onAdd: (params: { productId: string; variationId?: string; name: string; price: number; image: string; variant?: string; addOns?: string[] }) => void;
 }) {
   const [variantOpen, setVariantOpen] = useState(false);
   const [addOnsOpen, setAddOnsOpen] = useState(false);
@@ -82,6 +85,8 @@ function AddItemCard({
       n > 1 ? [`${addOn.name} x${n}`] : [addOn.name]
     );
     onAdd({
+      productId: String(item.id),
+      variationId: undefined,
       name: item.name,
       price: unitPrice,
       image: getProdImage(item.id),
@@ -135,9 +140,8 @@ function AddItemCard({
                       key={v.name}
                       type="button"
                       onClick={() => { setSelectedVariant(v); setVariantOpen(false); }}
-                      className={`block w-full px-2 py-1 text-left font-['Inter'] text-[11px] ${
-                        selectedVariant?.name === v.name ? "bg-[#EFF6FF] font-bold text-[#155DFC]" : "text-[#45556C]"
-                      }`}
+                      className={`block w-full px-2 py-1 text-left font-['Inter'] text-[11px] ${selectedVariant?.name === v.name ? "bg-[#EFF6FF] font-bold text-[#155DFC]" : "text-[#45556C]"
+                        }`}
                     >
                       {v.name} — Rs.{v.price.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                     </button>
@@ -220,7 +224,9 @@ export default function EditOrderModal({ order, onClose, onSubmit }: Props) {
   const initialItems: EditOrderLineItem[] = (order.items ?? []).map((it, i) => {
     const menuItem = MENU_ITEMS.find((m) => m.name === it.name);
     return {
-      id: `line-${order.orderNo}-${i}-${it.name}`,
+      id: it.id || `line-${order.orderNo}-${i}-${it.name}`,
+      productId: it.productId,
+      variationId: it.variationId,
       name: it.name,
       qty: it.qty,
       price: it.price,
@@ -249,9 +255,11 @@ export default function EditOrderModal({ order, onClose, onSubmit }: Props) {
     setLineItems((prev) => prev.filter((it) => it.id !== id));
   };
 
-  const addItemFromMenu = (params: { name: string; price: number; image: string; variant?: string; addOns?: string[] }) => {
+  const addItemFromMenu = (params: { productId: string; variationId?: string; name: string; price: number; image: string; variant?: string; addOns?: string[] }) => {
     const newItem: EditOrderLineItem = {
       id: `line-${order.orderNo}-${Date.now()}-${params.name}`,
+      productId: params.productId,
+      variationId: params.variationId,
       name: params.name,
       qty: 1,
       price: params.price,

@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import type { OrderRow, OrderDetailsView } from "../types";
+import { useUpdateOrderStatus, useUpdateOrder, useDeleteOrder } from "@/hooks/useOrder";
 
 export function useOrderModals() {
   const [authModal, setAuthModal] = useState<{ isOpen: boolean; orderNo: string | null }>({
@@ -18,22 +19,36 @@ export function useOrderModals() {
     customerName: order.customerName,
     phone: order.phone,
     totalAmount: order.totalAmount,
-    orderType: order.orderType,
+    orderType: order.orderType as any,
     tableNumber: order.tableNumber,
     items: order.items,
     subtotal: order.subtotal,
     discount: order.discount,
   }), []);
 
+  const updateStatusMutation = useUpdateOrderStatus();
+  const updateOrderMutation = useUpdateOrder();
+  const deleteOrderMutation = useDeleteOrder();
+
   const handleDeleteClick = useCallback((orderNo: string) => {
     setAuthModal({ isOpen: true, orderNo });
   }, []);
 
   const handleVerify = useCallback((passcode: string) => {
-    void passcode; // TODO: Verify passcode with backend
-    // TODO: Update order status to CANCELED
-    setAuthModal({ isOpen: false, orderNo: null });
-  }, []);
+    if (authModal.orderNo) {
+      updateStatusMutation.mutate({
+        id: authModal.orderNo,
+        data: {
+          status: "cancel",
+          passcode,
+        },
+      }, {
+        onSuccess: () => {
+          setAuthModal({ isOpen: false, orderNo: null });
+        }
+      });
+    }
+  }, [authModal.orderNo, updateStatusMutation]);
 
   const handleCloseAuthModal = useCallback(() => {
     setAuthModal({ isOpen: false, orderNo: null });
@@ -44,17 +59,33 @@ export function useOrderModals() {
   }, []);
 
   const handleEditClick = useCallback((order: OrderRow) => {
-    if (order.status === "PENDING") {
+    if (order.status === "pending") {
       setEditOrderModal(order);
     }
   }, []);
 
   const handleEditOrderSubmit = useCallback(
-    (data: { items: { id: string; name: string; qty: number; price: number }[] }) => {
-      void data; // TODO: Call API to update order with new items
-      setEditOrderModal(null);
+    (data: { items: { id: string; productId?: string; variationId?: string; qty: number; price: number }[] }) => {
+      if (editOrderModal) {
+        updateOrderMutation.mutate({
+          id: editOrderModal.id,
+          data: {
+            order_products: data.items.map(item => ({
+              productId: Number(item.productId || item.id),
+              variationId: item.variationId ? Number(item.variationId) : undefined,
+              quantity: item.qty,
+              unitPrice: item.price,
+              productDiscount: 0,
+            }))
+          }
+        }, {
+          onSuccess: () => {
+            setEditOrderModal(null);
+          }
+        });
+      }
     },
-    []
+    [editOrderModal, updateOrderMutation]
   );
 
   const closeEditModal = useCallback(() => setEditOrderModal(null), []);

@@ -9,7 +9,7 @@ import OrdersFilterSection from "@/components/orders/OrdersFilterSection";
 import OrdersTable from "@/components/orders/OrdersTable";
 import { useOrdersFilters } from "@/domains/orders/hooks/useOrdersFilters";
 import { useOrderModals } from "@/domains/orders/hooks/useOrderModals";
-import { MOCK_ORDERS } from "@/domains/orders/mockOrders";
+import { Loader2 } from "lucide-react";
 
 export default function OrdersContent() {
   const {
@@ -20,7 +20,8 @@ export default function OrdersContent() {
     paymentStatusFilter,
     setPaymentStatusFilter,
     filteredOrders,
-  } = useOrdersFilters(MOCK_ORDERS);
+    isLoading,
+  } = useOrdersFilters();
 
   const {
     authModal,
@@ -51,22 +52,30 @@ export default function OrdersContent() {
             onOrderStatusChange={setOrderStatusFilter}
             onPaymentStatusChange={setPaymentStatusFilter}
           />
-          <OrdersTable
-            orders={filteredOrders}
-            onView={handleViewOrder}
-            onEdit={handleEditClick}
-            onDelete={handleDeleteClick}
-          />
+
+          {isLoading ? (
+            <div className="flex h-64 items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-[#EA580C]" />
+            </div>
+          ) : (
+            <OrdersTable
+              orders={filteredOrders}
+              onView={handleViewOrder}
+              onEdit={handleEditClick}
+              onDelete={handleDeleteClick}
+            />
+          )}
         </div>
       </div>
 
       {editOrderModal && (
         <EditOrderModal
           order={{
+            id: editOrderModal.id,
             orderNo: editOrderModal.orderNo,
             customerName: editOrderModal.customerName,
             totalAmount: editOrderModal.totalAmount,
-            items: editOrderModal.items,
+            items: editOrderModal.items as any,
           }}
           onSubmit={handleEditOrderSubmit}
           onClose={closeEditModal}
@@ -78,11 +87,11 @@ export default function OrdersContent() {
           order={orderToView(viewOrder)}
           onClose={closeViewModal}
           onEdit={
-            viewOrder.status === "PENDING"
+            viewOrder.status === "pending"
               ? () => openEditFromView(viewOrder)
               : undefined
           }
-          onCancel={() => openCancelFromView(viewOrder.orderNo)}
+          onCancel={() => openCancelFromView(viewOrder.id)}
         />
       )}
 

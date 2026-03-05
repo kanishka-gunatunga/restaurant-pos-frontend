@@ -135,3 +135,13 @@ export const useUpdateOrderItemStatus = () => {
     },
   });
 };
+
+export const useDeleteOrder = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string | number) => orderService.deleteOrder(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ORDER_KEYS.lists() });
+    },
+  });
+};

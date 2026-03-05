@@ -23,6 +23,9 @@ export type OrderDetailsData = {
 
 export type OrderItem = {
   id: string;
+  productId: number;
+  variationId?: number;
+  modifications?: { modificationId: number; price: number }[];
   name: string;
   details: string;
   variant?: string;
@@ -55,7 +58,17 @@ type OrderContextType = {
   activeOrderNote: string;
   setActiveKitchenNote: (value: string) => void;
   setActiveOrderNote: (value: string) => void;
-  addItem: (name: string, price: number, details?: string, image?: string, variant?: string, addOnsList?: string[]) => void;
+  addItem: (
+    productId: number,
+    name: string,
+    price: number,
+    details?: string,
+    image?: string,
+    variant?: string,
+    addOnsList?: string[],
+    variationId?: number,
+    modifications?: { modificationId: number; price: number }[]
+  ) => void;
   updateQty: (id: string, delta: number) => void;
   removeItem: (id: string) => void;
   canAddOrder: boolean;
@@ -91,11 +104,11 @@ const hasOrderData = (order: Order): boolean => {
       return true;
     }
   }
-  
+
   if (order.items && order.items.length > 0) return true;
   if (order.kitchenNote && order.kitchenNote.trim().length > 0) return true;
   if (order.orderNote && order.orderNote.trim().length > 0) return true;
-  
+
   return false;
 };
 
@@ -123,7 +136,7 @@ const saveOrdersToStorage = (orders: Order[]) => {
   if (typeof window === "undefined") return;
   try {
     const ordersWithData = orders.filter(hasOrderData);
-    
+
     if (ordersWithData.length > 0) {
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify(ordersWithData));
     } else {
@@ -160,7 +173,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   const initialOrders = (() => {
     const loaded = loadOrdersFromStorage();
     const ordersWithData = loaded.filter(hasOrderData);
-    
+
     if (ordersWithData.length === 0) {
       if (typeof window !== "undefined") {
         sessionStorage.removeItem(STORAGE_KEY);
@@ -168,15 +181,15 @@ export function OrderProvider({ children }: { children: ReactNode }) {
       }
       return [INITIAL_ORDER];
     }
-    
+
     const validated = ordersWithData.slice(0, 2);
     saveOrdersToStorage(validated);
-    
+
     return validated;
   })();
-  
+
   const [orders, setOrders] = useState<Order[]>(initialOrders);
-  
+
   const [activeOrderId, setActiveOrderIdState] = useState<string | null>(() => {
     const storedId = loadActiveOrderIdFromStorage();
     if (storedId && initialOrders.some((o) => o.id === storedId)) {
@@ -270,10 +283,10 @@ export function OrderProvider({ children }: { children: ReactNode }) {
         }
         return prev;
       }
-      
+
       const filtered = prev.filter((o) => o.id !== orderId);
       saveOrdersToStorage(filtered);
-      
+
       setActiveOrderIdState((current) => {
         if (current === orderId) {
           const newActiveId = filtered[0]?.id ?? null;
@@ -282,7 +295,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
         }
         return current;
       });
-      
+
       return filtered;
     });
   }, []);
@@ -313,14 +326,31 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   }, [activeOrderId]);
 
   const addItem = useCallback(
-    (name: string, price: number, details = "REGULAR", image?: string, variant?: string, addOnsList?: string[]) => {
+    (
+      productId: number,
+      name: string,
+      price: number,
+      details = "REGULAR",
+      image?: string,
+      variant?: string,
+      addOnsList?: string[],
+      variationId?: number,
+      modifications?: { modificationId: number; price: number }[]
+    ) => {
       const orderId = activeOrderId ?? orders[0]?.id;
       if (!orderId) return;
 
       setOrders((prev) => {
         const updated = prev.map((order) => {
           if (order.id !== orderId) return order;
-          const existing = order.items.find((i) => i.name === name && i.details === details);
+          // For equality check, we should probably check variation and modifications too
+          const existing = order.items.find(
+            (i) =>
+              i.productId === productId &&
+              i.variationId === variationId &&
+              JSON.stringify(i.modifications) === JSON.stringify(modifications) &&
+              i.details === details
+          );
           if (existing) {
             return {
               ...order,
@@ -335,6 +365,9 @@ export function OrderProvider({ children }: { children: ReactNode }) {
               ...order.items,
               {
                 id: generateId(),
+                productId,
+                variationId,
+                modifications,
                 name,
                 details,
                 price,
@@ -406,12 +439,12 @@ export function OrderProvider({ children }: { children: ReactNode }) {
             const updated = prev.map((o) =>
               o.id === orderId
                 ? {
-                    ...o,
-                    orderDetails: orderData.orderDetails !== undefined ? orderData.orderDetails : o.orderDetails,
-                    items: orderData.items !== undefined ? orderData.items : o.items,
-                    kitchenNote: orderData.kitchenNote !== undefined ? orderData.kitchenNote : o.kitchenNote,
-                    orderNote: orderData.orderNote !== undefined ? orderData.orderNote : o.orderNote,
-                  }
+                  ...o,
+                  orderDetails: orderData.orderDetails !== undefined ? orderData.orderDetails : o.orderDetails,
+                  items: orderData.items !== undefined ? orderData.items : o.items,
+                  kitchenNote: orderData.kitchenNote !== undefined ? orderData.kitchenNote : o.kitchenNote,
+                  orderNote: orderData.orderNote !== undefined ? orderData.orderNote : o.orderNote,
+                }
                 : o
             );
             saveOrdersToStorage(updated);

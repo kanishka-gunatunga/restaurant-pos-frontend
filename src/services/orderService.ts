@@ -54,3 +54,7 @@ export const updateOrderItemStatus = async (
   const res = await axiosInstance.put(`/orders/item/${itemId}/status`, { status });
   return res.data;
 };
+
+export const deleteOrder = async (id: string | number): Promise<void> => {
+  await axiosInstance.delete(`/orders/${id}`);
+};
