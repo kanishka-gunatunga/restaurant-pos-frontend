@@ -53,3 +53,22 @@ export const getAdminDashboardStats = async (): Promise<AdminDashboardData> => {
   const res = await axiosInstance.get("/dashboard/admin");
   return res.data;
 };
+
+export interface ManagerDashboardData {
+  completedOrdersCount: number;
+  activeOrdersCount: number;
+  holdOrdersCount: number;
+  cancelledOrdersCount: number;
+  activeCashiersCount: number;
+  todaysRevenue: string;
+  todaysCashOuts: string;
+  drawerCashList: { cashierName: string; drawerCash: string }[];
+  expiredProductsList: ExpiredProduct[];
+  restockAlertsList: RestockAlert[];
+  discountAlertsList: DiscountAlert[];
+}
+
+export const getManagerDashboardStats = async (): Promise<ManagerDashboardData> => {
+  const res = await axiosInstance.get("/dashboard/manager");
+  return res.data;
+};
