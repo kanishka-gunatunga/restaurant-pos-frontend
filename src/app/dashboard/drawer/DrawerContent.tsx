@@ -5,6 +5,10 @@ import { Wallet, ArrowUpCircle, Clock, Lock, Pencil } from "lucide-react";
 import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
 import StartDrawerModal from "@/components/drawer/StartDrawerModal";
 import CreateDrawerSessionModal from "@/components/drawer/CreateDrawerSessionModal";
+import EditInitialAmountModal from "@/components/drawer/EditInitialAmountModal";
+import ProcessCashOutModal from "@/components/drawer/ProcessCashOutModal";
+import CloseDrawerSessionModal from "@/components/drawer/CloseDrawerSessionModal";
+import CloseTheDrawerModal from "@/components/drawer/CloseTheDrawerModal";
 import DrawerCashIcon from "@/components/icons/DrawerCashIcon";
 import CashSalesIcon from "@/components/icons/CashSalesIcon";
 
@@ -27,6 +31,10 @@ interface CashOutEntry {
 export default function DrawerContent() {
   const [isStartModalOpen, setIsStartModalOpen] = useState(false);
   const [isCreateSessionModalOpen, setIsCreateSessionModalOpen] = useState(false);
+  const [isEditAmountModalOpen, setIsEditAmountModalOpen] = useState(false);
+  const [isCashOutModalOpen, setIsCashOutModalOpen] = useState(false);
+  const [isCloseSessionModalOpen, setIsCloseSessionModalOpen] = useState(false);
+  const [isCloseDrawerModalOpen, setIsCloseDrawerModalOpen] = useState(false);
   const [hasDrawerStarted, setHasDrawerStarted] = useState(false);
   const [hasActiveSession, setHasActiveSession] = useState(false);
   const [sessionData, setSessionData] = useState<{
@@ -64,6 +72,32 @@ export default function DrawerContent() {
     });
     setSessionData({ initialAmount: openingAmount, startedAt });
     setHasActiveSession(true);
+  };
+
+  const handleEditInitialAmount = async (newAmount: number, reason: string, passcode: string) => {
+    // TODO: Call API when backend is ready
+    console.log("Edit initial amount:", { newAmount, reason, passcode });
+    setSessionData((prev) => (prev ? { ...prev, initialAmount: newAmount } : null));
+  };
+
+  const handleCashOut = async (amount: number, reason: string, passcode: string) => {
+    // TODO: Call API when backend is ready
+    console.log("Process cash out:", { amount, reason, passcode });
+  };
+
+  const handleCloseSession = async (actualBalance: number, passcode: string) => {
+    // TODO: Call API when backend is ready
+    console.log("Close drawer session:", { actualBalance, passcode });
+    setHasActiveSession(false);
+    setSessionData(null);
+  };
+
+  const handleCloseTheDrawer = async (amount: number, passcode: string) => {
+    // TODO: Call API when backend is ready
+    console.log("Close the drawer:", { amount, passcode });
+    setHasDrawerStarted(false);
+    setHasActiveSession(false);
+    setSessionData(null);
   };
 
   return (
@@ -149,6 +183,7 @@ export default function DrawerContent() {
                         {sessionData ? formatRs(sessionData.initialAmount) : "—"}
                         <button
                           type="button"
+                          onClick={() => setIsEditAmountModalOpen(true)}
                           className="rounded p-1 text-[#90A1B9] hover:bg-[#F8FAFC] hover:text-[#45556C]"
                           aria-label="Edit initial amount"
                         >
@@ -201,6 +236,7 @@ export default function DrawerContent() {
                   <div className="space-y-3">
                     <button
                       type="button"
+                      onClick={() => setIsCashOutModalOpen(true)}
                       className="flex h-[60px] w-full max-w-[399px] items-center justify-between rounded-2xl border-2 border-[#FFD6A8] bg-[#FFF7ED] px-4 transition-all duration-300 ease-out hover:opacity-90"
                     >
                       <span className="flex items-center gap-2">
@@ -248,6 +284,7 @@ export default function DrawerContent() {
                     </button>
                     <button
                       type="button"
+                      onClick={() => setIsCloseSessionModalOpen(true)}
                       className="flex h-[60px] w-full max-w-[399px] items-center justify-between rounded-2xl border-2 border-[#FFC9C9] bg-[#FEF2F2] px-4 transition-all duration-300 ease-out hover:opacity-90"
                     >
                       <span className="flex items-center gap-2">
@@ -288,6 +325,7 @@ export default function DrawerContent() {
                     </button>
                     <button
                       type="button"
+                      onClick={() => setIsCloseDrawerModalOpen(true)}
                       className="flex h-[60px] w-full max-w-[399px] items-center justify-between rounded-2xl border-2 border-[#FFC9EF] bg-[#FEF2FC] px-4 transition-all duration-300 ease-out hover:opacity-90"
                     >
                       <span className="flex items-center gap-2">
@@ -459,6 +497,37 @@ export default function DrawerContent() {
           onCreate={handleCreateSession}
         />
       )}
+
+      <EditInitialAmountModal
+        isOpen={isEditAmountModalOpen}
+        onClose={() => setIsEditAmountModalOpen(false)}
+        initialAmount={sessionData?.initialAmount ?? 0}
+        onVerify={handleEditInitialAmount}
+      />
+
+      <ProcessCashOutModal
+        isOpen={isCashOutModalOpen}
+        onClose={() => setIsCashOutModalOpen(false)}
+        defaultAmount={4000}
+        onVerify={handleCashOut}
+      />
+
+      <CloseDrawerSessionModal
+        isOpen={isCloseSessionModalOpen}
+        onClose={() => setIsCloseSessionModalOpen(false)}
+        expectedBalance={expectedBalance}
+        initialAmount={sessionData?.initialAmount ?? 0}
+        cashSales={cashSales}
+        cashOuts={cashOuts}
+        onVerify={handleCloseSession}
+      />
+
+      <CloseTheDrawerModal
+        isOpen={isCloseDrawerModalOpen}
+        onClose={() => setIsCloseDrawerModalOpen(false)}
+        initialDrawerAmount={expectedBalance}
+        onConfirm={handleCloseTheDrawer}
+      />
     </div>
   );
 }
