@@ -9,6 +9,7 @@ import CalculatorWindow from "@/components/calculator/CalculatorWindow";
 import { CalculatorProvider, useCalculator } from "@/contexts/CalculatorContext";
 import { SidebarProvider } from "@/contexts/SidebarContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { DrawerSessionProvider } from "@/contexts/DrawerSessionContext";
 import { ROUTES } from "@/lib/constants";
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
@@ -17,7 +18,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
 
   if (!user) return null;
 
-  return (
+  const content = (
     <div className="flex h-screen overflow-hidden bg-white">
       {isManagerOrAdmin ? <ManagerAdminSidebar /> : <DashboardSidebar />}
       <div className="flex min-w-0 flex-1 flex-col md:ml-24 min-[1920px]:ml-28 min-[2560px]:ml-32">
@@ -26,6 +27,12 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
       </div>
       {isOpen && <CalculatorWindow onClose={close} />}
     </div>
+  );
+
+  return isManagerOrAdmin ? (
+    <DrawerSessionProvider>{content}</DrawerSessionProvider>
+  ) : (
+    content
   );
 }
 

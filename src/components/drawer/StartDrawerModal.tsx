@@ -6,6 +6,8 @@ import { X, Wallet } from "lucide-react";
 interface StartDrawerModalProps {
   onClose: () => void;
   onStart: (openingAmount: number, managerPasscode: string) => void | Promise<void>;
+  /** When false, modal stays open after success (e.g. when followed by Create Session step). Default true. */
+  closeOnSuccess?: boolean;
 }
 
 function parseAmount(value: string): number {
@@ -13,7 +15,7 @@ function parseAmount(value: string): number {
   return parseFloat(cleaned) || 0;
 }
 
-export default function StartDrawerModal({ onClose, onStart }: StartDrawerModalProps) {
+export default function StartDrawerModal({ onClose, onStart, closeOnSuccess = true }: StartDrawerModalProps) {
   const [initialAmount, setInitialAmount] = useState("");
   const [managerPasscode, setManagerPasscode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -29,7 +31,7 @@ export default function StartDrawerModal({ onClose, onStart }: StartDrawerModalP
     setIsSubmitting(true);
     try {
       await Promise.resolve(onStart(amountNum, managerPasscode.trim()));
-      onClose();
+      if (closeOnSuccess) onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to start drawer.");
     } finally {

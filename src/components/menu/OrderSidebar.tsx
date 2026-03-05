@@ -371,12 +371,14 @@ export default function OrderSidebar() {
                           </button>
                         </div>
                         <div className="mt-1.5 flex items-center justify-between gap-2">
-                          <span className="font-['Arial'] text-sm font-bold leading-5 text-[#0F172B]">
-                            Rs.
-                            {(item.price * item.qty).toLocaleString("en-US", {
-                              minimumFractionDigits: 2,
-                            })}
-                          </span>
+                          <div className="scrollbar-subtle min-w-0 overflow-x-auto">
+                            <span className="whitespace-nowrap font-['Arial'] text-sm font-bold leading-5 text-[#0F172B]">
+                              Rs.
+                              {(item.price * item.qty).toLocaleString("en-US", {
+                                minimumFractionDigits: 2,
+                              })}
+                            </span>
+                          </div>
                           <div className="flex items-center gap-3 rounded-[10px] border border-[#F1F5F9] bg-[#F8FAFC] px-2">
                             <button
                               type="button"
@@ -460,21 +462,27 @@ export default function OrderSidebar() {
             </div>
 
             <div className="space-y-1">
-              <div className="flex justify-between font-['Arial'] text-sm leading-5 text-[#62748E]">
-                <span>Subtotal</span>
-                <span>Rs.{subtotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+              <div className="flex justify-between gap-2 font-['Arial'] text-sm leading-5 text-[#62748E]">
+                <span className="shrink-0">Subtotal</span>
+                <div className="scrollbar-subtle min-w-0 overflow-x-auto text-right">
+                  <span className="whitespace-nowrap">Rs.{subtotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                </div>
               </div>
-              <div className="flex justify-between font-['Arial'] text-sm leading-5 text-[#62748E]">
-                <span>Tax (10%)</span>
-                <span>Rs.{tax.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+              <div className="flex justify-between gap-2 font-['Arial'] text-sm leading-5 text-[#62748E]">
+                <span className="shrink-0">Tax (10%)</span>
+                <div className="scrollbar-subtle min-w-0 overflow-x-auto text-right">
+                  <span className="whitespace-nowrap">Rs.{tax.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                </div>
               </div>
-              <div className="flex items-center justify-between border-t border-zinc-200 pt-1.5">
-                <span className="font-['Arial'] text-base font-bold leading-6 text-[#0F172B]">
+              <div className="flex items-center justify-between gap-2 border-t border-zinc-200 pt-1.5">
+                <span className="shrink-0 font-['Arial'] text-base font-bold leading-6 text-[#0F172B]">
                   Total Amount
                 </span>
-                <span className="font-['Arial'] text-2xl font-black leading-8 text-[#EA580C]">
-                  Rs.{total.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                </span>
+                <div className="scrollbar-subtle min-w-0 overflow-x-auto text-right">
+                  <span className="whitespace-nowrap font-['Arial'] text-2xl font-black leading-8 text-[#EA580C]">
+                    Rs.{total.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
               </div>
             </div>
 

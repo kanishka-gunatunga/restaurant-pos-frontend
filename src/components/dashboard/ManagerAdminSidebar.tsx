@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -15,17 +16,21 @@ import {
 } from "lucide-react";
 import OrdersIcon from "@/components/icons/OrdersIcon";
 import BranchesIcon from "@/components/icons/BranchesIcon";
+import DrawerIcon from "@/components/icons/DrawerIcon";
 import { ROUTES } from "@/lib/constants";
 import { getFirstName } from "@/lib/format";
 import { useCalculator } from "@/contexts/CalculatorContext";
 import { useSidebar } from "@/contexts/SidebarContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDrawerSession } from "@/contexts/DrawerSessionContext";
+import CloseDrawerBeforeLogoutModal from "@/components/drawer/CloseDrawerBeforeLogoutModal";
 
 const navLinks = [
   { href: ROUTES.DASHBOARD, label: "Dashboard", icon: LayoutGrid },
   { href: ROUTES.DASHBOARD_MENU, label: "Menu", icon: ShoppingBag },
   { href: ROUTES.DASHBOARD_ORDERS, label: "Orders", icon: OrdersIcon },
   { href: ROUTES.DASHBOARD_PAYMENTS, label: "Payments", icon: CreditCard },
+  { href: ROUTES.DASHBOARD_DRAWER, label: "Drawer", icon: DrawerIcon },
   { href: ROUTES.DASHBOARD_CUSTOMERS, label: "Customers", icon: Users },
   { href: ROUTES.DASHBOARD_USERS, label: "Users", icon: UserCog },
   { href: ROUTES.DASHBOARD_BRANCHES, label: "Branches", icon: BranchesIcon },
@@ -101,6 +106,18 @@ export default function ManagerAdminSidebar() {
   const pathname = usePathname();
   const { isOpen, close } = useSidebar();
   const { user, logout } = useAuth();
+  const drawerSession = useDrawerSession();
+  const [isCloseDrawerModalOpen, setIsCloseDrawerModalOpen] = useState(false);
+
+  const hasActiveSession = drawerSession?.hasActiveSession ?? false;
+
+  const handleLogoutClick = () => {
+    if (hasActiveSession) {
+      setIsCloseDrawerModalOpen(true);
+    } else {
+      logout();
+    }
+  };
 
   return (
     <>
@@ -132,13 +149,16 @@ export default function ManagerAdminSidebar() {
           {navLinks.map(({ href, label, icon: Icon }) => {
             const isDashboard = label === "Dashboard";
             const isMenu = label === "Menu";
+            const isDrawer = label === "Drawer";
             const isBranches = label === "Branches";
             const isInventory = label === "Inventory";
             const isActive = isDashboard
               ? pathname === ROUTES.DASHBOARD
               : isMenu
                 ? pathname === ROUTES.DASHBOARD_MENU
-                : isBranches
+                : isDrawer
+                  ? pathname === ROUTES.DASHBOARD_DRAWER
+                  : isBranches
                   ? pathname === ROUTES.DASHBOARD_BRANCHES ||
                     pathname.startsWith(`${ROUTES.DASHBOARD_BRANCHES}/`)
                   : isInventory
@@ -175,7 +195,7 @@ export default function ManagerAdminSidebar() {
           </div>
           <button
             type="button"
-            onClick={logout}
+            onClick={handleLogoutClick}
             className="flex flex-col items-center gap-1 text-[#90A1B9] transition-colors hover:text-zinc-700 min-[1920px]:gap-1.5 min-[2560px]:gap-2"
           >
             <LogOut className="h-4 w-4 min-[1920px]:h-5 min-[1920px]:w-5 min-[2560px]:h-[22px] min-[2560px]:w-[22px]" />
@@ -185,6 +205,11 @@ export default function ManagerAdminSidebar() {
           </button>
         </div>
       </aside>
+
+      <CloseDrawerBeforeLogoutModal
+        isOpen={isCloseDrawerModalOpen}
+        onClose={() => setIsCloseDrawerModalOpen(false)}
+      />
     </>
   );
 }
