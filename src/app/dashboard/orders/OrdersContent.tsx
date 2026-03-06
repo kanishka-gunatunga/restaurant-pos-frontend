@@ -48,7 +48,7 @@ export default function OrdersContent() {
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <DashboardPageHeader />
       <div className="min-h-0 flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
-        <div className="mx-auto max-w-7xl">
+        <div className="">
           <OrdersHeader search={search} onSearchChange={setSearch} />
           <OrdersFilterSection
             orderStatusFilter={orderStatusFilter}

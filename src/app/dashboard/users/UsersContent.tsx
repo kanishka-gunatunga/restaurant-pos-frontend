@@ -7,7 +7,6 @@ import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
 import { Search, UserPlus } from "lucide-react";
 import UserTable from "@/components/users/UserTable";
 import AddUserModal from "@/components/users/AddUserModal";
-import ConfirmModal from "@/components/ui/ConfirmModal";
 import type { UserFormPayload } from "@/components/users/types";
 import { ROUTES } from "@/lib/constants";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,7 +18,7 @@ import {
   useActivateUser,
   useDeactivateUser
 } from "@/hooks/useUser";
-import type { User } from "@/types/user";
+import type { CreateUserData, UpdateUserData, User } from "@/types/user";
 // import { toast } from "sonner";
 
 export default function UsersContent() {
@@ -84,20 +83,23 @@ export default function UsersContent() {
   const handleSaveUser = async (user: UserFormPayload) => {
     setSaveError(null);
     try {
-      const payload = {
-        ...user,
-        role: user.role.toLowerCase(),
+      const basePayload: CreateUserData = {
+        name: user.name,
+        email: user.email || undefined,
+        password: user.password || undefined,
+        employeeId: user.employeeId,
+        role: user.role,
+        branchId: user.branchId || undefined,
+        passcode: user.passcode || undefined,
       };
 
-      if (selectedUser && !payload.password) {
-        delete (payload as Record<string, any>).password;
-      }
-
       if (selectedUser) {
-        await updateMutation.mutateAsync({ id: selectedUser.id, data: payload as any });
+        const { password, ...updatePayloadWithoutPassword } = basePayload;
+        const updatePayload: UpdateUserData = password ? basePayload : updatePayloadWithoutPassword;
+        await updateMutation.mutateAsync({ id: selectedUser.id, data: updatePayload });
         // toast.success("User updated successfully");
       } else {
-        await registerMutation.mutateAsync(payload as any);
+        await registerMutation.mutateAsync(basePayload);
         // toast.success("User registered successfully");
       }
 
@@ -143,7 +145,7 @@ export default function UsersContent() {
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-zinc-50/50">
       <DashboardPageHeader />
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-        <div className="mx-auto max-w-7xl space-y-6">
+        <div className="space-y-6">
           {saveError && (
             <div
               role="alert"
