@@ -275,11 +275,11 @@ export default function OrderSidebar() {
                             <p className="font-['Arial'] text-[10px] font-bold uppercase leading-[15px] text-[#EA580C]">{variant}</p>
                             {addOns.length > 0 && (
                               <div className="mt-0.5 flex flex-wrap gap-1">
-                                {addOns.map((addOn) => {
+                                {addOns.map((addOn, idx) => {
                                   const match = addOn.match(/^(.+?)\s*x(\d+)$/);
                                   const label = match ? `+${match[2]} ${match[1]}` : `+${addOn}`;
                                   return (
-                                    <span key={addOn} className="inline-block rounded bg-[#F1F5F9] px-1.5 py-0.5 font-['Arial'] text-[9px] leading-[13.5px] text-[#62748E]">
+                                    <span key={`${addOn}-${idx}`} className="inline-block rounded bg-[#F1F5F9] px-1.5 py-0.5 font-['Arial'] text-[9px] leading-[13.5px] text-[#62748E]">
                                       {label}
                                     </span>
                                   );

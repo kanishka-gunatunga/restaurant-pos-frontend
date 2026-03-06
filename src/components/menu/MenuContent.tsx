@@ -5,6 +5,7 @@ import { Search, Loader2 } from "lucide-react";
 import ProductCard from "./ProductCard";
 import { useGetParentCategories, useGetSubCategories } from "@/hooks/useCategory";
 import { useGetProductsByBranch } from "@/hooks/useProduct";
+import { useGetAllModifications } from "@/hooks/useModification";
 import { useAuth } from "@/contexts/AuthContext";
 import type { MenuItem, ProductVariant, ProductAddOn } from "./types";
 import type { Product } from "@/types/product";
@@ -47,6 +48,8 @@ export default function MenuContent() {
     status: "active",
   });
 
+  const { data: allModifications = [] } = useGetAllModifications("active");
+
   const mapProductToMenuItem = (p: Product): MenuItem => {
     // Collect variations
     const variants: ProductVariant[] = [];
@@ -54,24 +57,39 @@ export default function MenuContent() {
       v.options?.forEach((opt) => {
         const branchPrice = opt.prices?.find((pr) => pr.branchId === branchId);
         if (branchPrice) {
+          const isGeneric = v.name.toLowerCase().includes("variant") || v.name.toLowerCase().includes("standard");
           variants.push({
             id: opt.id,
-            name: `${v.name}: ${opt.name}`,
+            name: isGeneric ? opt.name : `${v.name}: ${opt.name}`,
             price: Number(branchPrice.price),
           });
         }
       });
     });
 
-    // Collect add-ons (modifications)
+    // Collect all unique modification IDs from products and variations
+    const modificationIds = new Set<number>();
+    p.productModifications?.forEach((pm) => modificationIds.add(pm.modificationId));
+    p.variations?.forEach((v) => {
+      v.variationModifications?.forEach((vm) => modificationIds.add(vm.modificationId));
+    });
+
+    // Map these IDs to actual items from allModifications
     const addOns: ProductAddOn[] = [];
-    p.productModifications?.forEach((pm) => {
-      pm.Modification?.items?.forEach((mi) => {
-        addOns.push({
-          id: mi.id.toString(),
-          name: mi.title,
-          price: Number(mi.price),
-        });
+    const seenItemIds = new Set<string>();
+
+    modificationIds.forEach((mId) => {
+      const modGroup = allModifications.find((m) => m.id === mId);
+      modGroup?.items?.forEach((mi) => {
+        const itemId = mi.id.toString();
+        if (!seenItemIds.has(itemId)) {
+          addOns.push({
+            id: itemId,
+            name: mi.title,
+            price: Number(mi.price),
+          });
+          seenItemIds.add(itemId);
+        }
       });
     });
 
@@ -79,18 +97,30 @@ export default function MenuContent() {
     const basePrice = variants.length > 0 ? variants[0].price : 0;
 
     return {
-      id: p.id.toString(),
+      id: `${p.id}-${p.code}`, // Ensure composite key just in case
       productId: p.id,
       name: p.name,
       category: p.category?.name || "Other",
       subCategory: p.subCategory?.name || "General",
       price: basePrice,
+      image: p.image || undefined,
       variants: variants.length > 0 ? variants : undefined,
       addOns: addOns.length > 0 ? addOns : undefined,
     };
   };
 
-  const menuItems = useMemo(() => products.map(mapProductToMenuItem), [products, branchId]);
+  const menuItems = useMemo(() => {
+    const uniqueItems: MenuItem[] = [];
+    const seenIds = new Set();
+    products.forEach(p => {
+      const item = mapProductToMenuItem(p);
+      if (!seenIds.has(item.id)) {
+        uniqueItems.push(item);
+        seenIds.add(item.id);
+      }
+    });
+    return uniqueItems;
+  }, [products, branchId, allModifications]);
 
   const filteredItems = useMemo(() => {
     return menuItems.filter((item) =>
@@ -138,9 +168,12 @@ export default function MenuContent() {
           >
             All
           </button>
-          {categories.map((cat) => (
+          {categories.reduce((acc: any[], cat) => {
+            if (!acc.find(c => c.id === cat.id)) acc.push(cat);
+            return acc;
+          }, []).map((cat) => (
             <button
-              key={cat.id}
+              key={`cat-${cat.id}`}
               type="button"
               onClick={() => handleCategoryChange(cat.id)}
               className={`rounded-[14px] px-5.5 py-2.5 text-center text-sm font-bold leading-5 tracking-normal transition-colors ${activeCategoryId === cat.id
@@ -168,9 +201,12 @@ export default function MenuContent() {
           >
             All
           </button>
-          {subCats.map((sub) => (
+          {subCats.reduce((acc: any[], sub) => {
+            if (!acc.find(s => s.id === sub.id)) acc.push(sub);
+            return acc;
+          }, []).map((sub) => (
             <button
-              key={sub.id}
+              key={`sub-${sub.id}`}
               type="button"
               onClick={() => setActiveSubCategoryId(sub.id)}
               className={`rounded-[10px] text-center text-sm font-bold leading-4 tracking-normal transition-colors ${activeSubCategoryId === sub.id
@@ -207,6 +243,6 @@ export default function MenuContent() {
           </div>
         )}
       </div>
-    </div>
+    </div >
   );
 }

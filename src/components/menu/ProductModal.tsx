@@ -17,6 +17,7 @@ type ProductModalProps = {
     variant?: string,
     addOnsList?: string[],
     variationId?: number,
+    variationOptionId?: number,
     modifications?: { modificationId: number; price: number }[]
   ) => void;
   getProdImage: (id: string) => string;
@@ -91,7 +92,7 @@ export default function ProductModal({
   const handleAddToOrder = () => {
     const unitPrice = totalPrice / qty;
     const details = getDetailsString();
-    const image = getProdImage(item.id);
+    const image = item.image || getProdImage(item.id);
     const variantName = selectedVariant?.name;
     const addOnsParsed = getAddOnsList();
     const modifications = selectedAddOns.map((a) => ({
@@ -107,6 +108,7 @@ export default function ProductModal({
         image,
         variantName,
         addOnsParsed.length > 0 ? addOnsParsed : undefined,
+        selectedVariant?.variationId,
         selectedVariant?.id,
         modifications.length > 0 ? modifications : undefined
       );
@@ -134,7 +136,7 @@ export default function ProductModal({
         <div className="flex h-full flex-col md:flex-row">
           <div className="relative h-48 w-full shrink-0 md:h-auto md:w-1/2">
             <Image
-              src={getProdImage(item.id)}
+              src={item.image || getProdImage(item.id)}
               alt={item.name}
               fill
               className="object-cover"
@@ -157,7 +159,7 @@ export default function ProductModal({
                 <div className="grid grid-cols-2 gap-2">
                   {item.variants!.map((v) => (
                     <button
-                      key={v.name}
+                      key={v.id}
                       type="button"
                       onClick={() => setSelectedVariant(v)}
                       className={`rounded-[14px] px-3 py-2 text-left transition-colors ${selectedVariant?.name === v.name

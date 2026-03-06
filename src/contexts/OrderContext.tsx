@@ -25,6 +25,7 @@ export type OrderItem = {
   id: string;
   productId: number;
   variationId?: number;
+  variationOptionId?: number;
   modifications?: { modificationId: number; price: number }[];
   name: string;
   details: string;
@@ -67,6 +68,7 @@ type OrderContextType = {
     variant?: string,
     addOnsList?: string[],
     variationId?: number,
+    variationOptionId?: number,
     modifications?: { modificationId: number; price: number }[]
   ) => void;
   updateQty: (id: string, delta: number) => void;
@@ -335,6 +337,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
       variant?: string,
       addOnsList?: string[],
       variationId?: number,
+      variationOptionId?: number,
       modifications?: { modificationId: number; price: number }[]
     ) => {
       const orderId = activeOrderId ?? orders[0]?.id;
@@ -348,6 +351,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
             (i) =>
               i.productId === productId &&
               i.variationId === variationId &&
+              i.variationOptionId === variationOptionId &&
               JSON.stringify(i.modifications) === JSON.stringify(modifications) &&
               i.details === details
           );
@@ -367,6 +371,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
                 id: generateId(),
                 productId,
                 variationId,
+                variationOptionId,
                 modifications,
                 name,
                 details,

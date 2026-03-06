@@ -58,9 +58,10 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
       item.name,
       price,
       variantName,
-      getProdImage(item.id),
+      item.image || getProdImage(item.id),
       variantName,
       undefined,
+      variant?.variationId,
       variant?.id
     );
   };
@@ -102,7 +103,7 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
   const handleAddToOrder = () => {
     const unitPrice = totalPrice / qty;
     const details = getDetailsString();
-    const image = getProdImage(item.id);
+    const image = item.image || getProdImage(item.id);
     const variantName = selectedVariant?.name;
     const addOnsParsed = getAddOnsList();
     const modifications = selectedAddOns.map((a) => ({
@@ -118,6 +119,7 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
         image,
         variantName,
         addOnsParsed.length > 0 ? addOnsParsed : undefined,
+        selectedVariant?.variationId,
         selectedVariant?.id,
         modifications.length > 0 ? modifications : undefined
       );
@@ -146,10 +148,9 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
         onKeyDown={(e) => e.key === "Escape" && handleCloseExpansion()}
         className="flex min-w-0 max-w-full cursor-pointer flex-col overflow-hidden rounded-xl bg-white shadow-md ring-1 ring-zinc-200"
       >
-        {/* Clickable image area */}
         <div className="relative block aspect-square w-full shrink-0 overflow-hidden rounded-t-xl bg-zinc-100">
           <Image
-            src={getProdImage(item.id)}
+            src={item.image || getProdImage(item.id)}
             alt={item.name}
             fill
             className="object-cover"
@@ -182,7 +183,7 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
                 <div className="grid grid-cols-2 gap-1.5">
                   {item.variants!.map((v) => (
                     <button
-                      key={v.name}
+                      key={v.id}
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -473,7 +474,7 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
           onClick={handleImageClick}
         >
           <Image
-            src={getProdImage(item.id)}
+            src={item.image || getProdImage(item.id)}
             alt={item.name}
             fill
             className="object-cover"
