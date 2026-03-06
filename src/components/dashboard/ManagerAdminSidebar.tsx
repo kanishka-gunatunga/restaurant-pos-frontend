@@ -13,10 +13,12 @@ import {
   X,
   Package,
   UserCog,
+  Activity,
 } from "lucide-react";
 import OrdersIcon from "@/components/icons/OrdersIcon";
 import BranchesIcon from "@/components/icons/BranchesIcon";
 import DrawerIcon from "@/components/icons/DrawerIcon";
+import ReportIcon from "@/components/icons/ReportIcon";
 import { ROUTES } from "@/lib/constants";
 import { getFirstName } from "@/lib/format";
 import { useCalculator } from "@/contexts/CalculatorContext";
@@ -30,11 +32,13 @@ const navLinks = [
   { href: ROUTES.DASHBOARD_MENU, label: "Menu", icon: ShoppingBag },
   { href: ROUTES.DASHBOARD_ORDERS, label: "Orders", icon: OrdersIcon },
   { href: ROUTES.DASHBOARD_PAYMENTS, label: "Payments", icon: CreditCard },
-  { href: ROUTES.DASHBOARD_DRAWER, label: "Drawer", icon: DrawerIcon },
   { href: ROUTES.DASHBOARD_CUSTOMERS, label: "Customers", icon: Users },
   { href: ROUTES.DASHBOARD_USERS, label: "Users", icon: UserCog },
   { href: ROUTES.DASHBOARD_BRANCHES, label: "Branches", icon: BranchesIcon },
   { href: ROUTES.DASHBOARD_INVENTORY, label: "Inventory", icon: Package },
+  { href: ROUTES.DASHBOARD_DRAWER, label: "Drawer", icon: DrawerIcon },
+  { href: ROUTES.DASHBOARD_REPORTS, label: "Report", icon: ReportIcon },
+  { href: ROUTES.DASHBOARD_ACTIVITY, label: "Activity", icon: Activity },
 ] as const;
 
 function NavLink({
@@ -146,12 +150,14 @@ export default function ManagerAdminSidebar() {
         </div>
 
         <nav className="flex min-h-0 flex-1 flex-col items-center gap-2 overflow-y-auto overflow-x-hidden pt-5 pb-2 min-[1920px]:gap-3 min-[1920px]:pt-6 min-[2560px]:gap-4 min-[2560px]:pt-7 [scrollbar-width:thin] [scrollbar-color:#E2E8F0_transparent]">
-          {navLinks.map(({ href, label, icon: Icon }) => {
+          {navLinks.filter((l) => l.label !== "Report" && l.label !== "Activity").map(({ href, label, icon: Icon }) => {
             const isDashboard = label === "Dashboard";
             const isMenu = label === "Menu";
             const isDrawer = label === "Drawer";
             const isBranches = label === "Branches";
             const isInventory = label === "Inventory";
+            const isActivity = label === "Activity";
+            const isReports = label === "Report";
             const isActive = isDashboard
               ? pathname === ROUTES.DASHBOARD
               : isMenu
@@ -164,7 +170,13 @@ export default function ManagerAdminSidebar() {
                   : isInventory
                     ? pathname === ROUTES.DASHBOARD_INVENTORY ||
                       pathname.startsWith(`${ROUTES.DASHBOARD_INVENTORY}/`)
-                    : pathname === href || pathname.startsWith(`${href}/`);
+                    : isActivity
+                      ? pathname === ROUTES.DASHBOARD_ACTIVITY ||
+                        pathname.startsWith(`${ROUTES.DASHBOARD_ACTIVITY}/`)
+                      : isReports
+                        ? pathname === ROUTES.DASHBOARD_REPORTS ||
+                          pathname.startsWith(`${ROUTES.DASHBOARD_REPORTS}/`)
+                        : pathname === href || pathname.startsWith(`${href}/`);
             return (
               <NavLink
                 key={label}
@@ -177,6 +189,25 @@ export default function ManagerAdminSidebar() {
             );
           })}
           <CalculatorTab onToggle={close} />
+          {navLinks.filter((l) => l.label === "Report" || l.label === "Activity").map(({ href, label, icon: Icon }) => {
+            const isActivity = label === "Activity";
+            const isReports = label === "Report";
+            const isActive = isActivity
+              ? pathname === ROUTES.DASHBOARD_ACTIVITY ||
+                pathname.startsWith(`${ROUTES.DASHBOARD_ACTIVITY}/`)
+              : pathname === ROUTES.DASHBOARD_REPORTS ||
+                pathname.startsWith(`${ROUTES.DASHBOARD_REPORTS}/`);
+            return (
+              <NavLink
+                key={label}
+                href={href}
+                label={label}
+                icon={Icon}
+                isActive={isActive}
+                onNavigate={close}
+              />
+            );
+          })}
         </nav>
 
         <div className="shrink-0 flex flex-col items-center gap-4 pb-4 pt-2 border-t border-[#E2E8F0] min-[1920px]:gap-5 min-[1920px]:pb-5 min-[2560px]:gap-6 min-[2560px]:pb-5">

@@ -106,7 +106,7 @@ export default function CustomersContent() {
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#F8FAFC]">
       <DashboardPageHeader />
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-        <div className="mx-auto max-w-7xl">
+        <div className="">
           <CustomerHeader
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}

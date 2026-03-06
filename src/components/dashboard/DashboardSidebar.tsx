@@ -17,8 +17,9 @@ const navLinks = [
   { href: ROUTES.DASHBOARD_ORDERS, label: "Orders", icon: OrdersIcon },
   { href: ROUTES.DASHBOARD_PAYMENTS, label: "Payments", icon: CreditCard },
   { href: ROUTES.DASHBOARD_CUSTOMERS, label: "Customers", icon: Users },
-  { href: ROUTES.DASHBOARD_DRAWER, label: "Drawer", icon: DrawerIcon },
 ] as const;
+
+const drawerLink = { href: ROUTES.DASHBOARD_DRAWER, label: "Drawer", icon: DrawerIcon } as const;
 
 function NavLink({
   href,
@@ -124,14 +125,11 @@ export default function DashboardSidebar() {
           {navLinks.map(({ href, label, icon: Icon }) => {
             const isDashboard = label === "Dashboard";
             const isMenu = label === "Menu";
-            const isDrawer = label === "Drawer";
             const isActive = isDashboard
               ? pathname === ROUTES.DASHBOARD
               : isMenu
                 ? pathname === ROUTES.DASHBOARD_MENU
-                : isDrawer
-                  ? pathname === ROUTES.DASHBOARD_DRAWER
-                  : pathname === href || pathname.startsWith(`${href}/`);
+                : pathname === href || pathname.startsWith(`${href}/`);
             return (
               <NavLink
                 key={label}
@@ -144,6 +142,14 @@ export default function DashboardSidebar() {
             );
           })}
           <CalculatorTab onToggle={close} />
+          <NavLink
+            key={drawerLink.label}
+            href={drawerLink.href}
+            label={drawerLink.label}
+            icon={drawerLink.icon}
+            isActive={pathname === ROUTES.DASHBOARD_DRAWER || pathname.startsWith(`${ROUTES.DASHBOARD_DRAWER}/`)}
+            onNavigate={close}
+          />
         </nav>
 
         {/* Bottom - User & Logout (fixed, no scroll) */}
