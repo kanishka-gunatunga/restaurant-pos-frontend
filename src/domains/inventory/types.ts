@@ -106,9 +106,9 @@ export const MOCK_PRODUCTS_FOR_DISCOUNT: ProductForDiscount[] = [
     price: "Rs.2000.00",
     image: "https://images.unsplash.com/photo-1628840042765-356cda07504e?w=100&h=100&fit=crop",
     variants: [
-      { id: "v1", name: "Small (10\")", price: "Rs.2000.00" },
-      { id: "v2", name: "Medium (12\")", price: "Rs.2000.00" },
-      { id: "v3", name: "Large (14\")", price: "Rs.2000.00" },
+      { id: "v1", name: 'Small (10")', price: "Rs.2000.00" },
+      { id: "v2", name: 'Medium (12")', price: "Rs.2000.00" },
+      { id: "v3", name: 'Large (14")', price: "Rs.2000.00" },
     ],
   },
   {
@@ -117,9 +117,9 @@ export const MOCK_PRODUCTS_FOR_DISCOUNT: ProductForDiscount[] = [
     price: "Rs.2000.00",
     image: "https://images.unsplash.com/photo-1628840042765-356cda07504e?w=100&h=100&fit=crop",
     variants: [
-      { id: "v4", name: "Small (10\")", price: "Rs.2000.00" },
-      { id: "v5", name: "Medium (12\")", price: "Rs.2000.00" },
-      { id: "v6", name: "Large (14\")", price: "Rs.2000.00" },
+      { id: "v4", name: 'Small (10")', price: "Rs.2000.00" },
+      { id: "v5", name: 'Medium (12")', price: "Rs.2000.00" },
+      { id: "v6", name: 'Large (14")', price: "Rs.2000.00" },
     ],
   },
 ];
@@ -132,9 +132,9 @@ export const MOCK_DISCOUNTS: DiscountOffer[] = [
     productCount: 2,
     variantCount: 4,
     items: [
-      { productName: "Margherita Pizza", variant: "Medium (12\")", discountPercent: 10 },
-      { productName: "Margherita Pizza", variant: "Large (14\")", discountPercent: 10 },
-      { productName: "Margherita Pizza", variant: "Small (10\")", discountPercent: 10 },
+      { productName: "Margherita Pizza", variant: 'Medium (12")', discountPercent: 10 },
+      { productName: "Margherita Pizza", variant: 'Large (14")', discountPercent: 10 },
+      { productName: "Margherita Pizza", variant: 'Small (10")', discountPercent: 10 },
       { productName: "Classic Cheeseburger", discountPercent: 10 },
     ],
   },

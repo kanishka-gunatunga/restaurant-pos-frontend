@@ -15,15 +15,14 @@ function getInitialPosition() {
   const x = isMobile
     ? (window.innerWidth - calcWidth) / 2
     : Math.max(padding, Math.min(window.innerWidth - calcWidth - padding, DEFAULT_POSITION.x));
-  const y = Math.max(padding, Math.min(window.innerHeight - calcHeight - padding, DEFAULT_POSITION.y));
+  const y = Math.max(
+    padding,
+    Math.min(window.innerHeight - calcHeight - padding, DEFAULT_POSITION.y)
+  );
   return { x, y };
 }
 
-export default function CalculatorWindow({
-  onClose,
-}: {
-  onClose: () => void;
-}) {
+export default function CalculatorWindow({ onClose }: { onClose: () => void }) {
   const [position, setPosition] = useState(DEFAULT_POSITION);
   const [isDragging, setIsDragging] = useState(false);
   const dragOffset = useRef({ x: 0, y: 0 });
@@ -45,7 +44,10 @@ export default function CalculatorWindow({
   const handlePointerDown = useCallback(
     (e: React.MouseEvent | React.TouchEvent) => {
       if ((e.target as HTMLElement).closest("button")) return;
-      const { x, y } = "touches" in e ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : { x: (e as React.MouseEvent).clientX, y: (e as React.MouseEvent).clientY };
+      const { x, y } =
+        "touches" in e
+          ? { x: e.touches[0].clientX, y: e.touches[0].clientY }
+          : { x: (e as React.MouseEvent).clientX, y: (e as React.MouseEvent).clientY };
       setIsDragging(true);
       dragOffset.current = { x: x - position.x, y: y - position.y };
     },

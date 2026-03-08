@@ -1,9 +1,6 @@
 import { Filter } from "lucide-react";
 import type { OrderStatus, PaymentStatus } from "@/domains/orders/types";
-import {
-  ORDER_STATUS_OPTIONS,
-  PAYMENT_STATUS_OPTIONS,
-} from "@/domains/orders/constants";
+import { ORDER_STATUS_OPTIONS, PAYMENT_STATUS_OPTIONS } from "@/domains/orders/constants";
 
 function formatOption(opt: string) {
   return opt === "All"

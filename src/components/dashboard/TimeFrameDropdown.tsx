@@ -36,13 +36,17 @@ export default function TimeFrameDropdown() {
       >
         <Calendar className="h-4 w-4" />
         <span>{selected}</span>
-        <ChevronDown className={`h-4 w-4 text-[#90A1B9] transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+        <ChevronDown
+          className={`h-4 w-4 text-[#90A1B9] transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+        />
       </button>
 
       {/* Dropdown Menu */}
       <div
         className={`absolute right-0 mt-2 w-48 origin-top-right rounded-2xl bg-white p-2 shadow-xl ring-1 ring-black/5 transition-all duration-200 z-[100] ${
-          isOpen ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-95 -translate-y-2 pointer-events-none"
+          isOpen
+            ? "opacity-100 scale-100 translate-y-0"
+            : "opacity-0 scale-95 -translate-y-2 pointer-events-none"
         }`}
       >
         <div className="flex flex-col gap-1">

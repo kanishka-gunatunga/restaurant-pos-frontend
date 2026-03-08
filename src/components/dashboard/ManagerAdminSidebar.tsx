@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -12,14 +13,19 @@ import {
   X,
   Package,
   UserCog,
+  Activity,
 } from "lucide-react";
 import OrdersIcon from "@/components/icons/OrdersIcon";
 import BranchesIcon from "@/components/icons/BranchesIcon";
+import DrawerIcon from "@/components/icons/DrawerIcon";
+import ReportIcon from "@/components/icons/ReportIcon";
 import { ROUTES } from "@/lib/constants";
 import { getFirstName } from "@/lib/format";
 import { useCalculator } from "@/contexts/CalculatorContext";
 import { useSidebar } from "@/contexts/SidebarContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDrawerSession } from "@/contexts/DrawerSessionContext";
+import CloseDrawerBeforeLogoutModal from "@/components/drawer/CloseDrawerBeforeLogoutModal";
 
 const navLinks = [
   { href: ROUTES.DASHBOARD, label: "Dashboard", icon: LayoutGrid },
@@ -30,6 +36,9 @@ const navLinks = [
   { href: ROUTES.DASHBOARD_USERS, label: "Users", icon: UserCog },
   { href: ROUTES.DASHBOARD_BRANCHES, label: "Branches", icon: BranchesIcon },
   { href: ROUTES.DASHBOARD_INVENTORY, label: "Inventory", icon: Package },
+  { href: ROUTES.DASHBOARD_DRAWER, label: "Drawer", icon: DrawerIcon },
+  { href: ROUTES.DASHBOARD_REPORTS, label: "Report", icon: ReportIcon },
+  { href: ROUTES.DASHBOARD_ACTIVITY, label: "Activity", icon: Activity },
 ] as const;
 
 function NavLink({
@@ -101,6 +110,18 @@ export default function ManagerAdminSidebar() {
   const pathname = usePathname();
   const { isOpen, close } = useSidebar();
   const { user, logout } = useAuth();
+  const drawerSession = useDrawerSession();
+  const [isCloseDrawerModalOpen, setIsCloseDrawerModalOpen] = useState(false);
+
+  const hasActiveSession = drawerSession?.hasActiveSession ?? false;
+
+  const handleLogoutClick = () => {
+    if (hasActiveSession) {
+      setIsCloseDrawerModalOpen(true);
+    } else {
+      logout();
+    }
+  };
 
   return (
     <>
@@ -128,21 +149,34 @@ export default function ManagerAdminSidebar() {
           </button>
         </div>
 
-        <nav className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto overflow-x-hidden pt-5 pb-2 min-[1920px]:pt-6 min-[2560px]:pt-7 [scrollbar-width:thin] [scrollbar-color:#E2E8F0_transparent]">
-          {navLinks.map(({ href, label, icon: Icon }) => {
+        <nav className="flex min-h-0 flex-1 flex-col items-center gap-2 overflow-y-auto overflow-x-hidden pt-5 pb-2 min-[1920px]:gap-3 min-[1920px]:pt-6 min-[2560px]:gap-4 min-[2560px]:pt-7 [scrollbar-width:thin] [scrollbar-color:#E2E8F0_transparent]">
+          {navLinks.filter((l) => l.label !== "Report" && l.label !== "Activity").map(({ href, label, icon: Icon }) => {
             const isDashboard = label === "Dashboard";
             const isMenu = label === "Menu";
+            const isDrawer = label === "Drawer";
             const isBranches = label === "Branches";
             const isInventory = label === "Inventory";
+            const isActivity = label === "Activity";
+            const isReports = label === "Report";
             const isActive = isDashboard
               ? pathname === ROUTES.DASHBOARD
               : isMenu
                 ? pathname === ROUTES.DASHBOARD_MENU
-                : isBranches
-                  ? pathname === ROUTES.DASHBOARD_BRANCHES || pathname.startsWith(`${ROUTES.DASHBOARD_BRANCHES}/`)
+                : isDrawer
+                  ? pathname === ROUTES.DASHBOARD_DRAWER
+                  : isBranches
+                  ? pathname === ROUTES.DASHBOARD_BRANCHES ||
+                    pathname.startsWith(`${ROUTES.DASHBOARD_BRANCHES}/`)
                   : isInventory
-                    ? pathname === ROUTES.DASHBOARD_INVENTORY || pathname.startsWith(`${ROUTES.DASHBOARD_INVENTORY}/`)
-                    : pathname === href || pathname.startsWith(`${href}/`);
+                    ? pathname === ROUTES.DASHBOARD_INVENTORY ||
+                      pathname.startsWith(`${ROUTES.DASHBOARD_INVENTORY}/`)
+                    : isActivity
+                      ? pathname === ROUTES.DASHBOARD_ACTIVITY ||
+                        pathname.startsWith(`${ROUTES.DASHBOARD_ACTIVITY}/`)
+                      : isReports
+                        ? pathname === ROUTES.DASHBOARD_REPORTS ||
+                          pathname.startsWith(`${ROUTES.DASHBOARD_REPORTS}/`)
+                        : pathname === href || pathname.startsWith(`${href}/`);
             return (
               <NavLink
                 key={label}
@@ -155,6 +189,25 @@ export default function ManagerAdminSidebar() {
             );
           })}
           <CalculatorTab onToggle={close} />
+          {navLinks.filter((l) => l.label === "Report" || l.label === "Activity").map(({ href, label, icon: Icon }) => {
+            const isActivity = label === "Activity";
+            const isReports = label === "Report";
+            const isActive = isActivity
+              ? pathname === ROUTES.DASHBOARD_ACTIVITY ||
+                pathname.startsWith(`${ROUTES.DASHBOARD_ACTIVITY}/`)
+              : pathname === ROUTES.DASHBOARD_REPORTS ||
+                pathname.startsWith(`${ROUTES.DASHBOARD_REPORTS}/`);
+            return (
+              <NavLink
+                key={label}
+                href={href}
+                label={label}
+                icon={Icon}
+                isActive={isActive}
+                onNavigate={close}
+              />
+            );
+          })}
         </nav>
 
         <div className="shrink-0 flex flex-col items-center gap-4 pb-4 pt-2 border-t border-[#E2E8F0] min-[1920px]:gap-5 min-[1920px]:pb-5 min-[2560px]:gap-6 min-[2560px]:pb-5">
@@ -173,7 +226,7 @@ export default function ManagerAdminSidebar() {
           </div>
           <button
             type="button"
-            onClick={logout}
+            onClick={handleLogoutClick}
             className="flex flex-col items-center gap-1 text-[#90A1B9] transition-colors hover:text-zinc-700 min-[1920px]:gap-1.5 min-[2560px]:gap-2"
           >
             <LogOut className="h-4 w-4 min-[1920px]:h-5 min-[1920px]:w-5 min-[2560px]:h-[22px] min-[2560px]:w-[22px]" />
@@ -183,6 +236,11 @@ export default function ManagerAdminSidebar() {
           </button>
         </div>
       </aside>
+
+      <CloseDrawerBeforeLogoutModal
+        isOpen={isCloseDrawerModalOpen}
+        onClose={() => setIsCloseDrawerModalOpen(false)}
+      />
     </>
   );
 }

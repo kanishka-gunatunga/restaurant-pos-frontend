@@ -108,9 +108,7 @@ export default function UserTable({ searchTerm, users = [], isLoading, onEdit, o
                 <td colSpan={6} className="px-6 py-12 text-center">
                   <div className="flex flex-col items-center justify-center gap-3">
                     <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-                    <p className="text-[14px] font-medium text-[#62748E]">
-                      Loading users...
-                    </p>
+                    <p className="text-[14px] font-medium text-[#62748E]">Loading users...</p>
                   </div>
                 </td>
               </tr>
@@ -134,12 +132,8 @@ export default function UserTable({ searchTerm, users = [], isLoading, onEdit, o
                         <UserIcon className="h-5 w-5" />
                       </div>
                       <div>
-                        <p className="text-[14px] font-bold text-[#314158]">
-                          {user.name}
-                        </p>
-                        <p className="text-[10px] text-[#90A1B9]">
-                          ID: {user.id}
-                        </p>
+                        <p className="text-[14px] font-bold text-[#314158]">{user.name}</p>
+                        <p className="text-[10px] text-[#90A1B9]">ID: {user.id}</p>
                       </div>
                     </div>
                   </td>

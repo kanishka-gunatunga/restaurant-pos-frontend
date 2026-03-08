@@ -7,9 +7,7 @@ export default function DashboardLoading() {
             className="h-10 w-10 animate-spin rounded-full border-2 border-[#E2E8F0] border-t-[#EA580C]"
             aria-hidden
           />
-          <p className="font-['Inter'] text-sm font-medium text-[#62748E]">
-            Loading...
-          </p>
+          <p className="font-['Inter'] text-sm font-medium text-[#62748E]">Loading...</p>
         </div>
       </div>
     </div>

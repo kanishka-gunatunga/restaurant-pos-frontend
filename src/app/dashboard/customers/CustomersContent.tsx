@@ -12,7 +12,7 @@ import {
   useUpdateCustomer,
   useActivateCustomer,
   useDeactivateCustomer,
-  useUpdatePromotionPreference
+  useUpdatePromotionPreference,
 } from "@/hooks/useCustomer";
 import { Customer } from "@/types/customer";
 
@@ -38,7 +38,7 @@ export default function CustomersContent() {
 
     const statuses = ["active", "inactive", "all"];
 
-    const queryParts = parts.filter(part => {
+    const queryParts = parts.filter((part) => {
       if (statuses.includes(part)) {
         status = part as any;
         return false;
@@ -48,11 +48,13 @@ export default function CustomersContent() {
 
     return {
       query: queryParts.join(" "),
-      status: status || "active"
+      status: status || "active",
     };
   })();
 
-  const { data: allCustomers = [], isLoading: isAllLoading } = useGetAllCustomers({ status: parsing.status });
+  const { data: allCustomers = [], isLoading: isAllLoading } = useGetAllCustomers({
+    status: parsing.status,
+  });
   const { data: searchResults = [], isLoading: isSearchLoading } = useSearchCustomers(parsing);
 
   const hasNameQuery = parsing.query.trim().length > 0;
@@ -76,6 +78,7 @@ export default function CustomersContent() {
       setSelectedCustomer(null);
     } catch (error) {
       console.error("Failed to save customer:", error);
+      throw error;
     }
   };
 
@@ -95,7 +98,7 @@ export default function CustomersContent() {
   const handleTogglePromotion = async (customer: Customer) => {
     await promotionMutation.mutateAsync({
       id: customer.id,
-      enabled: !customer.promotions_enabled
+      enabled: !customer.promotions_enabled,
     });
   };
 
@@ -103,7 +106,7 @@ export default function CustomersContent() {
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#F8FAFC]">
       <DashboardPageHeader />
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-        <div className="mx-auto max-w-7xl">
+        <div className="">
           <CustomerHeader
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}

@@ -18,7 +18,7 @@ axiosInstance.interceptors.request.use(
     if (!token && typeof window !== "undefined") {
       const session = await getSession();
       token = (session?.user as { token?: string })?.token ?? null;
-      
+
       // If we found it in the session, sync it back to the cookie for future fast access
       if (token) {
         Cookies.set("token", token, { expires: 1 }); // 1 day

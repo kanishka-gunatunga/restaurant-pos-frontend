@@ -6,8 +6,19 @@ import { Customer, CreateCustomerData } from "@/types/customer";
 
 interface AddCustomerModalProps {
   onClose: () => void;
-  onSave: (customer: CreateCustomerData) => void;
+  onSave: (customer: CreateCustomerData) => void | Promise<void>;
   initialData?: Customer | null;
+}
+
+function getErrorMessage(err: unknown): string {
+  if (err && typeof err === "object" && "response" in err) {
+    const res = (err as { response?: { data?: { message?: string }; status?: number } }).response;
+    if (res?.data?.message) return res.data.message;
+    if (res?.status === 500) return "Server error. Please try again.";
+    if (res?.status === 401) return "Unauthorized. Please log in again.";
+    if (res?.status === 404) return "Endpoint not found. Check backend route.";
+  }
+  return err instanceof Error ? err.message : "Failed to save customer.";
 }
 
 export default function AddCustomerModal({ onClose, onSave, initialData }: AddCustomerModalProps) {
@@ -18,10 +29,20 @@ export default function AddCustomerModal({ onClose, onSave, initialData }: AddCu
     address: initialData?.address || "",
     promotions_enabled: initialData?.promotions_enabled ?? true,
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      await Promise.resolve(onSave(formData));
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -50,11 +71,15 @@ export default function AddCustomerModal({ onClose, onSave, initialData }: AddCu
           {initialData ? "Edit Customer" : "Create New Customer"}
         </h2>
 
+        {error && (
+          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[14px] text-red-700">
+            {error}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <label className="text-[12px] font-bold uppercase text-[#90A1B9]">
-              FULL NAME
-            </label>
+            <label className="text-[12px] font-bold uppercase text-[#90A1B9]">FULL NAME</label>
             <input
               type="text"
               name="name"
@@ -67,9 +92,7 @@ export default function AddCustomerModal({ onClose, onSave, initialData }: AddCu
           </div>
 
           <div className="space-y-2">
-            <label className="text-[12px] font-bold uppercase text-[#90A1B9]">
-              MOBILE NUMBER
-            </label>
+            <label className="text-[12px] font-bold uppercase text-[#90A1B9]">MOBILE NUMBER</label>
             <input
               type="text"
               name="mobile"
@@ -82,9 +105,7 @@ export default function AddCustomerModal({ onClose, onSave, initialData }: AddCu
           </div>
 
           <div className="space-y-2">
-            <label className="text-[12px] font-bold uppercase text-[#90A1B9]">
-              EMAIL ADDRESS
-            </label>
+            <label className="text-[12px] font-bold uppercase text-[#90A1B9]">EMAIL ADDRESS</label>
             <input
               type="email"
               name="email"
@@ -96,9 +117,7 @@ export default function AddCustomerModal({ onClose, onSave, initialData }: AddCu
           </div>
 
           <div className="space-y-2">
-            <label className="text-[12px] font-bold uppercase text-[#90A1B9]">
-              ADDRESS
-            </label>
+            <label className="text-[12px] font-bold uppercase text-[#90A1B9]">ADDRESS</label>
             <input
               type="text"
               name="address"
@@ -119,9 +138,10 @@ export default function AddCustomerModal({ onClose, onSave, initialData }: AddCu
             </button>
             <button
               type="submit"
-              className="h-12 flex-1 rounded-xl cursor-pointer bg-[#EA580C] text-[14px] font-bold text-white shadow-lg shadow-[#EA580C]/20 transition-all hover:bg-[#DC4C04] hover:shadow-xl active:scale-95"
+              disabled={isSubmitting}
+              className="h-12 flex-1 rounded-xl cursor-pointer bg-[#EA580C] text-[14px] font-bold text-white shadow-lg shadow-[#EA580C]/20 transition-all hover:bg-[#DC4C04] hover:shadow-xl active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {initialData ? "Save Changes" : "Create Customer"}
+              {isSubmitting ? "Saving..." : initialData ? "Save Changes" : "Create Customer"}
             </button>
           </div>
         </form>

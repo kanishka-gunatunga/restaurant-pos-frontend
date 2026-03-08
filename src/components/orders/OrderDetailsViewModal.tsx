@@ -1,7 +1,7 @@
 "use client";
 
 import { useId } from "react";
-import { X, Clock, Package, User, Phone, UtensilsCrossed, DollarSign } from "lucide-react";
+import { X, Clock, Package, User, Phone, UtensilsCrossed, DollarSign, CreditCard } from "lucide-react";
 import type { OrderStatus, OrderDetailsView } from "@/domains/orders/types";
 
 import { STATUS_STYLES } from "@/domains/orders/constants";
@@ -14,9 +14,10 @@ type Props = {
   onClose: () => void;
   onEdit?: () => void;
   onCancel?: () => void;
+  onPayNow?: (order: OrderDetailsView) => void;
 };
 
-export default function OrderDetailsViewModal({ order, onClose, onEdit, onCancel }: Props) {
+export default function OrderDetailsViewModal({ order, onClose, onEdit, onCancel, onPayNow }: Props) {
   const paymentClipId = useId();
   const cancelIconClipId = useId();
   const subtotal = order.subtotal ?? order.totalAmount;
@@ -274,15 +275,45 @@ export default function OrderDetailsViewModal({ order, onClose, onEdit, onCancel
             Close
           </button>
           <div className="flex items-center gap-3">
+            {order.paymentStatus === "PENDING" && onPayNow && (
+              <button
+                type="button"
+                onClick={() => onPayNow(order)}
+                className="flex items-center gap-2 rounded-[14px] bg-[#009966] px-5 py-3 font-['Inter'] text-base font-bold leading-6 text-white shadow-[0px_4px_6px_-4px_#0099664D,0px_10px_15px_-3px_#0099664D] transition-colors hover:bg-[#007A55] hover:shadow-[0px_4px_6px_-4px_#00996666,0px_10px_15px_-3px_#00996666]"
+              >
+                <CreditCard className="h-5 w-5 shrink-0" />
+                Pay Now
+              </button>
+            )}
             {onEdit && (
               <button
                 type="button"
                 onClick={onEdit}
                 className="flex items-center gap-2 rounded-[14px] bg-[#2B7FFF] px-5 py-3 font-['Inter'] text-base font-bold leading-6 text-white shadow-[0px_4px_6px_-4px_#2B7FFF4D,0px_10px_15px_-3px_#2B7FFF4D] transition-colors hover:bg-[#1A6AE6] hover:shadow-[0px_4px_6px_-4px_#2B7FFF66,0px_10px_15px_-3px_#2B7FFF66]"
               >
-                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0" aria-hidden>
-                  <path d="M9 2.25H3.75C3.35218 2.25 2.97064 2.40804 2.68934 2.68934C2.40804 2.97064 2.25 3.35218 2.25 3.75V14.25C2.25 14.6478 2.40804 15.0294 2.68934 15.3107C2.97064 15.592 3.35218 15.75 3.75 15.75H14.25C14.6478 15.75 15.0294 15.592 15.3107 15.3107C15.592 15.0294 15.75 14.6478 15.75 14.25V9" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M13.7812 1.9688C14.0796 1.67043 14.4842 1.50281 14.9062 1.50281C15.3282 1.50281 15.7328 1.67043 16.0312 1.9688C16.3296 2.26717 16.4972 2.67184 16.4972 3.0938C16.4972 3.51575 16.3296 3.92043 16.0312 4.2188L9.27145 10.9793C9.09336 11.1572 8.87335 11.2875 8.6317 11.358L6.47695 11.988C6.41241 12.0069 6.344 12.008 6.27888 11.9913C6.21376 11.9746 6.15432 11.9407 6.10678 11.8932C6.05925 11.8457 6.02536 11.7862 6.00868 11.7211C5.992 11.656 5.99312 11.5876 6.01195 11.523L6.64195 9.3683C6.71284 9.12684 6.84335 8.90709 7.02145 8.7293L13.7812 1.9688Z" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 18 18"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="shrink-0"
+                  aria-hidden
+                >
+                  <path
+                    d="M9 2.25H3.75C3.35218 2.25 2.97064 2.40804 2.68934 2.68934C2.40804 2.97064 2.25 3.35218 2.25 3.75V14.25C2.25 14.6478 2.40804 15.0294 2.68934 15.3107C2.97064 15.592 3.35218 15.75 3.75 15.75H14.25C14.6478 15.75 15.0294 15.592 15.3107 15.3107C15.592 15.0294 15.75 14.6478 15.75 14.25V9"
+                    stroke="white"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M13.7812 1.9688C14.0796 1.67043 14.4842 1.50281 14.9062 1.50281C15.3282 1.50281 15.7328 1.67043 16.0312 1.9688C16.3296 2.26717 16.4972 2.67184 16.4972 3.0938C16.4972 3.51575 16.3296 3.92043 16.0312 4.2188L9.27145 10.9793C9.09336 11.1572 8.87335 11.2875 8.6317 11.358L6.47695 11.988C6.41241 12.0069 6.344 12.008 6.27888 11.9913C6.21376 11.9746 6.15432 11.9407 6.10678 11.8932C6.05925 11.8457 6.02536 11.7862 6.00868 11.7211C5.992 11.656 5.99312 11.5876 6.01195 11.523L6.64195 9.3683C6.71284 9.12684 6.84335 8.90709 7.02145 8.7293L13.7812 1.9688Z"
+                    stroke="white"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
                 Edit Order
               </button>
@@ -293,11 +324,37 @@ export default function OrderDetailsViewModal({ order, onClose, onEdit, onCancel
                 onClick={onCancel}
                 className="flex items-center gap-2 rounded-[14px] bg-[#FF2056] px-5 py-3 font-['Inter'] text-base font-bold leading-6 text-white shadow-[0px_4px_6px_-4px_#FF20564D,0px_10px_15px_-3px_#FF20564D] transition-colors hover:bg-[#E61A4A] hover:shadow-[0px_4px_6px_-4px_#FF205666,0px_10px_15px_-3px_#FF205666]"
               >
-                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0" aria-hidden>
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 18 18"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="shrink-0"
+                  aria-hidden
+                >
                   <g clipPath={`url(#${cancelIconClipId})`}>
-                    <path d="M9 16.5C13.1421 16.5 16.5 13.1421 16.5 9C16.5 4.85786 13.1421 1.5 9 1.5C4.85786 1.5 1.5 4.85786 1.5 9C1.5 13.1421 4.85786 16.5 9 16.5Z" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    <path d="M11.25 6.75L6.75 11.25" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    <path d="M6.75 6.75L11.25 11.25" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <path
+                      d="M9 16.5C13.1421 16.5 16.5 13.1421 16.5 9C16.5 4.85786 13.1421 1.5 9 1.5C4.85786 1.5 1.5 4.85786 1.5 9C1.5 13.1421 4.85786 16.5 9 16.5Z"
+                      stroke="white"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M11.25 6.75L6.75 11.25"
+                      stroke="white"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M6.75 6.75L11.25 11.25"
+                      stroke="white"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
                   </g>
                   <defs>
                     <clipPath id={cancelIconClipId}>

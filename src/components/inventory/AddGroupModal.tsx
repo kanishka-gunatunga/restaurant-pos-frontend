@@ -117,7 +117,10 @@ export default function AddGroupModal({
 
         <div className="space-y-4 overflow-y-auto pr-2 [scrollbar-color:#E2E8F0_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#E2E8F0] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-1.5">
           <div className="shrink-0">
-            <label htmlFor="group-name" className="mb-1.5 block font-['Inter'] text-xs font-bold uppercase tracking-wide text-[#45556C]">
+            <label
+              htmlFor="group-name"
+              className="mb-1.5 block font-['Inter'] text-xs font-bold uppercase tracking-wide text-[#45556C]"
+            >
               Group Name
             </label>
             <input
