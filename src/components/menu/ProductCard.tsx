@@ -50,9 +50,20 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
 
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const price = item.variants?.[0]?.price ?? item.price;
-    const variantName = item.variants?.[0]?.name ?? "REGULAR";
-    addItem(item.name, price, variantName, getProdImage(item.id), variantName);
+    const variant = item.variants?.[0];
+    const price = variant?.price ?? item.price;
+    const variantName = variant?.name ?? "REGULAR";
+    addItem(
+      item.productId,
+      item.name,
+      price,
+      variantName,
+      item.image || getProdImage(item.id),
+      variantName,
+      undefined,
+      variant?.variationId,
+      variant?.id
+    );
   };
 
   const toggleAddOn = (addOn: ProductAddOn) => {
@@ -92,17 +103,25 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
   const handleAddToOrder = () => {
     const unitPrice = totalPrice / qty;
     const details = getDetailsString();
-    const image = getProdImage(item.id);
+    const image = item.image || getProdImage(item.id);
     const variantName = selectedVariant?.name;
     const addOnsParsed = getAddOnsList();
+    const modifications = selectedAddOns.map((a) => ({
+      modificationId: Number(a.addOn.id),
+      price: a.addOn.price,
+    }));
     for (let i = 0; i < qty; i++) {
       addItem(
+        item.productId,
         item.name,
         unitPrice,
         details,
         image,
         variantName,
-        addOnsParsed.length > 0 ? addOnsParsed : undefined
+        addOnsParsed.length > 0 ? addOnsParsed : undefined,
+        selectedVariant?.variationId,
+        selectedVariant?.id,
+        modifications.length > 0 ? modifications : undefined
       );
     }
     setSelectedAddOns([]);
@@ -129,10 +148,9 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
         onKeyDown={(e) => e.key === "Escape" && handleCloseExpansion()}
         className="flex min-w-0 max-w-full cursor-pointer flex-col overflow-hidden rounded-xl bg-white shadow-md ring-1 ring-zinc-200"
       >
-        {/* Clickable image area */}
         <div className="relative block aspect-square w-full shrink-0 overflow-hidden rounded-t-xl bg-zinc-100">
           <Image
-            src={getProdImage(item.id)}
+            src={item.image || getProdImage(item.id)}
             alt={item.name}
             fill
             className="object-cover"
@@ -165,22 +183,20 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
                 <div className="grid grid-cols-2 gap-1.5">
                   {item.variants!.map((v) => (
                     <button
-                      key={v.name}
+                      key={v.id}
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedVariant(v);
                       }}
-                      className={`product-card-variant-text min-w-0 rounded-[14px] px-3 py-1.5 text-left font-medium transition-colors ${
-                        selectedVariant?.name === v.name
-                          ? "border-2 border-primary bg-primary-muted"
-                          : "border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
-                      }`}
+                      className={`product-card-variant-text min-w-0 rounded-[14px] px-3 py-1.5 text-left font-medium transition-colors ${selectedVariant?.name === v.name
+                        ? "border-2 border-primary bg-primary-muted"
+                        : "border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
+                        }`}
                     >
                       <span
-                        className={`product-card-variant-text block font-semibold ${
-                          selectedVariant?.name === v.name ? "text-primary" : ""
-                        }`}
+                        className={`product-card-variant-text block font-semibold ${selectedVariant?.name === v.name ? "text-primary" : ""
+                          }`}
                       >
                         {v.name}
                       </span>
@@ -201,16 +217,14 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
                     e.stopPropagation();
                     setIsAddOnsOpen(!isAddOnsOpen);
                   }}
-                  className={`flex w-full min-w-0 items-center justify-between rounded-[14px] border-2 px-3 py-2 text-left transition-colors ${
-                    isAddOnsOpen
-                      ? "border-[#1D293D] bg-[#1D293D] text-white"
-                      : " border-[#E2E8F0] bg-white"
-                  }`}
+                  className={`flex w-full min-w-0 items-center justify-between rounded-[14px] border-2 px-3 py-2 text-left transition-colors ${isAddOnsOpen
+                    ? "border-[#1D293D] bg-[#1D293D] text-white"
+                    : " border-[#E2E8F0] bg-white"
+                    }`}
                 >
                   <span
-                    className={`product-card-addon-header flex min-w-0 items-center gap-1.5 px-2 py-1 text-center font-bold uppercase ${
-                      isAddOnsOpen ? "text-white" : "text-[#1D293D]"
-                    }`}
+                    className={`product-card-addon-header flex min-w-0 items-center gap-1.5 px-2 py-1 text-center font-bold uppercase ${isAddOnsOpen ? "text-white" : "text-[#1D293D]"
+                      }`}
                   >
                     <svg
                       className="h-4 w-[12.7px] shrink-0"
@@ -290,11 +304,10 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
                         return (
                           <div
                             key={addOn.id}
-                            className={`flex min-w-0 items-center justify-between gap-1.5 rounded-md border p-2 ${
-                              selected
-                                ? "border-primary bg-primary-muted"
-                                : "border-zinc-200 bg-white"
-                            }`}
+                            className={`flex min-w-0 items-center justify-between gap-1.5 rounded-md border p-2 ${selected
+                              ? "border-primary bg-primary-muted"
+                              : "border-zinc-200 bg-white"
+                              }`}
                           >
                             <button
                               type="button"
@@ -305,9 +318,8 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
                               className="flex min-w-0 flex-1 items-center gap-2 text-left"
                             >
                               <div
-                                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
-                                  selected ? "border-primary bg-primary" : "border-zinc-300"
-                                }`}
+                                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${selected ? "border-primary bg-primary" : "border-zinc-300"
+                                  }`}
                               >
                                 {selected && (
                                   <svg
@@ -462,7 +474,7 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
           onClick={handleImageClick}
         >
           <Image
-            src={getProdImage(item.id)}
+            src={item.image || getProdImage(item.id)}
             alt={item.name}
             fill
             className="object-cover"

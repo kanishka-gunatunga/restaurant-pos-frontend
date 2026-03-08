@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { X, ChevronDown, Loader2 } from "lucide-react";
 import { UserRole, User } from "@/types/user";
 import type { UserFormPayload } from "./types";
-import { useGetBranches } from "@/hooks/useBranch";
+import { useGetAllBranches } from "@/hooks/useBranch";
 import { useGetUserPasscode } from "@/hooks/useUser";
 
 interface AddUserModalProps {
@@ -14,7 +14,7 @@ interface AddUserModalProps {
 }
 
 export default function AddUserModal({ onClose, onAdd, initialData }: AddUserModalProps) {
-  const { data: branches = [], isLoading: isBranchesLoading } = useGetBranches();
+  const { data: branches = [], isLoading: isBranchesLoading } = useGetAllBranches();
   const [formData, setFormData] = useState<UserFormPayload>({
     id: initialData?.id,
     name: initialData?.name ?? "",

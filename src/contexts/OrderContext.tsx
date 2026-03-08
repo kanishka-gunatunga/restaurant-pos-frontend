@@ -1,6 +1,12 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  type ReactNode,
+} from "react";
 
 export type OrderType = "Dine In" | "Take Away" | "Delivery";
 
@@ -17,6 +23,10 @@ export type OrderDetailsData = {
 
 export type OrderItem = {
   id: string;
+  productId: number;
+  variationId?: number;
+  variationOptionId?: number;
+  modifications?: { modificationId: number; price: number }[];
   name: string;
   details: string;
   variant?: string;
@@ -50,12 +60,16 @@ type OrderContextType = {
   setActiveKitchenNote: (value: string) => void;
   setActiveOrderNote: (value: string) => void;
   addItem: (
+    productId: number,
     name: string,
     price: number,
     details?: string,
     image?: string,
     variant?: string,
-    addOnsList?: string[]
+    addOnsList?: string[],
+    variationId?: number,
+    variationOptionId?: number,
+    modifications?: { modificationId: number; price: number }[]
   ) => void;
   updateQty: (id: string, delta: number) => void;
   removeItem: (id: string) => void;
@@ -157,15 +171,7 @@ const saveActiveOrderIdToStorage = (orderId: string | null) => {
   }
 };
 
-type OrderProviderProps = {
-  children: ReactNode;
-  /** When provided, called before addItem. Return false to block the add. */
-  beforeAddItem?: () => boolean;
-  /** When provided, called before addOrder. Return false to block the add. */
-  beforeAddOrder?: () => boolean;
-};
-
-export function OrderProvider({ children, beforeAddItem, beforeAddOrder }: OrderProviderProps) {
+export function OrderProvider({ children }: { children: ReactNode }) {
   const initialOrders = (() => {
     const loaded = loadOrdersFromStorage();
     const ordersWithData = loaded.filter(hasOrderData);
@@ -254,7 +260,6 @@ export function OrderProvider({ children, beforeAddItem, beforeAddOrder }: Order
   );
 
   const addOrder = useCallback(() => {
-    if (beforeAddOrder && !beforeAddOrder()) return;
     if (orders.length >= 2) return;
     const newOrder = createEmptyOrder();
     setOrders((prev) => {
@@ -269,7 +274,7 @@ export function OrderProvider({ children, beforeAddItem, beforeAddOrder }: Order
     });
     setActiveOrderIdState(newOrder.id);
     saveActiveOrderIdToStorage(newOrder.id);
-  }, [orders.length, beforeAddOrder]);
+  }, [orders.length]);
 
   const closeOrder = useCallback((orderId: string) => {
     setOrders((prev) => {
@@ -324,25 +329,38 @@ export function OrderProvider({ children, beforeAddItem, beforeAddOrder }: Order
 
   const addItem = useCallback(
     (
+      productId: number,
       name: string,
       price: number,
       details = "REGULAR",
       image?: string,
       variant?: string,
-      addOnsList?: string[]
+      addOnsList?: string[],
+      variationId?: number,
+      variationOptionId?: number,
+      modifications?: { modificationId: number; price: number }[]
     ) => {
-      if (beforeAddItem && !beforeAddItem()) return;
       const orderId = activeOrderId ?? orders[0]?.id;
       if (!orderId) return;
 
       setOrders((prev) => {
         const updated = prev.map((order) => {
           if (order.id !== orderId) return order;
-          const existing = order.items.find((i) => i.name === name && i.details === details);
+          // For equality check, we should probably check variation and modifications too
+          const existing = order.items.find(
+            (i) =>
+              i.productId === productId &&
+              i.variationId === variationId &&
+              i.variationOptionId === variationOptionId &&
+              JSON.stringify(i.modifications) === JSON.stringify(modifications) &&
+              i.details === details
+          );
           if (existing) {
             return {
               ...order,
-              items: order.items.map((i) => (i.id === existing.id ? { ...i, qty: i.qty + 1 } : i)),
+              items: order.items.map((i) =>
+                i.id === existing.id ? { ...i, qty: i.qty + 1 } : i
+              ),
             };
           }
           return {
@@ -351,6 +369,10 @@ export function OrderProvider({ children, beforeAddItem, beforeAddOrder }: Order
               ...order.items,
               {
                 id: generateId(),
+                productId,
+                variationId,
+                variationOptionId,
+                modifications,
                 name,
                 details,
                 price,
@@ -366,7 +388,7 @@ export function OrderProvider({ children, beforeAddItem, beforeAddOrder }: Order
         return updated;
       });
     },
-    [activeOrderId, orders, beforeAddItem]
+    [activeOrderId, orders]
   );
 
   const updateQty = useCallback(
@@ -380,7 +402,9 @@ export function OrderProvider({ children, beforeAddItem, beforeAddOrder }: Order
           return {
             ...order,
             items: order.items
-              .map((i) => (i.id === itemId ? { ...i, qty: Math.max(0, i.qty + delta) } : i))
+              .map((i) =>
+                i.id === itemId ? { ...i, qty: Math.max(0, i.qty + delta) } : i
+              )
               .filter((i) => i.qty > 0),
           };
         });
@@ -420,17 +444,12 @@ export function OrderProvider({ children, beforeAddItem, beforeAddOrder }: Order
             const updated = prev.map((o) =>
               o.id === orderId
                 ? {
-                    ...o,
-                    orderDetails:
-                      orderData.orderDetails !== undefined
-                        ? orderData.orderDetails
-                        : o.orderDetails,
-                    items: orderData.items !== undefined ? orderData.items : o.items,
-                    kitchenNote:
-                      orderData.kitchenNote !== undefined ? orderData.kitchenNote : o.kitchenNote,
-                    orderNote:
-                      orderData.orderNote !== undefined ? orderData.orderNote : o.orderNote,
-                  }
+                  ...o,
+                  orderDetails: orderData.orderDetails !== undefined ? orderData.orderDetails : o.orderDetails,
+                  items: orderData.items !== undefined ? orderData.items : o.items,
+                  kitchenNote: orderData.kitchenNote !== undefined ? orderData.kitchenNote : o.kitchenNote,
+                  orderNote: orderData.orderNote !== undefined ? orderData.orderNote : o.orderNote,
+                }
                 : o
             );
             saveOrdersToStorage(updated);

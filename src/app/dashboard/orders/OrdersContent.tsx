@@ -7,10 +7,9 @@ import ManagerAuthorizationModal from "@/components/orders/ManagerAuthorizationM
 import OrdersHeader from "@/components/orders/OrdersHeader";
 import OrdersFilterSection from "@/components/orders/OrdersFilterSection";
 import OrdersTable from "@/components/orders/OrdersTable";
-import ProcessPaymentModal from "@/components/menu/ProcessPaymentModal";
 import { useOrdersFilters } from "@/domains/orders/hooks/useOrdersFilters";
 import { useOrderModals } from "@/domains/orders/hooks/useOrderModals";
-import { MOCK_ORDERS } from "@/domains/orders/mockOrders";
+import { Loader2 } from "lucide-react";
 
 export default function OrdersContent() {
   const {
@@ -21,7 +20,8 @@ export default function OrdersContent() {
     paymentStatusFilter,
     setPaymentStatusFilter,
     filteredOrders,
-  } = useOrdersFilters(MOCK_ORDERS);
+    isLoading,
+  } = useOrdersFilters();
 
   const {
     authModal,
@@ -38,17 +38,13 @@ export default function OrdersContent() {
     closeViewModal,
     openEditFromView,
     openCancelFromView,
-    handlePayNow,
-    paymentOrder,
-    closePaymentModal,
-    handlePaymentComplete,
   } = useOrderModals();
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <DashboardPageHeader />
       <div className="min-h-0 flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
-        <div className="">
+        <div className="mx-auto max-w-7xl">
           <OrdersHeader search={search} onSearchChange={setSearch} />
           <OrdersFilterSection
             orderStatusFilter={orderStatusFilter}
@@ -56,22 +52,30 @@ export default function OrdersContent() {
             onOrderStatusChange={setOrderStatusFilter}
             onPaymentStatusChange={setPaymentStatusFilter}
           />
-          <OrdersTable
-            orders={filteredOrders}
-            onView={handleViewOrder}
-            onEdit={handleEditClick}
-            onDelete={handleDeleteClick}
-          />
+
+          {isLoading ? (
+            <div className="flex h-64 items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-[#EA580C]" />
+            </div>
+          ) : (
+            <OrdersTable
+              orders={filteredOrders}
+              onView={handleViewOrder}
+              onEdit={handleEditClick}
+              onDelete={handleDeleteClick}
+            />
+          )}
         </div>
       </div>
 
       {editOrderModal && (
         <EditOrderModal
           order={{
+            id: editOrderModal.id,
             orderNo: editOrderModal.orderNo,
             customerName: editOrderModal.customerName,
             totalAmount: editOrderModal.totalAmount,
-            items: editOrderModal.items,
+            items: editOrderModal.items as any,
           }}
           onSubmit={handleEditOrderSubmit}
           onClose={closeEditModal}
@@ -82,9 +86,12 @@ export default function OrdersContent() {
         <OrderDetailsViewModal
           order={orderToView(viewOrder)}
           onClose={closeViewModal}
-          onEdit={viewOrder.status === "PENDING" ? () => openEditFromView(viewOrder) : undefined}
-          onCancel={() => openCancelFromView(viewOrder.orderNo)}
-          onPayNow={viewOrder.paymentStatus === "PENDING" ? (order) => handlePayNow(order) : undefined}
+          onEdit={
+            viewOrder.status === "pending"
+              ? () => openEditFromView(viewOrder)
+              : undefined
+          }
+          onCancel={() => openCancelFromView(viewOrder.id)}
         />
       )}
 
@@ -94,15 +101,6 @@ export default function OrdersContent() {
           isOpen={authModal.isOpen}
           onClose={handleCloseAuthModal}
           onVerify={handleVerify}
-        />
-      )}
-
-      {paymentOrder && (
-        <ProcessPaymentModal
-          customerName={paymentOrder.customerName}
-          total={paymentOrder.subtotal ?? paymentOrder.totalAmount}
-          onClose={closePaymentModal}
-          onComplete={handlePaymentComplete}
         />
       )}
     </div>

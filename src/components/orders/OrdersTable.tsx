@@ -113,15 +113,14 @@ export default function OrdersTable({ orders, onView, onEdit, onDelete }: Props)
                             e.stopPropagation();
                             onEdit(order);
                           }}
-                          disabled={order.status !== "PENDING"}
-                          className={`rounded-lg p-1.5 transition-colors ${
-                            order.status === "PENDING"
-                              ? "text-[#90A1B9] hover:bg-[#F1F5F9] hover:text-[#45556C] cursor-pointer"
-                              : "text-[#CAD5E2] cursor-not-allowed opacity-50"
-                          }`}
+                          disabled={order.status !== "pending"}
+                          className={`rounded-lg p-1.5 transition-colors ${order.status === "pending"
+                            ? "text-[#90A1B9] hover:bg-[#F1F5F9] hover:text-[#45556C] cursor-pointer"
+                            : "text-[#CAD5E2] cursor-not-allowed opacity-50"
+                            }`}
                           aria-label="Edit order"
                           title={
-                            order.status !== "PENDING"
+                            order.status !== "pending"
                               ? "Only pending orders can be edited"
                               : "Edit order"
                           }
@@ -203,15 +202,14 @@ export default function OrdersTable({ orders, onView, onEdit, onDelete }: Props)
                       e.stopPropagation();
                       onEdit(order);
                     }}
-                    disabled={order.status !== "PENDING"}
-                    className={`rounded-lg p-1.5 transition-colors ${
-                      order.status === "PENDING"
-                        ? "text-[#90A1B9] hover:bg-[#F1F5F9] hover:text-[#45556C] cursor-pointer"
-                        : "text-[#CAD5E2] cursor-not-allowed opacity-50"
-                    }`}
+                    disabled={order.status !== "pending"}
+                    className={`rounded-lg p-1.5 transition-colors ${order.status === "pending"
+                      ? "text-[#90A1B9] hover:bg-[#F1F5F9] hover:text-[#45556C] cursor-pointer"
+                      : "text-[#CAD5E2] cursor-not-allowed opacity-50"
+                      }`}
                     aria-label="Edit order"
                     title={
-                      order.status !== "PENDING"
+                      order.status !== "pending"
                         ? "Only pending orders can be edited"
                         : "Edit order"
                     }

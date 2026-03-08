@@ -4,14 +4,7 @@ import { useId } from "react";
 import { X, Clock, Package, User, Phone, UtensilsCrossed, DollarSign, CreditCard } from "lucide-react";
 import type { OrderStatus, OrderDetailsView } from "@/domains/orders/types";
 
-const STATUS_STYLES: Record<OrderStatus, { bg: string; text: string; border: string }> = {
-  PREPARING: { bg: "#EFF6FF", text: "#155DFC", border: "#8EC5FF" },
-  PENDING: { bg: "#FFF4E6", text: "#E17100", border: "#F5C78A" },
-  COMPLETE: { bg: "#E6F7F0", text: "#009966", border: "#66D9B3" },
-  HOLD: { bg: "#F1F5F9", text: "#45556C", border: "#CBD5E1" },
-  READY: { bg: "#F3F0FF", text: "#4F39F6", border: "#B8A9F5" },
-  CANCELED: { bg: "#FFE6EB", text: "#EC003F", border: "#FF9BB0" },
-};
+import { STATUS_STYLES } from "@/domains/orders/constants";
 
 const formatRs = (n: number) =>
   `Rs.${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;

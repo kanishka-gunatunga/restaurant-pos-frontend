@@ -1,30 +1,76 @@
 "use client";
 
-import { Plus, Trash2, X } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, X, Loader2 } from "lucide-react";
+import { useCreateCategory, useUpdateCategory } from "@/hooks/useCategory";
+import { Category } from "@/types/product";
 
 type AddCategoryModalProps = {
   open: boolean;
   overlayVisible: boolean;
-  categoryName: string;
-  subCategories: string[];
-  onCategoryNameChange: (value: string) => void;
-  onSubCategoryAdd: () => void;
-  onSubCategoryRemove: (index: number) => void;
-  onSubCategoryUpdate: (index: number, value: string) => void;
+  editingCategory?: Category | null;
   onClose: () => void;
 };
 
 export default function AddCategoryModal({
   open,
   overlayVisible,
-  categoryName,
-  subCategories,
-  onCategoryNameChange,
-  onSubCategoryAdd,
-  onSubCategoryRemove,
-  onSubCategoryUpdate,
+  editingCategory,
   onClose,
 }: AddCategoryModalProps) {
+  const [categoryName, setCategoryName] = useState("");
+  const [subCategories, setSubCategories] = useState<string[]>(["", ""]);
+
+  const createMutation = useCreateCategory();
+  const updateMutation = useUpdateCategory();
+
+  const isEditing = !!editingCategory;
+  const isLoading = createMutation.isPending || updateMutation.isPending;
+
+  useEffect(() => {
+    if (open) {
+      if (editingCategory) {
+        setCategoryName(editingCategory.name);
+        setSubCategories(editingCategory.subcategories?.map(s => s.name) || ["", ""]);
+      } else {
+        setCategoryName("");
+        setSubCategories(["", ""]);
+      }
+    }
+  }, [open, editingCategory]);
+
+  const handleCreateOrUpdate = async () => {
+    if (!categoryName.trim()) return;
+
+    try {
+      if (isEditing && editingCategory) {
+
+        const formattedSubs = subCategories
+          .filter(name => name.trim())
+          .map(name => {
+            const existing = editingCategory.subcategories?.find(s => s.name === name);
+            return { id: existing?.id, name };
+          });
+
+        await updateMutation.mutateAsync({
+          id: editingCategory.id,
+          payload: {
+            name: categoryName,
+            subcategories: formattedSubs,
+          },
+        });
+      } else {
+        await createMutation.mutateAsync({
+          name: categoryName,
+          subcategories: subCategories.filter(s => s.trim()),
+        });
+      }
+      onClose();
+    } catch (error) {
+      console.error("Failed to save category:", error);
+    }
+  };
+
   if (!open) return null;
 
   return (
@@ -42,7 +88,7 @@ export default function AddCategoryModal({
       >
         <div className="mb-6 flex shrink-0 items-center justify-between">
           <h2 id="add-category-title" className="font-['Inter'] text-lg font-bold text-[#1D293D]">
-            New Category
+            {isEditing ? "Edit Category" : "New Category"}
           </h2>
           <button
             type="button"
@@ -66,9 +112,10 @@ export default function AddCategoryModal({
               id="category-name"
               type="text"
               value={categoryName}
-              onChange={(e) => onCategoryNameChange(e.target.value)}
+              onChange={(e) => setCategoryName(e.target.value)}
               placeholder="e.g. Burgers"
               className="w-full rounded-[10px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2.5 font-['Inter'] text-sm text-[#1D293D] placeholder:text-[#90A1B9] focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C]"
+              disabled={isLoading}
             />
           </div>
 
@@ -79,8 +126,9 @@ export default function AddCategoryModal({
               </label>
               <button
                 type="button"
-                onClick={onSubCategoryAdd}
+                onClick={() => setSubCategories(prev => [...prev, ""])}
                 className="flex items-center gap-1 font-['Inter'] text-sm font-bold text-[#EA580C]"
+                disabled={isLoading}
               >
                 <Plus className="h-4 w-4" />
                 Add Sub-Category
@@ -92,17 +140,23 @@ export default function AddCategoryModal({
                   <input
                     type="text"
                     value={value}
-                    onChange={(e) => onSubCategoryUpdate(index, e.target.value)}
+                    onChange={(e) => {
+                      const next = [...subCategories];
+                      next[index] = e.target.value;
+                      setSubCategories(next);
+                    }}
                     placeholder="e.g. Beef, Chicken"
                     className="min-w-0 flex-1 rounded-[10px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2.5 font-['Inter'] text-sm text-[#1D293D] placeholder:text-[#90A1B9] focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C]"
+                    disabled={isLoading}
                   />
                   <button
                     type="button"
-                    onClick={() => onSubCategoryRemove(index)}
+                    onClick={() => setSubCategories(prev => prev.filter((_, i) => i !== index))}
                     className="shrink-0 rounded-lg p-2 text-[#90A1B9] hover:bg-red-50 hover:text-red-600"
                     aria-label="Remove sub-category"
+                    disabled={isLoading}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <X className="h-4 w-4" />
                   </button>
                 </div>
               ))}
@@ -115,14 +169,18 @@ export default function AddCategoryModal({
             type="button"
             onClick={onClose}
             className="rounded-[14px] border border-[#E2E8F0] bg-white px-4 py-2.5 font-['Inter'] text-sm font-bold text-[#45556C] hover:bg-[#F8FAFC]"
+            disabled={isLoading}
           >
             Cancel
           </button>
           <button
             type="button"
-            className="rounded-[14px] bg-[#EA580C] px-4 py-2.5 font-['Inter'] text-sm font-bold text-white shadow-[0px_4px_6px_-4px_#EA580C33,0px_10px_15px_-3px_#EA580C33] hover:bg-[#c2410c]"
+            onClick={handleCreateOrUpdate}
+            disabled={isLoading || !categoryName.trim()}
+            className="flex items-center gap-2 rounded-[14px] bg-[#EA580C] px-4 py-2.5 font-['Inter'] text-sm font-bold text-white shadow-[0px_4px_6px_-4px_#EA580C33,0px_10px_15px_-3px_#EA580C33] hover:bg-[#c2410c] disabled:opacity-50"
           >
-            Create Category
+            {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+            {isEditing ? "Update Category" : "Create Category"}
           </button>
         </div>
       </div>

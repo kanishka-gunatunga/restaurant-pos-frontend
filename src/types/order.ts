@@ -1,7 +1,7 @@
 import { Payment } from "./payment";
 
-export type OrderStatus = "pending" | "accepted" | "preparing" | "ready" | "delivered" | "cancel" | "hold";
-export type OrderType = "dine-in" | "take-away" | "delivery";
+export type OrderStatus = "pending" | "preparing" | "ready" | "hold" | "complete" | "cancel";
+export type OrderType = "takeaway" | "dining" | "delivery";
 
 export interface OrderItemModification {
   id: string | number;
@@ -54,7 +54,7 @@ export interface Order {
   tax: number;
   orderNote?: string;
   kitchenNote?: string;
-  orderTimer?: string;
+  orderTimer?: number;
   deliveryAddress?: string;
   landmark?: string;
   zipcode?: string;
@@ -84,7 +84,7 @@ export interface CreateOrderData {
   tax: number;
   orderNote?: string;
   kitchenNote?: string;
-  orderTimer?: string;
+  orderTimer?: number;
   deliveryAddress?: string;
   landmark?: string;
   zipcode?: string;
@@ -97,7 +97,7 @@ export interface CreateOrderData {
     productDiscount: number;
     status?: "pending" | "complete";
     modifications?: {
-      modificationId: string | number;
+      modificationId: number;
       price: number;
     }[];
   }[];

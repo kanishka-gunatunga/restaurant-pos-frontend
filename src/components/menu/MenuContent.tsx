@@ -1,9 +1,14 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { Search } from "lucide-react";
+import { Search, Loader2 } from "lucide-react";
 import ProductCard from "./ProductCard";
-import { MENU_ITEMS } from "./menuData";
+import { useGetParentCategories, useGetSubCategories } from "@/hooks/useCategory";
+import { useGetProductsByBranch } from "@/hooks/useProduct";
+import { useGetAllModifications } from "@/hooks/useModification";
+import { useAuth } from "@/contexts/AuthContext";
+import type { MenuItem, ProductVariant, ProductAddOn } from "./types";
+import type { Product } from "@/types/product";
 
 function useColumnCount() {
   const [cols, setCols] = useState(4);
@@ -21,49 +26,121 @@ function useColumnCount() {
   return cols;
 }
 
-const CATEGORIES = ["All", "Burgers", "Pizza", "Pasta", "Drinks", "Dessert"] as const;
-
-const SUB_CATEGORIES_BY_CATEGORY: Record<string, string[]> = {
-  All: ["All", "Beef", "Chicken", "Cheese", "Meat", "Cream", "Cold", "Hot", "Chocolate", "Fruit"],
-  Burgers: ["All", "Beef", "Chicken", "Veggie", "Fish"],
-  Pizza: ["All", "Cheese", "Meat", "Veggie", "Special"],
-  Pasta: ["All", "Cream", "Tomato", "Seafood", "Veggie"],
-  Drinks: ["All", "Cold", "Hot", "Smoothies", "Juices"],
-  Dessert: ["All", "Chocolate", "Fruit", "Ice Cream", "Cake"],
-};
-
 export default function MenuContent() {
+  const { user } = useAuth();
+  const branchId = user?.branchId || 1; // Fallback to 1 if not set
+
   const [search, setSearch] = useState("");
-  const [activeCategory, setActiveCategory] = useState<string>("All");
-  const [activeSubCategory, setActiveSubCategory] = useState<string>("All");
+  const [activeCategoryId, setActiveCategoryId] = useState<number | "All">("All");
+  const [activeSubCategoryId, setActiveSubCategoryId] = useState<number | "All">("All");
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
 
-  const subCategories = useMemo(
-    () => SUB_CATEGORIES_BY_CATEGORY[activeCategory] ?? ["All"],
-    [activeCategory]
+  const { data: categories = [], isLoading: isLoadingCats } = useGetParentCategories("active");
+
+  const { data: subCats = [], isLoading: isLoadingSubCats } = useGetSubCategories(
+    typeof activeCategoryId === "number" ? activeCategoryId : 0,
+    "active"
   );
 
-  const filteredItems = MENU_ITEMS.filter((item) => {
-    const matchesSearch = item.name.toLowerCase().includes(search.toLowerCase());
-    const matchesCategory = activeCategory === "All" || item.category === activeCategory;
-    const matchesSubCategory =
-      activeSubCategory === "All" || item.subCategory === activeSubCategory;
-    return matchesSearch && matchesCategory && matchesSubCategory;
+  const { data: products = [], isLoading: isLoadingProducts } = useGetProductsByBranch(branchId, {
+    categoryId: typeof activeCategoryId === "number" ? activeCategoryId : undefined,
+    subCategoryId: typeof activeSubCategoryId === "number" ? activeSubCategoryId : undefined,
+    status: "active",
   });
+
+  const { data: allModifications = [] } = useGetAllModifications("active");
+
+  const mapProductToMenuItem = (p: Product): MenuItem => {
+    // Collect variations
+    const variants: ProductVariant[] = [];
+    p.variations?.forEach((v) => {
+      v.options?.forEach((opt) => {
+        const branchPrice = opt.prices?.find((pr) => pr.branchId === branchId);
+        if (branchPrice) {
+          const isGeneric = v.name.toLowerCase().includes("variant") || v.name.toLowerCase().includes("standard");
+          variants.push({
+            id: opt.id,
+            name: isGeneric ? opt.name : `${v.name}: ${opt.name}`,
+            price: Number(branchPrice.price),
+          });
+        }
+      });
+    });
+
+    // Collect all unique modification IDs from products and variations
+    const modificationIds = new Set<number>();
+    p.productModifications?.forEach((pm) => modificationIds.add(pm.modificationId));
+    p.variations?.forEach((v) => {
+      v.variationModifications?.forEach((vm) => modificationIds.add(vm.modificationId));
+    });
+
+    // Map these IDs to actual items from allModifications
+    const addOns: ProductAddOn[] = [];
+    const seenItemIds = new Set<string>();
+
+    modificationIds.forEach((mId) => {
+      const modGroup = allModifications.find((m) => m.id === mId);
+      modGroup?.items?.forEach((mi) => {
+        const itemId = mi.id.toString();
+        if (!seenItemIds.has(itemId)) {
+          addOns.push({
+            id: itemId,
+            name: mi.title,
+            price: Number(mi.price),
+          });
+          seenItemIds.add(itemId);
+        }
+      });
+    });
+
+    // Base price is the first variant's price or 0
+    const basePrice = variants.length > 0 ? variants[0].price : 0;
+
+    return {
+      id: `${p.id}-${p.code}`, // Ensure composite key just in case
+      productId: p.id,
+      name: p.name,
+      category: p.category?.name || "Other",
+      subCategory: p.subCategory?.name || "General",
+      price: basePrice,
+      image: p.image || undefined,
+      variants: variants.length > 0 ? variants : undefined,
+      addOns: addOns.length > 0 ? addOns : undefined,
+    };
+  };
+
+  const menuItems = useMemo(() => {
+    const uniqueItems: MenuItem[] = [];
+    const seenIds = new Set();
+    products.forEach(p => {
+      const item = mapProductToMenuItem(p);
+      if (!seenIds.has(item.id)) {
+        uniqueItems.push(item);
+        seenIds.add(item.id);
+      }
+    });
+    return uniqueItems;
+  }, [products, branchId, allModifications]);
+
+  const filteredItems = useMemo(() => {
+    return menuItems.filter((item) =>
+      item.name.toLowerCase().includes(search.toLowerCase())
+    );
+  }, [menuItems, search]);
 
   const columnCount = useColumnCount();
 
   const columns = useMemo(() => {
-    const cols: (typeof filteredItems)[] = Array.from({ length: columnCount }, () => []);
+    const cols: typeof filteredItems[] = Array.from({ length: columnCount }, () => []);
     filteredItems.forEach((item, i) => {
       cols[i % columnCount].push(item);
     });
     return cols;
   }, [filteredItems, columnCount]);
 
-  const handleCategoryChange = (cat: string) => {
-    setActiveCategory(cat);
-    setActiveSubCategory("All");
+  const handleCategoryChange = (id: number | "All") => {
+    setActiveCategoryId(id);
+    setActiveSubCategoryId("All");
   };
 
   return (
@@ -81,66 +158,91 @@ export default function MenuContent() {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat}
-              type="button"
-              onClick={() => handleCategoryChange(cat)}
-              className={`rounded-[14px] px-5.5 py-2.5 text-center text-sm font-bold leading-5 tracking-normal transition-colors ${
-                activeCategory === cat
-                  ? "bg-primary text-white"
-                  : "bg-[#F1F5F9] text-[#45556C] hover:bg-[#E2E8F0]"
+          <button
+            type="button"
+            onClick={() => handleCategoryChange("All")}
+            className={`rounded-[14px] px-5.5 py-2.5 text-center text-sm font-bold leading-5 tracking-normal transition-colors ${activeCategoryId === "All"
+              ? "bg-primary text-white"
+              : "bg-[#F1F5F9] text-[#45556C] hover:bg-[#E2E8F0]"
               }`}
-              style={
-                activeCategory === cat
-                  ? {
-                      boxShadow: "0px 2px 4px -2px #EA580C33, 0px 4px 6px -1px #EA580C33",
-                    }
-                  : undefined
-              }
+          >
+            All
+          </button>
+          {categories.reduce((acc: any[], cat) => {
+            if (!acc.find(c => c.id === cat.id)) acc.push(cat);
+            return acc;
+          }, []).map((cat) => (
+            <button
+              key={`cat-${cat.id}`}
+              type="button"
+              onClick={() => handleCategoryChange(cat.id)}
+              className={`rounded-[14px] px-5.5 py-2.5 text-center text-sm font-bold leading-5 tracking-normal transition-colors ${activeCategoryId === cat.id
+                ? "bg-primary text-white"
+                : "bg-[#F1F5F9] text-[#45556C] hover:bg-[#E2E8F0]"
+                }`}
             >
-              {cat}
+              {cat.name}
             </button>
           ))}
         </div>
 
-        {/* Sub-category filter row - always visible */}
+        {/* Sub-category filter row */}
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-medium uppercase tracking-wider text-zinc-500">SUB:</span>
-          {subCategories.map((sub) => (
-            <button
-              key={sub}
-              type="button"
-              onClick={() => setActiveSubCategory(sub)}
-              className={`rounded-[10px] text-center text-sm font-bold leading-4 tracking-normal transition-colors ${
-                activeSubCategory === sub
-                  ? "bg-[#1D293D] px-4 py-2 text-white"
-                  : "border border-[#F1F5F9] bg-white px-4 py-2 text-[#62748E] hover:bg-zinc-50"
+          <span className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+            SUB:
+          </span>
+          <button
+            type="button"
+            onClick={() => setActiveSubCategoryId("All")}
+            className={`rounded-[10px] text-center text-sm font-bold leading-4 tracking-normal transition-colors ${activeSubCategoryId === "All"
+              ? "bg-[#1D293D] px-4 py-2 text-white"
+              : "border border-[#F1F5F9] bg-white px-4 py-2 text-[#62748E] hover:bg-zinc-50"
               }`}
+          >
+            All
+          </button>
+          {subCats.reduce((acc: any[], sub) => {
+            if (!acc.find(s => s.id === sub.id)) acc.push(sub);
+            return acc;
+          }, []).map((sub) => (
+            <button
+              key={`sub-${sub.id}`}
+              type="button"
+              onClick={() => setActiveSubCategoryId(sub.id)}
+              className={`rounded-[10px] text-center text-sm font-bold leading-4 tracking-normal transition-colors ${activeSubCategoryId === sub.id
+                ? "bg-[#1D293D] px-4 py-2 text-white"
+                : "border border-[#F1F5F9] bg-white px-4 py-2 text-[#62748E] hover:bg-zinc-50"
+                }`}
             >
-              {sub}
+              {sub.name}
             </button>
           ))}
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 pb-6">
-        <div className="flex items-start gap-4">
-          {columns.map((colItems, colIdx) => (
-            <div key={colIdx} className="flex flex-1 flex-col gap-4">
-              {colItems.map((item) => (
-                <ProductCard
-                  key={item.id}
-                  item={item}
-                  isExpanded={expandedCardId === item.id}
-                  onExpand={() => setExpandedCardId(item.id)}
-                  onCollapse={() => setExpandedCardId(null)}
-                />
-              ))}
-            </div>
-          ))}
-        </div>
+        {isLoadingProducts ? (
+          <div className="flex h-full items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          <div className="flex items-start gap-4">
+            {columns.map((colItems, colIdx) => (
+              <div key={colIdx} className="flex flex-1 flex-col gap-4">
+                {colItems.map((item) => (
+                  <ProductCard
+                    key={item.id}
+                    item={item}
+                    isExpanded={expandedCardId === item.id}
+                    onExpand={() => setExpandedCardId(item.id)}
+                    onCollapse={() => setExpandedCardId(null)}
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-    </div>
+    </div >
   );
 }

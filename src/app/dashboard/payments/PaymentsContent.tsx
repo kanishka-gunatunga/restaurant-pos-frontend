@@ -5,12 +5,26 @@ import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
 import PaymentStats from "@/components/payments/PaymentStats";
 import PaymentHistoryTable from "@/components/payments/PaymentHistoryTable";
 import { Search, Filter } from "lucide-react";
+import { useGetAllPaymentDetails, useSearchPaymentDetails, useFilterPaymentsByStatus } from "@/hooks/usePayment";
 
-const FILTERS = ["All", "Pending", "Paid", "Partial Refund", "Full Refund"];
+const FILTERS = ["All", "Pending", "Paid", "Refund"];
 
 export default function PaymentsContent() {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState("All");
+
+  const { data: allPayments, isLoading: isAllLoading } = useGetAllPaymentDetails();
+  const { data: searchResults, isLoading: isSearchLoading } = useSearchPaymentDetails(searchTerm);
+  const { data: filterResults, isLoading: isFilterLoading } = useFilterPaymentsByStatus(activeFilter);
+
+  const getPaymentsToDisplay = () => {
+    if (searchTerm) return searchResults || [];
+    if (activeFilter !== "All") return filterResults || [];
+    return allPayments || [];
+  };
+
+  const isLoading = isAllLoading || isSearchLoading || isFilterLoading;
+  const payments = getPaymentsToDisplay();
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#F8FAFC]">
@@ -39,7 +53,6 @@ export default function PaymentsContent() {
 
           <PaymentStats />
 
-          {/* Filter Bar Section */}
           <div className="rounded-[24px] border border-[#E2E8F0] bg-white p-6 shadow-sm">
             <div className="flex items-center gap-2 mb-4">
               <Filter className="h-4 w-4 text-[#314158]" />
@@ -61,7 +74,7 @@ export default function PaymentsContent() {
             </div>
           </div>
 
-          <PaymentHistoryTable searchTerm={searchTerm} activeFilter={activeFilter} />
+          <PaymentHistoryTable payments={payments} isLoading={isLoading} />
         </div>
       </div>
     </div>

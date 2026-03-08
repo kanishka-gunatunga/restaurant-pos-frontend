@@ -1,11 +1,28 @@
-export type PaymentStatus = "Paid" | "Pending" | "Cancelled" | "Refunded";
+export type PaymentStatus = "paid" | "pending" | "refund" | "partial_refund" | string;
 
 export interface Payment {
-  id: string | number;
-  orderNo: string | number;
-  customerDetails: string;
+  id: number;
+  orderNo: number;
+  customerName: string;
+  customerMobile: string;
   dateTime: string;
-  method: string;
-  amount?: number;
+  method: string | null;
+  paymentStatus: PaymentStatus;
+  amount: number;
+  refundedAmount?: number;
+}
+
+export interface PaymentUpdatePayload {
+  status?: PaymentStatus;
+  is_refund?: number;
+  refund_type?: "partial" | "full";
+  refund_amount?: number;
+}
+
+export interface CreatePaymentPayload {
+  orderId: number;
+  paymentMethod: "cash" | "card";
+  amount: number;
+  transactionId?: string;
   status?: PaymentStatus;
 }

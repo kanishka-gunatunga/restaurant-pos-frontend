@@ -11,6 +11,7 @@ export { getProdImage };
 export const MENU_ITEMS: MenuItem[] = [
   {
     id: "1",
+    productId: 1,
     name: "Classic Beef Burger",
     category: "Burgers",
     subCategory: "Beef",
@@ -23,6 +24,7 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   {
     id: "2",
+    productId: 2,
     name: "Spicy Chicken Burger",
     category: "Burgers",
     subCategory: "Chicken",
@@ -34,6 +36,7 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   {
     id: "3",
+    productId: 3,
     name: "Veggie Deluxe Burger",
     category: "Burgers",
     subCategory: "Veggie",
@@ -41,6 +44,7 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   {
     id: "4",
+    productId: 4,
     name: "Fish Fillet Burger",
     category: "Burgers",
     subCategory: "Fish",
@@ -48,14 +52,15 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   {
     id: "5",
+    productId: 5,
     name: "Margherita Pizza",
     category: "Pizza",
     subCategory: "Cheese",
     price: 2500,
     variants: [
-      { name: "Small", price: 2300 },
-      { name: "Medium", price: 3250 },
-      { name: "Large", price: 4250 },
+      { id: 51, name: "Small", price: 2300 },
+      { id: 52, name: "Medium", price: 3250 },
+      { id: 53, name: "Large", price: 4250 },
     ],
     addOns: [
       { id: "a6", name: "Extra Pepperoni", price: 500 },
@@ -65,14 +70,15 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   {
     id: "6",
+    productId: 6,
     name: "Pepperoni Pizza",
     category: "Pizza",
     subCategory: "Meat",
     price: 2500,
     variants: [
-      { name: "Small", price: 2250 },
-      { name: "Medium", price: 3250 },
-      { name: "Large", price: 4250 },
+      { id: 61, name: "Small", price: 2250 },
+      { id: 62, name: "Medium", price: 3250 },
+      { id: 63, name: "Large", price: 4250 },
     ],
     addOns: [
       { id: "a9", name: "Extra Pepperoni", price: 250 },
@@ -82,30 +88,33 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   {
     id: "7",
+    productId: 7,
     name: "Garden Veggie Pizza",
     category: "Pizza",
     subCategory: "Veggie",
     price: 2300,
     variants: [
-      { name: "Small", price: 2100 },
-      { name: "Medium", price: 3000 },
-      { name: "Large", price: 4000 },
+      { id: 71, name: "Small", price: 2100 },
+      { id: 72, name: "Medium", price: 3000 },
+      { id: 73, name: "Large", price: 4000 },
     ],
   },
   {
     id: "8",
+    productId: 8,
     name: "BBQ Special Pizza",
     category: "Pizza",
     subCategory: "Special",
     price: 2800,
     variants: [
-      { name: "Small", price: 2600 },
-      { name: "Medium", price: 3600 },
-      { name: "Large", price: 4600 },
+      { id: 81, name: "Small", price: 2600 },
+      { id: 82, name: "Medium", price: 3600 },
+      { id: 83, name: "Large", price: 4600 },
     ],
   },
   {
     id: "9",
+    productId: 9,
     name: "Truffle Pasta",
     category: "Pasta",
     subCategory: "Cream",
@@ -113,6 +122,7 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   {
     id: "10",
+    productId: 10,
     name: "Seafood Linguine",
     category: "Pasta",
     subCategory: "Tomato",
@@ -120,6 +130,7 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   {
     id: "11",
+    productId: 11,
     name: "Shrimp Alfredo",
     category: "Pasta",
     subCategory: "Seafood",
@@ -127,6 +138,7 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   {
     id: "12",
+    productId: 12,
     name: "Pesto Veggie Pasta",
     category: "Pasta",
     subCategory: "Veggie",
@@ -134,6 +146,7 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   {
     id: "13",
+    productId: 13,
     name: "Fruit Cocktail",
     category: "Drinks",
     subCategory: "Cold",
@@ -141,6 +154,7 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   {
     id: "14",
+    productId: 14,
     name: "Iced Latte",
     category: "Drinks",
     subCategory: "Cold",
@@ -148,6 +162,7 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   {
     id: "15",
+    productId: 15,
     name: "Hot Chocolate",
     category: "Drinks",
     subCategory: "Hot",
@@ -155,6 +170,7 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   {
     id: "16",
+    productId: 16,
     name: "Mango Smoothie",
     category: "Drinks",
     subCategory: "Smoothies",
@@ -162,6 +178,7 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   {
     id: "17",
+    productId: 17,
     name: "Fresh Orange Juice",
     category: "Drinks",
     subCategory: "Juices",
@@ -169,6 +186,7 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   {
     id: "18",
+    productId: 18,
     name: "Chocolate Brownie",
     category: "Dessert",
     subCategory: "Chocolate",
@@ -176,6 +194,7 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   {
     id: "19",
+    productId: 19,
     name: "Tiramisu",
     category: "Dessert",
     subCategory: "Chocolate",
@@ -183,6 +202,7 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   {
     id: "20",
+    productId: 20,
     name: "Fruit Salad",
     category: "Dessert",
     subCategory: "Fruit",
@@ -190,6 +210,7 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   {
     id: "21",
+    productId: 21,
     name: "Vanilla Ice Cream",
     category: "Dessert",
     subCategory: "Ice Cream",
@@ -197,6 +218,7 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   {
     id: "22",
+    productId: 22,
     name: "Red Velvet Cake",
     category: "Dessert",
     subCategory: "Cake",

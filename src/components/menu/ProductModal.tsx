@@ -9,12 +9,16 @@ type ProductModalProps = {
   item: MenuItem;
   onClose: () => void;
   onAddToOrder: (
+    productId: number,
     name: string,
     price: number,
     details: string,
     image?: string,
     variant?: string,
-    addOnsList?: string[]
+    addOnsList?: string[],
+    variationId?: number,
+    variationOptionId?: number,
+    modifications?: { modificationId: number; price: number }[]
   ) => void;
   getProdImage: (id: string) => string;
 };
@@ -28,17 +32,24 @@ export default function ProductModal({
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
     item.variants?.[0] ?? null
   );
-  const [selectedAddOns, setSelectedAddOns] = useState<{ addOn: ProductAddOn; qty: number }[]>([]);
+  const [selectedAddOns, setSelectedAddOns] = useState<
+    { addOn: ProductAddOn; qty: number }[]
+  >([]);
   const [qty, setQty] = useState(1);
   const [addOnSearch, setAddOnSearch] = useState("");
 
   const hasVariants = item.variants && item.variants.length > 0;
   const basePrice = selectedVariant?.price ?? item.price;
-  const addOnsTotal = selectedAddOns.reduce((sum, { addOn, qty: n }) => sum + addOn.price * n, 0);
+  const addOnsTotal = selectedAddOns.reduce(
+    (sum, { addOn, qty: n }) => sum + addOn.price * n,
+    0
+  );
   const totalPrice = (basePrice + addOnsTotal) * qty;
 
   const filteredAddOns =
-    item.addOns?.filter((a) => a.name.toLowerCase().includes(addOnSearch.toLowerCase())) ?? [];
+    item.addOns?.filter((a) =>
+      a.name.toLowerCase().includes(addOnSearch.toLowerCase())
+    ) ?? [];
 
   const toggleAddOn = (addOn: ProductAddOn) => {
     setSelectedAddOns((prev) => {
@@ -53,7 +64,11 @@ export default function ProductModal({
   const updateAddOnQty = (addOnId: string, delta: number) => {
     setSelectedAddOns((prev) =>
       prev
-        .map((p) => (p.addOn.id === addOnId ? { ...p, qty: Math.max(0, p.qty + delta) } : p))
+        .map((p) =>
+          p.addOn.id === addOnId
+            ? { ...p, qty: Math.max(0, p.qty + delta) }
+            : p
+        )
         .filter((p) => p.qty > 0)
     );
   };
@@ -77,17 +92,25 @@ export default function ProductModal({
   const handleAddToOrder = () => {
     const unitPrice = totalPrice / qty;
     const details = getDetailsString();
-    const image = getProdImage(item.id);
+    const image = item.image || getProdImage(item.id);
     const variantName = selectedVariant?.name;
     const addOnsParsed = getAddOnsList();
+    const modifications = selectedAddOns.map((a) => ({
+      modificationId: Number(a.addOn.id),
+      price: a.addOn.price,
+    }));
     for (let i = 0; i < qty; i++) {
       onAddToOrder(
+        item.productId,
         item.name,
         unitPrice,
         details,
         image,
         variantName,
-        addOnsParsed.length > 0 ? addOnsParsed : undefined
+        addOnsParsed.length > 0 ? addOnsParsed : undefined,
+        selectedVariant?.variationId,
+        selectedVariant?.id,
+        modifications.length > 0 ? modifications : undefined
       );
     }
     onClose();
@@ -113,7 +136,7 @@ export default function ProductModal({
         <div className="flex h-full flex-col md:flex-row">
           <div className="relative h-48 w-full shrink-0 md:h-auto md:w-1/2">
             <Image
-              src={getProdImage(item.id)}
+              src={item.image || getProdImage(item.id)}
               alt={item.name}
               fill
               className="object-cover"
@@ -136,19 +159,17 @@ export default function ProductModal({
                 <div className="grid grid-cols-2 gap-2">
                   {item.variants!.map((v) => (
                     <button
-                      key={v.name}
+                      key={v.id}
                       type="button"
                       onClick={() => setSelectedVariant(v)}
-                      className={`rounded-[14px] px-3 py-2 text-left transition-colors ${
-                        selectedVariant?.name === v.name
-                          ? "border-2 border-primary bg-primary-muted"
-                          : "border border-[#E2E8F0] bg-white text-zinc-700 hover:bg-zinc-50"
-                      }`}
+                      className={`rounded-[14px] px-3 py-2 text-left transition-colors ${selectedVariant?.name === v.name
+                        ? "border-2 border-primary bg-primary-muted"
+                        : "border border-[#E2E8F0] bg-white text-zinc-700 hover:bg-zinc-50"
+                        }`}
                     >
                       <span
-                        className={`block text-sm font-semibold ${
-                          selectedVariant?.name === v.name ? "text-primary" : ""
-                        }`}
+                        className={`block text-sm font-semibold ${selectedVariant?.name === v.name ? "text-primary" : ""
+                          }`}
                       >
                         {v.name}
                       </span>
@@ -192,13 +213,16 @@ export default function ProductModal({
                 </div>
                 <div className="space-y-1.5">
                   {filteredAddOns.map((addOn) => {
-                    const selected = selectedAddOns.find((p) => p.addOn.id === addOn.id);
+                    const selected = selectedAddOns.find(
+                      (p) => p.addOn.id === addOn.id
+                    );
                     return (
                       <div
                         key={addOn.id}
-                        className={`flex items-center justify-between gap-2 rounded-md border p-2.5 ${
-                          selected ? "border-primary bg-primary-muted" : "border-[#E2E8F0] bg-white"
-                        }`}
+                        className={`flex items-center justify-between gap-2 rounded-md border p-2.5 ${selected
+                          ? "border-primary bg-primary-muted"
+                          : "border-[#E2E8F0] bg-white"
+                          }`}
                       >
                         <button
                           type="button"
@@ -206,9 +230,8 @@ export default function ProductModal({
                           className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
                         >
                           <div
-                            className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
-                              selected ? "border-primary bg-primary" : "border-zinc-300"
-                            }`}
+                            className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${selected ? "border-primary bg-primary" : "border-zinc-300"
+                              }`}
                           >
                             {selected && (
                               <svg
@@ -225,10 +248,11 @@ export default function ProductModal({
                             )}
                           </div>
                           <div className="flex min-w-0 flex-col">
-                            <span className="text-sm font-medium text-zinc-800">{addOn.name}</span>
+                            <span className="text-sm font-medium text-zinc-800">
+                              {addOn.name}
+                            </span>
                             <span className="text-xs text-zinc-600">
-                              +{addOn.price.toLocaleString("en-US", { minimumFractionDigits: 2 })}{" "}
-                              LKR
+                              +{addOn.price.toLocaleString("en-US", { minimumFractionDigits: 2 })} LKR
                             </span>
                           </div>
                         </button>
@@ -295,7 +319,12 @@ export default function ProductModal({
               onClick={handleAddToOrder}
               className="mt-4 flex w-full items-center justify-center gap-2 rounded-[14px] bg-[#EA580C] py-3 font-['Arial'] text-sm font-bold leading-4 text-white shadow-[0px_4px_6px_-4px_#EA580C33,0px_10px_15px_-3px_#EA580C33] transition-all duration-300 ease-out hover:bg-[#DC4C04] active:scale-95"
             >
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg
+                className="h-5 w-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
