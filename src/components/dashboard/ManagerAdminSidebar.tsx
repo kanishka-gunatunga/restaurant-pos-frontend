@@ -156,8 +156,6 @@ export default function ManagerAdminSidebar() {
             const isDrawer = label === "Drawer";
             const isBranches = label === "Branches";
             const isInventory = label === "Inventory";
-            const isActivity = label === "Activity";
-            const isReports = label === "Report";
             const isActive = isDashboard
               ? pathname === ROUTES.DASHBOARD
               : isMenu
@@ -170,13 +168,7 @@ export default function ManagerAdminSidebar() {
                   : isInventory
                     ? pathname === ROUTES.DASHBOARD_INVENTORY ||
                       pathname.startsWith(`${ROUTES.DASHBOARD_INVENTORY}/`)
-                    : isActivity
-                      ? pathname === ROUTES.DASHBOARD_ACTIVITY ||
-                        pathname.startsWith(`${ROUTES.DASHBOARD_ACTIVITY}/`)
-                      : isReports
-                        ? pathname === ROUTES.DASHBOARD_REPORTS ||
-                          pathname.startsWith(`${ROUTES.DASHBOARD_REPORTS}/`)
-                        : pathname === href || pathname.startsWith(`${href}/`);
+                    : pathname === href || pathname.startsWith(`${href}/`);
             return (
               <NavLink
                 key={label}

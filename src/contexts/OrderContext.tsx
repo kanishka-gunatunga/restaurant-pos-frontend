@@ -171,7 +171,15 @@ const saveActiveOrderIdToStorage = (orderId: string | null) => {
   }
 };
 
-export function OrderProvider({ children }: { children: ReactNode }) {
+export function OrderProvider({
+  children,
+  beforeAddItem,
+  beforeAddOrder,
+}: {
+  children: ReactNode;
+  beforeAddItem?: () => boolean;
+  beforeAddOrder?: () => boolean;
+}) {
   const initialOrders = (() => {
     const loaded = loadOrdersFromStorage();
     const ordersWithData = loaded.filter(hasOrderData);
@@ -260,6 +268,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   );
 
   const addOrder = useCallback(() => {
+    if (beforeAddOrder && !beforeAddOrder()) return;
     if (orders.length >= 2) return;
     const newOrder = createEmptyOrder();
     setOrders((prev) => {
@@ -340,6 +349,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
       variationOptionId?: number,
       modifications?: { modificationId: number; price: number }[]
     ) => {
+      if (beforeAddItem && !beforeAddItem()) return;
       const orderId = activeOrderId ?? orders[0]?.id;
       if (!orderId) return;
 

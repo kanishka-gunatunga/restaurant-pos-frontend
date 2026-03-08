@@ -95,7 +95,7 @@ export default function OrdersTable({ orders, onView, onEdit, onDelete }: Props)
                     </td>
                     <td className="w-px whitespace-nowrap p-4 text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-2">
-                        {order.paymentStatus === "PENDING" && (
+                        {order.paymentStatus === "pending" && (
                           <button
                             type="button"
                             onClick={(e) => {
@@ -184,7 +184,7 @@ export default function OrdersTable({ orders, onView, onEdit, onDelete }: Props)
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
-                  {order.paymentStatus === "PENDING" && (
+                  {order.paymentStatus === "pending" && (
                     <button
                       type="button"
                       onClick={(e) => {

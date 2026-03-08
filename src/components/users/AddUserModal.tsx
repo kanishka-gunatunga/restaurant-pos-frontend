@@ -19,7 +19,6 @@ export default function AddUserModal({ onClose, onAdd, initialData }: AddUserMod
     id: initialData?.id,
     name: initialData?.name ?? "",
     email: initialData?.email ?? "",
-    username: initialData?.name ?? "",
     password: "",
     role: initialData?.role ?? "cashier",
     employeeId: initialData?.employeeId ?? "",
@@ -118,18 +117,7 @@ export default function AddUserModal({ onClose, onAdd, initialData }: AddUserMod
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-[12px] font-bold uppercase text-[#90A1B9]">USERNAME</label>
-              <input
-                type="text"
-                name="username"
-                placeholder="johndoe"
-                value={formData.username}
-                onChange={handleChange}
-                required
-                className="h-12 w-full rounded-xl bg-[#F8FAFC] px-4 text-[14px] text-[#1D293D] outline-none transition-all focus:ring-2 focus:ring-primary/10"
-              />
-            </div>
+
 
             <div className="space-y-2">
               <label className="text-[12px] font-bold uppercase text-[#90A1B9]">PASSWORD</label>

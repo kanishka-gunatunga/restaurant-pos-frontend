@@ -275,7 +275,7 @@ export default function OrderDetailsViewModal({ order, onClose, onEdit, onCancel
             Close
           </button>
           <div className="flex items-center gap-3">
-            {order.paymentStatus === "PENDING" && onPayNow && (
+            {order.paymentStatus === "pending" && onPayNow && (
               <button
                 type="button"
                 onClick={() => onPayNow(order)}
