@@ -26,3 +26,10 @@ export interface CreatePaymentPayload {
   transactionId?: string;
   status?: PaymentStatus;
 }
+
+export interface PaymentStats {
+  totalCollectedAmount: number;
+  pendingPaymentAmount: number;
+  totalRefundAmount: number;
+  refundRate: string;
+}

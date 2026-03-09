@@ -34,3 +34,20 @@ export function formatTime(dateStr: string | null | undefined): string {
     return "N/A";
   }
 }
+
+/**
+ * Formats a number or numeric string as currency (LKR).
+ * Defaults to "Rs.0.00" if input is invalid.
+ */
+export function formatCurrency(amount: number | string | null | undefined): string {
+  const numericAmount = typeof amount === "string" ? parseFloat(amount) : amount;
+  
+  if (numericAmount === null || numericAmount === undefined || isNaN(numericAmount)) {
+    return "Rs.0.00";
+  }
+
+  return `Rs.${numericAmount.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}

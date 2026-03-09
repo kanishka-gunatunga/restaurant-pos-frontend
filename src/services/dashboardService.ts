@@ -72,3 +72,43 @@ export const getManagerDashboardStats = async (): Promise<ManagerDashboardData> 
   const res = await axiosInstance.get("/dashboard/manager");
   return res.data;
 };
+
+export interface CashierDashboardOrder {
+  id: number;
+  totalAmount: string | number;
+  orderType: string;
+  tableNumber: string | null;
+  status: string;
+  createdAt: string;
+  customer?: {
+    name: string;
+  };
+  paymentStatus: "PAID" | "UNPAID";
+  itemsCount: number;
+}
+
+export interface LowStockProduct {
+  id: number;
+  quantity: number;
+  productName: string;
+  categoryName: string;
+  image: string | null;
+  variationName: string;
+  unitsSoldThisWeek: number;
+}
+
+export interface CashierDashboardData {
+  pendingOrdersCount: number;
+  preparingOrdersCount: number;
+  readyOrdersCount: number;
+  holdOrdersCount: number;
+  drawerCash: number;
+  readyOrdersList: CashierDashboardOrder[];
+  holdOrdersList: CashierDashboardOrder[];
+  lowStockProductsList: LowStockProduct[];
+}
+
+export const getCashierDashboardStats = async (): Promise<CashierDashboardData> => {
+  const res = await axiosInstance.get("/dashboard/cashier");
+  return res.data;
+};
