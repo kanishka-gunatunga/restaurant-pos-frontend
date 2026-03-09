@@ -1,5 +1,6 @@
 "use client";
 
+import { AxiosError } from "axios";
 import { useState } from "react";
 import Image from "next/image";
 import { User, Phone, ChefHat, Trash2, X } from "lucide-react";
@@ -8,10 +9,53 @@ import { useCreateOrder } from "@/hooks/useOrder";
 import NewOrderDetailsModal from "./NewOrderDetailsModal";
 import ProcessPaymentModal from "./ProcessPaymentModal";
 import type { OrderDetailsData } from "@/contexts/OrderContext";
+import type { CreateOrderData } from "@/types/order";
 
 const TAX_RATE = 0.1;
 
 type NoteModalType = "kitchen" | "order" | null;
+type PaymentFlowState = {
+  customerName: string;
+  total: number;
+  orderId: number;
+};
+const PENDING_PAYMENT_STORAGE_KEY = "pos_pending_payment_flow";
+
+function loadPendingPaymentFlow(): PaymentFlowState | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const stored = sessionStorage.getItem(PENDING_PAYMENT_STORAGE_KEY);
+    if (!stored) return null;
+    const parsed = JSON.parse(stored) as Partial<PaymentFlowState>;
+    if (
+      typeof parsed.customerName === "string" &&
+      typeof parsed.total === "number" &&
+      typeof parsed.orderId === "number"
+    ) {
+      return {
+        customerName: parsed.customerName,
+        total: parsed.total,
+        orderId: parsed.orderId,
+      };
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function savePendingPaymentFlow(flow: PaymentFlowState | null) {
+  if (typeof window === "undefined") return;
+  try {
+    if (flow) {
+      sessionStorage.setItem(PENDING_PAYMENT_STORAGE_KEY, JSON.stringify(flow));
+    } else {
+      sessionStorage.removeItem(PENDING_PAYMENT_STORAGE_KEY);
+    }
+  } catch {
+    return;
+  }
+}
 
 function NoteModal({
   type,
@@ -29,7 +73,7 @@ function NoteModal({
   const [draft, setDraft] = useState(value);
   if (!type) return null;
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
       <div
         className="w-full max-w-sm rounded-[16px] border border-[#F1F5F9] bg-white p-5 shadow-[0px_1px_2px_-1px_#0000001A,0px_1px_3px_0px_#0000001A]"
         onClick={(e) => e.stopPropagation()}
@@ -87,13 +131,17 @@ export default function OrderSidebar() {
 
   const [editOrderId, setEditOrderId] = useState<string | null>(null);
   const [noteModal, setNoteModal] = useState<NoteModalType>(null);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [submittedOrderId, setSubmittedOrderId] = useState<number | null>(null);
+  const [paymentFlow, setPaymentFlow] = useState<PaymentFlowState | null>(null);
+  const [pendingPaymentOrder, setPendingPaymentOrder] = useState<PaymentFlowState | null>(() =>
+    loadPendingPaymentFlow()
+  );
+  const [isOrderAndPaySubmitting, setIsOrderAndPaySubmitting] = useState(false);
 
   const orderDetails = activeOrderDetails;
   const orderLabel = "Current Order";
   const hasDetails = orderDetails !== null;
   const showModal = editOrderId === activeOrderId;
+  const hasPendingPayment = !!pendingPaymentOrder;
 
   const handleOrderDetailsSubmit = (data: OrderDetailsData) => {
     setActiveOrderDetails(data);
@@ -107,7 +155,7 @@ export default function OrderSidebar() {
   const handleSubmitOrder = async (isPayNow = false) => {
     if (!orderDetails || items.length === 0) return;
 
-    const payload: any = {
+    const payload: CreateOrderData = {
       customerName: orderDetails.customerName,
       customerMobile: orderDetails.phone,
       totalAmount: total,
@@ -143,17 +191,49 @@ export default function OrderSidebar() {
         alert("Order submitted successfully!");
       }
       return result.id;
-    } catch (err: any) {
-      alert("Failed to submit order: " + (err.response?.data?.message || err.message));
+    } catch (err) {
+      const message =
+        err instanceof AxiosError
+          ? (err.response?.data as { message?: string } | undefined)?.message
+          : err instanceof Error
+            ? err.message
+            : "Unknown error";
+      alert("Failed to submit order: " + message);
       return null;
     }
   };
 
   const handleOrderAndPay = async () => {
-    const orderId = await handleSubmitOrder(true);
-    if (orderId) {
-      setSubmittedOrderId(Number(orderId));
-      setShowPaymentModal(true);
+    if (paymentFlow) return;
+
+    if (pendingPaymentOrder) {
+      setPaymentFlow(pendingPaymentOrder);
+      return;
+    }
+
+    if (isOrderAndPaySubmitting || !orderDetails || items.length === 0) return;
+
+    const paymentSnapshot = {
+      customerName: orderDetails.customerName,
+      total,
+    };
+
+    setIsOrderAndPaySubmitting(true);
+
+    try {
+      const orderId = await handleSubmitOrder(true);
+      if (orderId) {
+        const nextPaymentFlow = {
+          customerName: paymentSnapshot.customerName,
+          total: paymentSnapshot.total,
+          orderId: Number(orderId),
+        };
+        setPendingPaymentOrder(nextPaymentFlow);
+        savePendingPaymentFlow(nextPaymentFlow);
+        setPaymentFlow(nextPaymentFlow);
+      }
+    } finally {
+      setIsOrderAndPaySubmitting(false);
     }
   };
 
@@ -174,7 +254,8 @@ export default function OrderSidebar() {
                 <button
                   type="button"
                   onClick={() => setEditOrderId(activeOrderId)}
-                  className="font-['Arial'] text-xs font-bold uppercase leading-4 text-[#E26522] transition-opacity duration-300 ease-out hover:opacity-70"
+                  disabled={hasPendingPayment}
+                  className="font-['Arial'] text-xs font-bold uppercase leading-4 text-[#E26522] transition-opacity duration-300 ease-out hover:opacity-70 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:opacity-50"
                 >
                   EDIT INFO
                 </button>
@@ -289,8 +370,9 @@ export default function OrderSidebar() {
                           </div>
                           <button
                             type="button"
-                            onClick={() => removeItem(item.id)}
-                            className="shrink-0 text-[#CAD5E2] hover:text-red-500"
+                              onClick={() => removeItem(item.id)}
+                              disabled={hasPendingPayment}
+                              className="shrink-0 text-[#CAD5E2] hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:text-[#CAD5E2]"
                             aria-label="Remove item"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -304,7 +386,8 @@ export default function OrderSidebar() {
                             <button
                               type="button"
                               onClick={() => updateQty(item.id, -1)}
-                              className="py-1 text-[#90A1B9] hover:text-zinc-700"
+                              disabled={hasPendingPayment}
+                              className="py-1 text-[#90A1B9] hover:text-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:text-[#90A1B9]"
                             >
                               −
                             </button>
@@ -314,7 +397,8 @@ export default function OrderSidebar() {
                             <button
                               type="button"
                               onClick={() => updateQty(item.id, 1)}
-                              className="py-1 text-[#90A1B9] hover:text-primary"
+                              disabled={hasPendingPayment}
+                              className="py-1 text-[#90A1B9] hover:text-primary disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:text-[#90A1B9]"
                             >
                               +
                             </button>
@@ -344,7 +428,8 @@ export default function OrderSidebar() {
               <button
                 type="button"
                 onClick={() => setNoteModal("kitchen")}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-[14px] border border-[#E2E8F0] bg-white py-2 font-['Arial'] text-xs font-bold leading-4 text-[#45556C] hover:bg-zinc-50"
+                disabled={hasPendingPayment}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-[14px] border border-[#E2E8F0] bg-white py-2 font-['Arial'] text-xs font-bold leading-4 text-[#45556C] hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white"
               >
                 <ChefHat className="h-4 w-4" />
                 Kitchen Note
@@ -352,7 +437,8 @@ export default function OrderSidebar() {
               <button
                 type="button"
                 onClick={() => setNoteModal("order")}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-[14px] border border-[#E2E8F0] bg-white py-2 font-['Arial'] text-xs font-bold leading-4 text-[#45556C] hover:bg-zinc-50"
+                disabled={hasPendingPayment}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-[14px] border border-[#E2E8F0] bg-white py-2 font-['Arial'] text-xs font-bold leading-4 text-[#45556C] hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white"
               >
                 <svg className="h-4 w-4 shrink-0" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M10.6667 2H3.33333C2.97971 2 2.64057 2.14048 2.39052 2.39052C2.14048 2.64057 2 2.97971 2 3.33333V12.6667C2 13.0203 2.14048 13.3594 2.39052 13.6095C2.64057 13.8595 2.97971 14 3.33333 14H12.6667C13.0203 14 13.3594 13.8595 13.6095 13.6095C13.8595 13.3594 14 13.0203 14 12.6667V5.33333L10.6667 2Z" stroke="#45556C" strokeWidth="1.33333" strokeLinecap="round" strokeLinejoin="round" />
@@ -390,7 +476,7 @@ export default function OrderSidebar() {
               <button
                 type="button"
                 onClick={() => handleSubmitOrder()}
-                disabled={isCreatingOrder || !hasDetails || items.length === 0}
+                disabled={isCreatingOrder || isOrderAndPaySubmitting || hasPendingPayment || !!paymentFlow || !hasDetails || items.length === 0}
                 className="flex-1 rounded-[14px] border-2 border-[#EA580C] bg-white py-2.5 font-['Arial'] text-base font-bold leading-6 text-[#EA580C] transition-all duration-300 ease-out hover:bg-primary-muted active:scale-95 disabled:opacity-50"
               >
                 {isCreatingOrder ? "..." : "Order Now"}
@@ -398,10 +484,10 @@ export default function OrderSidebar() {
               <button
                 type="button"
                 onClick={handleOrderAndPay}
-                disabled={isCreatingOrder || !hasDetails || items.length === 0}
+                disabled={isCreatingOrder || isOrderAndPaySubmitting || !!paymentFlow || !hasDetails || items.length === 0}
                 className="flex-1 rounded-[14px] bg-[#EA580C] py-2.5 font-['Arial'] text-base font-bold leading-6 text-white shadow-[0px_4px_6px_-4px_#EA580C4D,0px_10px_15px_-3px_#EA580C4D] transition-all duration-300 ease-out hover:bg-[#DC4C04] active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
               >
-                Order & Pay
+                {isOrderAndPaySubmitting ? "..." : hasPendingPayment ? "Continue Payment" : "Order & Pay"}
               </button>
             </div>
           </div>
@@ -429,18 +515,17 @@ export default function OrderSidebar() {
         onClose={() => setNoteModal(null)}
       />
 
-      {showPaymentModal && hasDetails && (
+      {paymentFlow && (
         <ProcessPaymentModal
-          customerName={orderDetails!.customerName}
-          total={total}
-          orderId={submittedOrderId || undefined}
-          onClose={() => {
-            setShowPaymentModal(false);
-            setSubmittedOrderId(null);
-          }}
+          customerName={paymentFlow.customerName}
+          total={paymentFlow.total}
+          orderId={paymentFlow.orderId}
+          onClose={() => setPaymentFlow(null)}
           onComplete={() => {
             clearActiveOrder();
-            setSubmittedOrderId(null);
+            setPaymentFlow(null);
+            setPendingPaymentOrder(null);
+            savePendingPaymentFlow(null);
           }}
         />
       )}

@@ -117,6 +117,16 @@ const hasOrderData = (order: Order): boolean => {
 const INITIAL_ORDER = createEmptyOrder();
 const STORAGE_KEY = "pos_orders";
 const ACTIVE_ORDER_KEY = "pos_active_order_id";
+const PENDING_PAYMENT_STORAGE_KEY = "pos_pending_payment_flow";
+
+const hasPendingPaymentLock = (): boolean => {
+  if (typeof window === "undefined") return false;
+  try {
+    return !!sessionStorage.getItem(PENDING_PAYMENT_STORAGE_KEY);
+  } catch {
+    return false;
+  }
+};
 
 const loadOrdersFromStorage = (): Order[] => {
   if (typeof window === "undefined") return [INITIAL_ORDER];
@@ -224,6 +234,7 @@ export function OrderProvider({
 
   const setActiveOrderDetails = useCallback(
     (data: OrderDetailsData) => {
+      if (hasPendingPaymentLock()) return;
       const orderId = activeOrderId ?? orders[0]?.id;
       if (!orderId) return;
       setOrders((prev) => {
@@ -239,6 +250,7 @@ export function OrderProvider({
 
   const setActiveKitchenNote = useCallback(
     (value: string) => {
+      if (hasPendingPaymentLock()) return;
       const orderId = activeOrderId ?? orders[0]?.id;
       if (!orderId) return;
       setOrders((prev) => {
@@ -254,6 +266,7 @@ export function OrderProvider({
 
   const setActiveOrderNote = useCallback(
     (value: string) => {
+      if (hasPendingPaymentLock()) return;
       const orderId = activeOrderId ?? orders[0]?.id;
       if (!orderId) return;
       setOrders((prev) => {
@@ -268,6 +281,7 @@ export function OrderProvider({
   );
 
   const addOrder = useCallback(() => {
+    if (hasPendingPaymentLock()) return;
     if (beforeAddOrder && !beforeAddOrder()) return;
     if (orders.length >= 2) return;
     const newOrder = createEmptyOrder();
@@ -349,6 +363,7 @@ export function OrderProvider({
       variationOptionId?: number,
       modifications?: { modificationId: number; price: number }[]
     ) => {
+      if (hasPendingPaymentLock()) return;
       if (beforeAddItem && !beforeAddItem()) return;
       const orderId = activeOrderId ?? orders[0]?.id;
       if (!orderId) return;
@@ -403,6 +418,7 @@ export function OrderProvider({
 
   const updateQty = useCallback(
     (itemId: string, delta: number) => {
+      if (hasPendingPaymentLock()) return;
       const orderId = activeOrderId ?? orders[0]?.id;
       if (!orderId) return;
 
@@ -427,6 +443,7 @@ export function OrderProvider({
 
   const removeItem = useCallback(
     (itemId: string) => {
+      if (hasPendingPaymentLock()) return;
       const orderId = activeOrderId ?? orders[0]?.id;
       if (!orderId) return;
 
