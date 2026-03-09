@@ -126,7 +126,7 @@ export default function ReportsContent() {
 
             {/* Report Type Grid */}
             <div>
-              <h3 className="mb-4 font-['Inter'] text-[12px] font-bold leading-4 text-[#45556C]">
+              <h3 className="mb-4 font-['Inter'] uppercase text-[12px] font-bold leading-4 text-[#45556C]">
                 Select Report Type
               </h3>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
