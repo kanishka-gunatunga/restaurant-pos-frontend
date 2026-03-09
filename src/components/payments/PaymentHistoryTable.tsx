@@ -154,11 +154,13 @@ export default function PaymentHistoryTable({ payments, isLoading }: PaymentHist
                   </td>
                   <td className="px-6 py-5">
                     <div className="flex items-center gap-1 text-[14px] font-bold">
-                      {payment.paymentStatus.toLowerCase().includes("refund") ? (
+                      {payment.paymentStatus.toLowerCase() === "refund" ? (
                         <span className="text-[#EC003F]">- Rs.{payment.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                       ) : (
                         <>
-                          <span className="text-[#009966]">+Rs.{payment.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                          <span className={payment.refundedAmount && payment.refundedAmount > 0 ? "text-[#EC003F]" : "text-[#009966]"}>
+                            +Rs.{payment.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </span>
                           {payment.refundedAmount && payment.refundedAmount > 0 && (
                             <span className="text-[#EC003F] ml-1"> - Rs.{payment.refundedAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                           )}
