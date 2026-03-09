@@ -1,32 +1,56 @@
-import { CircleCheck, History, RotateCcw, X } from "lucide-react";
+import { CircleCheck, History, RotateCcw, X, Loader2 } from "lucide-react";
+import { useGetPaymentStats } from "@/hooks/usePayment";
+import { formatCurrency } from "@/lib/format";
 
 export default function PaymentStats() {
+  const { data: statsData, isLoading, isError } = useGetPaymentStats();
+
   const stats = [
     {
       label: "TOTAL COLLECTED",
-      value: "Rs.144,500.00",
+      value: statsData ? formatCurrency(statsData.totalCollectedAmount) : "Rs.0.00",
       icon: CircleCheck,
       color: "text-[#00BC7D]",
     },
     {
       label: "PENDING PAYMENTS",
-      value: "Rs.12,800.00",
+      value: statsData ? formatCurrency(statsData.pendingPaymentAmount) : "Rs.0.00",
       icon: History,
       color: "text-[#FE9A00]",
     },
     {
       label: "TOTAL REFUNDS",
-      value: "Rs.1,500.00",
+      value: statsData ? formatCurrency(statsData.totalRefundAmount) : "Rs.0.00",
       icon: RotateCcw,
       color: "text-[#62748E]",
     },
     {
       label: "REFUND RATE",
-      value: "01.00%",
+      value: statsData ? statsData.refundRate : "0.00%",
       icon: X,
       color: "text-[#FF2056]",
     },
   ];
+
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="flex h-[160px] animate-pulse items-center justify-center rounded-[32px] border border-[#E2E8F0] bg-white shadow-sm">
+            <Loader2 className="h-8 w-8 animate-spin text-[#90A1B9]" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="rounded-[32px] border border-red-100 bg-red-50 p-8 text-center text-red-600 shadow-sm">
+        Error loading payment statistics.
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
