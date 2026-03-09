@@ -31,7 +31,7 @@ type OrderForEdit = {
   orderNo: string;
   customerName: string;
   totalAmount: number;
-  items?: { id: string; productId: string; variationId?: string; name: string; qty: number; price: number }[];
+  items?: { id: string; productId?: string; variationId?: string; name: string; qty: number; price: number }[];
 };
 
 type Props = {
@@ -277,7 +277,7 @@ export default function EditOrderModal({ order, onClose, onSubmit }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4"
+      className="fixed inset-0 z-70 flex items-center justify-center bg-black/50 p-4"
       onClick={onClose}
     >
       <div

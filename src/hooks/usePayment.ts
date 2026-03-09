@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as paymentService from "@/services/paymentService";
 import { CreatePaymentPayload, PaymentUpdatePayload } from "@/types/payment";
+import { ORDER_KEYS } from "@/hooks/useOrder";
 
 export const PAYMENT_KEYS = {
   all: ["payments"] as const,
   lists: () => [...PAYMENT_KEYS.all, "list"] as const,
-  list: (filters: any) => [...PAYMENT_KEYS.lists(), { filters }] as const,
+  list: (filters: unknown) => [...PAYMENT_KEYS.lists(), { filters }] as const,
   byOrder: (orderId: number) => [...PAYMENT_KEYS.all, "order", orderId] as const,
 };
 
@@ -39,6 +40,7 @@ export const useCreatePayment = () => {
     mutationFn: (payload: CreatePaymentPayload) => paymentService.createPayment(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: PAYMENT_KEYS.all });
+      queryClient.invalidateQueries({ queryKey: ORDER_KEYS.all });
     },
   });
 };

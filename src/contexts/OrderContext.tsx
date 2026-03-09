@@ -283,7 +283,7 @@ export function OrderProvider({
     });
     setActiveOrderIdState(newOrder.id);
     saveActiveOrderIdToStorage(newOrder.id);
-  }, [orders.length]);
+  }, [beforeAddOrder, orders.length]);
 
   const closeOrder = useCallback((orderId: string) => {
     setOrders((prev) => {
@@ -398,7 +398,7 @@ export function OrderProvider({
         return updated;
       });
     },
-    [activeOrderId, orders]
+    [activeOrderId, beforeAddItem, orders]
   );
 
   const updateQty = useCallback(

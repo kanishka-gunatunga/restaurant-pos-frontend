@@ -5,11 +5,12 @@ import { StatusPill, PaymentStatusPill } from "./StatusPills";
 type Props = {
   orders: OrderRow[];
   onView: (order: OrderRow) => void;
+  onPay: (order: OrderRow) => void;
   onEdit: (order: OrderRow) => void;
   onDelete: (orderNo: string) => void;
 };
 
-export default function OrdersTable({ orders, onView, onEdit, onDelete }: Props) {
+export default function OrdersTable({ orders, onView, onPay, onEdit, onDelete }: Props) {
   return (
     <div className="mt-5 rounded-[24px] border border-[#E2E8F0] bg-white shadow-[0px_1px_2px_-1px_#0000001A,0px_1px_3px_0px_#0000001A]">
       <div className="overflow-hidden">
@@ -100,7 +101,7 @@ export default function OrdersTable({ orders, onView, onEdit, onDelete }: Props)
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              onView(order);
+                              onPay(order);
                             }}
                             className="flex h-[25px] min-w-[60px] shrink-0 items-center justify-center rounded-[14px] bg-[#00BC7D] px-4 font-['Inter'] text-sm font-bold leading-5 text-white transition-colors hover:bg-[#009966]"
                           >
@@ -189,7 +190,7 @@ export default function OrdersTable({ orders, onView, onEdit, onDelete }: Props)
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        onView(order);
+                        onPay(order);
                       }}
                       className="flex h-[25px] min-w-[60px] shrink-0 items-center justify-center rounded-[14px] bg-[#00BC7D] px-4 font-['Inter'] text-sm font-bold leading-5 text-white transition-colors hover:bg-[#009966]"
                     >
