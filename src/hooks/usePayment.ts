@@ -63,3 +63,11 @@ export const useGetPaymentsByOrder = (orderId: number) => {
     enabled: !!orderId,
   });
 };
+
+export const useGetPaymentStats = () => {
+  return useQuery({
+    queryKey: [...PAYMENT_KEYS.all, "stats"],
+    queryFn: paymentService.getPaymentStats,
+    staleTime: 1 * 60 * 1000,
+  });
+};

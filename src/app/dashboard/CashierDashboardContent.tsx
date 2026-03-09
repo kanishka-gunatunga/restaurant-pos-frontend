@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { Calendar, Clock, ChefHat, CheckCircle2, Pause, Wallet, AlertTriangle } from "lucide-react";
+import { Calendar, Clock, ChefHat, CheckCircle2, Pause, Wallet, AlertTriangle, Loader2 } from "lucide-react";
 import { ROUTES } from "@/lib/constants";
-import { getFirstName } from "@/lib/format";
+import { getFirstName, formatCurrency } from "@/lib/format";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
+import { useGetCashierDashboard } from "@/hooks/useDashboard";
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -49,73 +50,12 @@ function useRealTimeClock() {
   return time;
 }
 
-const MOCK_METRICS = {
-  pending: 1,
-  preparing: 2,
-  ready: 1,
-  hold: 1,
-  drawerCash: "Rs.125,230.00",
-};
-
-const MOCK_READY_ORDERS = [
-  {
-    id: "1029",
-    customerName: "James Bond",
-    type: "DINE IN",
-    table: "TABLE 07",
-    status: "PAID",
-    time: "12:45 PM",
-    itemCount: 1,
-    amount: "Rs.5,230.00",
-  },
-];
-
-const MOCK_HOLD_ORDERS = [
-  {
-    id: "1028",
-    customerName: "Elena Rodriguez",
-    type: "DINE IN",
-    table: "TABLE 08",
-    status: "PAID",
-    time: "12:30 PM",
-    itemCount: 2,
-    amount: "Rs.5,230.00",
-  },
-];
-
-const MOCK_LOW_STOCK = [
-  {
-    id: "1",
-    name: "Crispy Chicken Burger",
-    category: "Burgers • Chicken",
-    status: "LOW" as const,
-    stock: 3,
-    image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=80&h=80&fit=crop",
-    salesThisWeek: 98,
-  },
-  {
-    id: "2",
-    name: "BBQ Chicken Pizza",
-    category: "Pizza • Specialty",
-    status: "OUT" as const,
-    stock: 0,
-    image: "https://images.unsplash.com/photo-1628840042765-356cda07504e?w=80&h=80&fit=crop",
-    salesThisWeek: 112,
-  },
-  {
-    id: "3",
-    name: "Bolognese Pasta",
-    category: "Pasta • Meat",
-    status: "LOW" as const,
-    stock: 2,
-    image: "https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=80&h=80&fit=crop",
-    salesThisWeek: 89,
-  },
-];
 
 export default function CashierDashboardContent() {
   const { user } = useAuth();
   const time = useRealTimeClock();
+  const { data: dashboardData, isLoading, isError } = useGetCashierDashboard();
+  
   const mounted = useSyncExternalStore(
     () => () => {},
     () => true,
@@ -123,6 +63,53 @@ export default function CashierDashboardContent() {
   );
 
   if (!mounted) return null;
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#F8FAFC]">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-10 w-10 animate-spin text-[#EA580C]" />
+          <p className="font-['Inter'] text-sm font-medium text-[#62748E]">
+            Loading dashboard...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#F8FAFC]">
+        <div className="rounded-[24px] border border-red-100 bg-red-50 p-8 text-center shadow-sm">
+          <AlertTriangle className="mx-auto h-10 w-10 text-red-500" />
+          <h2 className="mt-4 font-['Inter'] text-lg font-bold text-red-900">
+            Failed to load dashboard
+          </h2>
+          <p className="mt-1 font-['Inter'] text-sm text-red-600">
+            Please check your connection and try again.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-6 rounded-xl bg-red-600 px-6 py-2 font-['Inter'] text-sm font-bold text-white transition-colors hover:bg-red-700"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const metrics = {
+    pending: dashboardData?.pendingOrdersCount || 0,
+    preparing: dashboardData?.preparingOrdersCount || 0,
+    ready: dashboardData?.readyOrdersCount || 0,
+    hold: dashboardData?.holdOrdersCount || 0,
+    drawerCash: formatCurrency(dashboardData?.drawerCash || 0),
+  };
+
+  const readyOrders = dashboardData?.readyOrdersList || [];
+  const holdOrders = dashboardData?.holdOrdersList || [];
+  const lowStockProducts = dashboardData?.lowStockProductsList || [];
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-[#F8FAFC]">
@@ -208,7 +195,7 @@ export default function CashierDashboardContent() {
                 </svg>
               </div>
               <p className="mt-3 font-['Inter'] text-[clamp(1.25rem,2.5vw+0.75rem,1.875rem)] font-bold leading-tight text-[#1D293D]">
-                {MOCK_METRICS.pending}
+                {metrics.pending}
               </p>
               <p className="font-['Inter'] text-sm font-medium leading-5 text-[#62748E]">
                 Pending Orders
@@ -219,7 +206,7 @@ export default function CashierDashboardContent() {
                 <ChefHat className="h-7 w-7 text-[#155DFC]" />
               </div>
               <p className="mt-3 font-['Inter'] text-[clamp(1.25rem,2.5vw+0.75rem,1.875rem)] font-bold leading-tight text-[#1D293D]">
-                {MOCK_METRICS.preparing}
+                {metrics.preparing}
               </p>
               <p className="font-['Inter'] text-sm font-medium leading-5 text-[#62748E]">
                 Preparing Orders
@@ -230,7 +217,7 @@ export default function CashierDashboardContent() {
                 <CheckCircle2 className="h-7 w-7 text-[#9810FA]" />
               </div>
               <p className="mt-3 font-['Inter'] text-[clamp(1.25rem,2.5vw+0.75rem,1.875rem)] font-bold leading-tight text-[#1D293D]">
-                {MOCK_METRICS.ready}
+                {metrics.ready}
               </p>
               <p className="font-['Inter'] text-sm font-medium leading-5 text-[#62748E]">
                 Ready Orders
@@ -241,7 +228,7 @@ export default function CashierDashboardContent() {
                 <Pause className="h-7 w-7 text-[#EC003F]" />
               </div>
               <p className="mt-3 font-['Inter'] text-[clamp(1.25rem,2.5vw+0.75rem,1.875rem)] font-bold leading-tight text-[#1D293D]">
-                {MOCK_METRICS.hold}
+                {metrics.hold}
               </p>
               <p className="font-['Inter'] text-sm font-medium leading-5 text-[#62748E]">
                 Hold Orders
@@ -253,7 +240,7 @@ export default function CashierDashboardContent() {
               </div>
               <div className="scrollbar-subtle mt-3 min-w-0 overflow-x-auto">
                 <p className="whitespace-nowrap font-['Inter'] text-[clamp(1.25rem,2.5vw+0.75rem,1.875rem)] font-bold leading-tight text-[#FFFFFF]">
-                  {MOCK_METRICS.drawerCash}
+                  {metrics.drawerCash}
                 </p>
               </div>
               <p className="font-['Inter'] text-sm font-medium leading-5 text-[#D0FAE5]">
@@ -283,11 +270,11 @@ export default function CashierDashboardContent() {
                     </div>
                   </div>
                   <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#F3E8FF] font-['Inter'] text-sm font-bold leading-5 text-[#9810FA]">
-                    {MOCK_READY_ORDERS.length}
+                    {readyOrders.length}
                   </span>
                 </div>
                 <div className="mt-7 space-y-3">
-                  {MOCK_READY_ORDERS.map((order) => (
+                  {readyOrders.map((order) => (
                     <div
                       key={order.id}
                       className="flex items-center justify-between gap-4 rounded-[16px] border border-[#E9D4FF] bg-[#FAF5FF] px-4 py-4"
@@ -299,23 +286,23 @@ export default function CashierDashboardContent() {
                         <div className="flex min-w-0 flex-1 flex-col gap-1">
                           <div className="flex flex-wrap items-center gap-2">
                             <p className="font-['Inter'] text-base font-bold leading-6 text-[#1D293D]">
-                              {order.customerName}
+                              {order.customer?.name || "Guest"}
                             </p>
                             <span className="rounded-[10px] border border-[#E9D4FF] bg-white px-2 py-1 font-['Inter'] text-[10px] font-bold uppercase leading-[15px] text-[#8200DB]">
-                              {order.type} • {order.table}
+                              {order.orderType} {order.tableNumber ? `• ${order.tableNumber}` : ""}
                             </span>
                             <span className="rounded-[10px] border border-[#A4F4CF] bg-[#ECFDF5] px-2 py-1 font-['Inter'] text-[10px] font-bold uppercase leading-[15px] text-[#009966]">
-                              {order.status}
+                              {order.paymentStatus}
                             </span>
                           </div>
                           <p className="flex items-center gap-1 font-['Inter'] text-xs font-normal leading-4 text-[#62748E]">
                             <Clock className="h-3.5 w-3.5 shrink-0" />
-                            {order.time} • {order.itemCount} items
+                            {new Date(order.createdAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })} • {order.itemsCount} items
                           </p>
                         </div>
                       </div>
                       <p className="shrink-0 font-['Inter'] text-right text-[20px] font-bold leading-7 text-[#8200DB]">
-                        {order.amount}
+                        {formatCurrency(order.totalAmount)}
                       </p>
                     </div>
                   ))}
@@ -374,11 +361,11 @@ export default function CashierDashboardContent() {
                     </div>
                   </div>
                   <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#FFE4E6] font-['Inter'] text-sm font-bold leading-5 text-[#EC003F]">
-                    {MOCK_HOLD_ORDERS.length}
+                    {holdOrders.length}
                   </span>
                 </div>
                 <div className="mt-7 space-y-3">
-                  {MOCK_HOLD_ORDERS.map((order) => (
+                  {holdOrders.map((order) => (
                     <div
                       key={order.id}
                       className="flex items-center justify-between gap-4 rounded-[16px] border border-[#FFCCD3] bg-[#FFF1F2] px-4 py-4"
@@ -390,23 +377,23 @@ export default function CashierDashboardContent() {
                         <div className="flex min-w-0 flex-1 flex-col gap-1">
                           <div className="flex flex-wrap items-center gap-2">
                             <p className="font-['Inter'] text-base font-bold leading-6 text-[#1D293D]">
-                              {order.customerName}
+                              {order.customer?.name || "Guest"}
                             </p>
                             <span className="rounded-[10px] border border-[#FFCCD3] bg-white px-2 py-1 font-['Inter'] text-[10px] font-bold uppercase leading-[15px] text-[#C70036]">
-                              {order.type} • {order.table}
+                              {order.orderType} {order.tableNumber ? `• ${order.tableNumber}` : ""}
                             </span>
                             <span className="rounded-[10px] border border-[#A4F4CF] bg-[#ECFDF5] px-2 py-1 font-['Inter'] text-[10px] font-bold uppercase leading-[15px] text-[#009966]">
-                              {order.status}
+                              {order.paymentStatus}
                             </span>
                           </div>
                           <p className="flex items-center gap-1 font-['Inter'] text-xs font-normal leading-4 text-[#62748E]">
                             <Clock className="h-3.5 w-3.5 shrink-0" />
-                            {order.time} • {order.itemCount} items
+                            {new Date(order.createdAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })} • {order.itemsCount} items
                           </p>
                         </div>
                       </div>
                       <p className="shrink-0 font-['Inter'] text-right text-[20px] font-bold leading-7 text-[#C70036]">
-                        {order.amount}
+                        {formatCurrency(order.totalAmount)}
                       </p>
                     </div>
                   ))}
@@ -476,49 +463,55 @@ export default function CashierDashboardContent() {
                   <AlertTriangle className="h-5 w-5 text-[#FB2C36]" />
                   <div className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#FFE2E2]">
                     <span className="font-['Inter'] text-sm font-bold text-[#E7000B]">
-                      {MOCK_LOW_STOCK.length}
+                      {lowStockProducts.length}
                     </span>
                   </div>
                 </div>
               </div>
               <div className="scrollbar-subtle mt-7 max-h-[380px] space-y-3 overflow-y-auto pr-1">
-                {MOCK_LOW_STOCK.map((item) => (
+                {lowStockProducts.map((item) => (
                   <div
                     key={item.id}
                     className={`flex items-center gap-4 rounded-[16px] border-2 px-4 py-4 ${
-                      item.status === "OUT"
+                      item.quantity === 0
                         ? "border-[#FFC9C9] bg-[#FEF2F2]"
                         : "border-[#FEE685] bg-[#FFFBEB]"
                     }`}
                   >
                     <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg">
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="h-full w-full object-cover"
-                      />
+                      {item.image ? (
+                        <img
+                          src={item.image}
+                          alt={item.productName}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-zinc-100 text-zinc-400">
+                          <ChefHat className="h-6 w-6" />
+                        </div>
+                      )}
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="font-['Inter'] text-base font-bold leading-6 text-[#1D293D]">
-                        {item.name}
+                        {item.productName}
                       </p>
                       <p className="font-['Inter'] text-xs font-normal leading-4 text-[#62748E]">
-                        {item.category}
+                        {item.categoryName} • {item.variationName}
                       </p>
                       <span
                         className={`mt-2 inline-flex items-center gap-1 rounded-[10px] border px-2 py-0.5 font-['Inter'] text-xs font-bold leading-4 ${
-                          item.status === "OUT"
+                          item.quantity === 0
                             ? "border-[#FFC9C9] bg-[#FFE2E2] text-[#EC003F]"
                             : "border-[#FEE685] bg-[#FEF3C6] text-[#E17100]"
                         }`}
                       >
-                        {item.status === "OUT" ? (
+                        {item.quantity === 0 ? (
                           <>
                             <span className="font-bold">®</span> OUT OF STOCK
                           </>
                         ) : (
                           <>
-                            <AlertTriangle className="h-3 w-3" /> LOW: {item.stock} left
+                            <AlertTriangle className="h-3 w-3" /> LOW: {item.quantity} left
                           </>
                         )}
                       </span>
@@ -528,7 +521,7 @@ export default function CashierDashboardContent() {
                         This Week
                       </p>
                       <p className="font-['Inter'] text-2xl font-bold leading-8 text-[#1D293D]">
-                        {item.salesThisWeek}
+                        {item.unitsSoldThisWeek}
                       </p>
                       <p className="font-['Inter'] text-xs font-normal leading-4 text-[#90A1B9]">
                         units sold

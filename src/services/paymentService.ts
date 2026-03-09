@@ -30,3 +30,8 @@ export const getAllPaymentDetails = async (): Promise<Payment[]> => {
   const res = await axiosInstance.get("/payments/all-details");
   return res.data;
 };
+
+export const getPaymentStats = async (): Promise<any> => {
+  const res = await axiosInstance.get("/payments/stats");
+  return res.data;
+};

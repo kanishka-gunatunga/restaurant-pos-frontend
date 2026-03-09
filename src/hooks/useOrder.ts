@@ -26,6 +26,14 @@ export const useGetAllOrders = () => {
   });
 };
 
+export const useGetOrdersExcludeStatus = (status: string) => {
+  return useQuery({
+    queryKey: [...ORDER_KEYS.lists(), "exclude", status],
+    queryFn: () => orderService.getOrdersExcludeStatus(status),
+    staleTime: 0.5 * 60 * 1000,
+  });
+};
+
 export const useSearchOrders = (params: OrderSearchParams) => {
   return useQuery({
     queryKey: ORDER_KEYS.list(params),
