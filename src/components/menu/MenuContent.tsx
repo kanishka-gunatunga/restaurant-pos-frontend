@@ -7,8 +7,7 @@ import { useGetParentCategories, useGetSubCategories } from "@/hooks/useCategory
 import { useGetProductsByBranch } from "@/hooks/useProduct";
 import { useGetAllModifications } from "@/hooks/useModification";
 import { useAuth } from "@/contexts/AuthContext";
-import type { MenuItem, ProductVariant, ProductAddOn } from "./types";
-import type { Product } from "@/types/product";
+import { mapProductsToMenuItems } from "./menuItemMapper";
 
 function useColumnCount() {
   const [cols, setCols] = useState(4);
@@ -50,76 +49,8 @@ export default function MenuContent() {
 
   const { data: allModifications = [] } = useGetAllModifications("active");
 
-  const mapProductToMenuItem = (p: Product): MenuItem => {
-    // Collect variations
-    const variants: ProductVariant[] = [];
-    p.variations?.forEach((v) => {
-      v.options?.forEach((opt) => {
-        const branchPrice = opt.prices?.find((pr) => pr.branchId === branchId);
-        if (branchPrice) {
-          const isGeneric = v.name.toLowerCase().includes("variant") || v.name.toLowerCase().includes("standard");
-          variants.push({
-            id: opt.id,
-            name: isGeneric ? opt.name : `${v.name}: ${opt.name}`,
-            price: Number(branchPrice.price),
-          });
-        }
-      });
-    });
-
-    // Collect all unique modification IDs from products and variations
-    const modificationIds = new Set<number>();
-    p.productModifications?.forEach((pm) => modificationIds.add(pm.modificationId));
-    p.variations?.forEach((v) => {
-      v.variationModifications?.forEach((vm) => modificationIds.add(vm.modificationId));
-    });
-
-    // Map these IDs to actual items from allModifications
-    const addOns: ProductAddOn[] = [];
-    const seenItemIds = new Set<string>();
-
-    modificationIds.forEach((mId) => {
-      const modGroup = allModifications.find((m) => m.id === mId);
-      modGroup?.items?.forEach((mi) => {
-        const itemId = mi.id.toString();
-        if (!seenItemIds.has(itemId)) {
-          addOns.push({
-            id: itemId,
-            name: mi.title,
-            price: Number(mi.price),
-          });
-          seenItemIds.add(itemId);
-        }
-      });
-    });
-
-    // Base price is the first variant's price or 0
-    const basePrice = variants.length > 0 ? variants[0].price : 0;
-
-    return {
-      id: `${p.id}-${p.code}`, // Ensure composite key just in case
-      productId: p.id,
-      name: p.name,
-      category: p.category?.name || "Other",
-      subCategory: p.subCategory?.name || "General",
-      price: basePrice,
-      image: p.image || undefined,
-      variants: variants.length > 0 ? variants : undefined,
-      addOns: addOns.length > 0 ? addOns : undefined,
-    };
-  };
-
   const menuItems = useMemo(() => {
-    const uniqueItems: MenuItem[] = [];
-    const seenIds = new Set();
-    products.forEach(p => {
-      const item = mapProductToMenuItem(p);
-      if (!seenIds.has(item.id)) {
-        uniqueItems.push(item);
-        seenIds.add(item.id);
-      }
-    });
-    return uniqueItems;
+    return mapProductsToMenuItems(products, branchId, allModifications);
   }, [products, branchId, allModifications]);
 
   const filteredItems = useMemo(() => {

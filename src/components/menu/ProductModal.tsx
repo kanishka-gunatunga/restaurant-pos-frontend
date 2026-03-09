@@ -99,6 +99,17 @@ export default function ProductModal({
       modificationId: Number(a.addOn.id),
       price: a.addOn.price,
     }));
+    console.log("[ProductModal] Adding customized item", {
+      productId: item.productId,
+      productName: item.name,
+      qty,
+      selectedVariant,
+      variantName,
+      addOnsParsed,
+      modifications,
+      details,
+      unitPrice,
+    });
     for (let i = 0; i < qty; i++) {
       onAddToOrder(
         item.productId,

@@ -2,7 +2,7 @@
 
 import { useId } from "react";
 import { X, Clock, Package, User, Phone, UtensilsCrossed, DollarSign, CreditCard } from "lucide-react";
-import type { OrderStatus, OrderDetailsView } from "@/domains/orders/types";
+import type { OrderDetailsView } from "@/domains/orders/types";
 
 import { STATUS_STYLES } from "@/domains/orders/constants";
 
@@ -13,11 +13,12 @@ type Props = {
   order: OrderDetailsView;
   onClose: () => void;
   onEdit?: () => void;
+  onEditInfo?: () => void;
   onCancel?: () => void;
   onPayNow?: (order: OrderDetailsView) => void;
 };
 
-export default function OrderDetailsViewModal({ order, onClose, onEdit, onCancel, onPayNow }: Props) {
+export default function OrderDetailsViewModal({ order, onClose, onEdit, onEditInfo, onCancel, onPayNow }: Props) {
   const paymentClipId = useId();
   const cancelIconClipId = useId();
   const subtotal = order.subtotal ?? order.totalAmount;
@@ -25,6 +26,14 @@ export default function OrderDetailsViewModal({ order, onClose, onEdit, onCancel
   const items = order.items ?? [{ name: "Order items", qty: 1, price: order.totalAmount }];
   const itemCount = items.reduce((sum, i) => sum + i.qty, 0);
   const orderTypeLabel = order.orderType ?? "Dine In";
+  const paymentStatusLabel =
+    order.paymentStatus === "paid"
+      ? "Paid"
+      : order.paymentStatus === "pending"
+        ? "Pending"
+        : order.paymentStatus === "refund"
+          ? "Refund"
+          : "Partial Refund";
   const tableLabel = order.tableNumber ? `Table ${order.tableNumber}` : "";
 
   return (
@@ -102,6 +111,8 @@ export default function OrderDetailsViewModal({ order, onClose, onEdit, onCancel
                   </span>
                   <button
                     type="button"
+                    onClick={onEditInfo}
+                    disabled={!onEditInfo}
                     className="font-['Inter'] text-xs font-bold uppercase leading-4 text-[#EA580C] hover:underline"
                   >
                     EDIT INFO
@@ -146,6 +157,8 @@ export default function OrderDetailsViewModal({ order, onClose, onEdit, onCancel
                   </span>
                   <button
                     type="button"
+                    onClick={onEditInfo}
+                    disabled={!onEditInfo}
                     className="font-['Inter'] text-xs font-bold uppercase leading-4 text-[#EA580C] hover:underline"
                   >
                     EDIT INFO
@@ -207,7 +220,7 @@ export default function OrderDetailsViewModal({ order, onClose, onEdit, onCancel
                     </defs>
                   </svg>
                   <span className="font-['Inter'] text-base font-bold leading-6 text-[#BB4D00]">
-                    Payment Status: {order.paymentStatus}
+                    Payment Status: {paymentStatusLabel}
                   </span>
                 </div>
               </div>
@@ -225,12 +238,27 @@ export default function OrderDetailsViewModal({ order, onClose, onEdit, onCancel
                   {items.map((item, i) => (
                     <div
                       key={i}
-                      className="flex items-center justify-between rounded-[14px] border border-[#E2E8F0] bg-white px-4 py-4 font-['Inter'] text-base font-bold leading-6 text-[#1D293D]"
+                      className="flex items-start justify-between gap-4 rounded-[14px] border border-[#E2E8F0] bg-white px-4 py-4"
                     >
-                      <span>
-                        {item.qty}x {item.name}
+                      <div className="min-w-0 flex-1 font-['Inter']">
+                        <p className="text-base font-bold leading-6 text-[#1D293D]">
+                          {item.qty}x {item.name}
+                        </p>
+                        {/* Re-enable when backend returns the selected variation option, not only the variation group. */}
+                        {/* {item.variant && (
+                          <p className="mt-1 text-sm font-semibold leading-5 text-[#62748E]">
+                            Variant: {item.variant}
+                          </p>
+                        )}
+                        {item.addOns && item.addOns.length > 0 && (
+                          <p className="text-sm font-semibold leading-5 text-[#62748E]">
+                            Add-ons: {item.addOns.join(" ")}
+                          </p>
+                        )} */}
+                      </div>
+                      <span className="shrink-0 font-['Inter'] text-base font-bold leading-6 text-[#1D293D]">
+                        {formatRs(item.qty * item.price)}
                       </span>
-                      <span>{formatRs(item.qty * item.price)}</span>
                     </div>
                   ))}
                 </div>

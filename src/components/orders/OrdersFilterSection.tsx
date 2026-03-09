@@ -6,6 +6,7 @@ function formatOption(opt: string) {
   return opt === "All"
     ? "All"
     : opt
+        .replace(/_/g, " ")
         .split(" ")
         .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
         .join(" ");

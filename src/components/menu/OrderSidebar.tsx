@@ -136,6 +136,12 @@ export default function OrderSidebar() {
       }))
     };
 
+    console.log("[OrderSidebar] Submitting order", {
+      draftItems: items,
+      orderProducts: payload.order_products,
+      orderDetails,
+    });
+
     try {
       const result = await createOrder(payload);
       if (!isPayNow) {

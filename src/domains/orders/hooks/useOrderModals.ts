@@ -1,6 +1,13 @@
 import { useState, useCallback } from "react";
 import type { OrderRow, OrderDetailsView } from "../types";
-import { useUpdateOrderStatus, useUpdateOrder, useDeleteOrder } from "@/hooks/useOrder";
+import { useUpdateOrderStatus, useUpdateOrder } from "@/hooks/useOrder";
+import type { OrderDetailsData } from "@/contexts/OrderContext";
+
+function mapOrderTypeToApi(orderType: OrderDetailsData["orderType"]) {
+  if (orderType === "Dine In") return "dining";
+  if (orderType === "Take Away") return "takeaway";
+  return "delivery";
+}
 
 export function useOrderModals() {
   const [authModal, setAuthModal] = useState<{ isOpen: boolean; orderNo: string | null }>({
@@ -8,9 +15,11 @@ export function useOrderModals() {
     orderNo: null,
   });
   const [editOrderModal, setEditOrderModal] = useState<OrderRow | null>(null);
+  const [editOrderInfoModal, setEditOrderInfoModal] = useState<OrderRow | null>(null);
   const [viewOrder, setViewOrder] = useState<OrderRow | null>(null);
 
   const orderToView = useCallback((order: OrderRow): OrderDetailsView => ({
+    id: order.id,
     orderNo: order.orderNo,
     date: order.date,
     time: order.time,
@@ -19,8 +28,12 @@ export function useOrderModals() {
     customerName: order.customerName,
     phone: order.phone,
     totalAmount: order.totalAmount,
-    orderType: order.orderType as any,
+    orderType: order.orderType,
     tableNumber: order.tableNumber,
+    deliveryAddress: order.deliveryAddress,
+    landmark: order.landmark,
+    zipCode: order.zipCode,
+    deliveryInstructions: order.deliveryInstructions,
     items: order.items,
     subtotal: order.subtotal,
     discount: order.discount,
@@ -28,7 +41,6 @@ export function useOrderModals() {
 
   const updateStatusMutation = useUpdateOrderStatus();
   const updateOrderMutation = useUpdateOrder();
-  const deleteOrderMutation = useDeleteOrder();
 
   const handleDeleteClick = useCallback((orderNo: string) => {
     setAuthModal({ isOpen: true, orderNo });
@@ -65,7 +77,7 @@ export function useOrderModals() {
   }, []);
 
   const handleEditOrderSubmit = useCallback(
-    (data: { items: { id: string; productId?: string; variationId?: string; qty: number; price: number }[] }) => {
+    (data: { items: { id: string; productId?: string; variationId?: string; qty: number; price: number; modifications?: { modificationId: number; price: number }[] }[] }) => {
       if (editOrderModal) {
         updateOrderMutation.mutate({
           id: editOrderModal.id,
@@ -76,6 +88,7 @@ export function useOrderModals() {
               quantity: item.qty,
               unitPrice: item.price,
               productDiscount: 0,
+              modifications: item.modifications,
             }))
           }
         }, {
@@ -89,12 +102,46 @@ export function useOrderModals() {
   );
 
   const closeEditModal = useCallback(() => setEditOrderModal(null), []);
+  const closeEditInfoModal = useCallback(() => setEditOrderInfoModal(null), []);
   const closeViewModal = useCallback(() => setViewOrder(null), []);
 
   const openEditFromView = useCallback((order: OrderRow) => {
     setViewOrder(null);
     setEditOrderModal(order);
   }, []);
+
+  const openEditInfoFromView = useCallback((order: OrderRow) => {
+    setViewOrder(null);
+    setEditOrderInfoModal(order);
+  }, []);
+
+  const handleEditOrderInfoSubmit = useCallback(
+    (data: OrderDetailsData) => {
+      if (editOrderInfoModal) {
+        updateOrderMutation.mutate(
+          {
+            id: editOrderInfoModal.id,
+            data: {
+              customerName: data.customerName,
+              customerMobile: data.phone,
+              orderType: mapOrderTypeToApi(data.orderType),
+              tableNumber: data.orderType === "Dine In" ? data.tableNumber : undefined,
+              deliveryAddress: data.orderType === "Delivery" ? data.deliveryAddress : undefined,
+              landmark: data.orderType === "Delivery" ? data.landmark : undefined,
+              zipcode: data.orderType === "Delivery" ? data.zipCode : undefined,
+              deliveryInstructions: data.orderType === "Delivery" ? data.deliveryInstructions : undefined,
+            },
+          },
+          {
+            onSuccess: () => {
+              setEditOrderInfoModal(null);
+            },
+          }
+        );
+      }
+    },
+    [editOrderInfoModal, updateOrderMutation]
+  );
 
   const openCancelFromView = useCallback((orderNo: string) => {
     setAuthModal({ isOpen: true, orderNo });
@@ -104,6 +151,7 @@ export function useOrderModals() {
   return {
     authModal,
     editOrderModal,
+    editOrderInfoModal,
     viewOrder,
     orderToView,
     handleDeleteClick,
@@ -112,9 +160,13 @@ export function useOrderModals() {
     handleViewOrder,
     handleEditClick,
     handleEditOrderSubmit,
+    handleEditOrderInfoSubmit,
     closeEditModal,
+    closeEditInfoModal,
     closeViewModal,
     openEditFromView,
+    openEditInfoFromView,
     openCancelFromView,
+    isUpdatingOrder: updateOrderMutation.isPending,
   };
 }
