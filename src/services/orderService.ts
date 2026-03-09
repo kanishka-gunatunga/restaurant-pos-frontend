@@ -14,6 +14,11 @@ export const getAllOrders = async (): Promise<Order[]> => {
   return res.data;
 };
 
+export const getOrdersExcludeStatus = async (status: string): Promise<Order[]> => {
+  const res = await axiosInstance.get("/orders/exclude-status", { params: { status } });
+  return res.data;
+};
+
 export const searchOrders = async (params: OrderSearchParams): Promise<Order[]> => {
   const res = await axiosInstance.get("/orders/search", { params });
   return res.data;
