@@ -4,14 +4,23 @@ import { formatDate, formatTime } from "@/lib/format";
 export type OrderStatus = "pending" | "preparing" | "ready" | "hold" | "complete" | "cancel";
 export type PaymentStatus = "pending" | "paid" | "refund" | "partial_refund";
 export type OrderType = "takeaway" | "dining" | "delivery";
+export type OrderTypeLabel = "Dine In" | "Take Away" | "Delivery";
 
 export type OrderDetailItem = {
+  id?: string;
+  productId?: string;
+  variationId?: string;
   name: string;
   qty: number;
   price: number;
+  image?: string;
+  variant?: string;
+  addOns?: string[];
+  modifications?: { modificationId: number; price: number }[];
 };
 
 export type OrderDetailsView = {
+  id: string;
   orderNo: string;
   date: string;
   time: string;
@@ -20,8 +29,12 @@ export type OrderDetailsView = {
   customerName: string;
   phone: string;
   totalAmount: number;
-  orderType?: OrderType;
+  orderType?: OrderTypeLabel;
   tableNumber?: string;
+  deliveryAddress?: string;
+  landmark?: string;
+  zipCode?: string;
+  deliveryInstructions?: string;
   items?: OrderDetailItem[];
   subtotal?: number;
   discount?: number;
@@ -37,14 +50,27 @@ export type OrderRow = {
   totalAmount: number;
   status: OrderStatus;
   paymentStatus: PaymentStatus;
-  orderType?: "Dine In" | "Take Away" | "Delivery";
+  orderType?: OrderTypeLabel;
   tableNumber?: string;
+  deliveryAddress?: string;
+  landmark?: string;
+  zipCode?: string;
+  deliveryInstructions?: string;
   items?: OrderDetailItem[];
   subtotal?: number;
   discount?: number;
 };
 
 export function mapOrderToRow(apiOrder: ApiOrder): OrderRow {
+  const orderType =
+    apiOrder.orderType === "dining"
+      ? "Dine In"
+      : apiOrder.orderType === "takeaway"
+        ? "Take Away"
+        : apiOrder.orderType === "delivery"
+          ? "Delivery"
+          : undefined;
+
   return {
     id: String(apiOrder.id),
     orderNo: String(apiOrder.id), // Using ID as Order No if not separate
@@ -55,8 +81,12 @@ export function mapOrderToRow(apiOrder: ApiOrder): OrderRow {
     totalAmount: Number(apiOrder.totalAmount),
     status: apiOrder.status,
     paymentStatus: apiOrder.paymentStatus as PaymentStatus,
-    orderType: apiOrder.orderType === "dining" ? "takeaway" : apiOrder.orderType as any, // Simple mapping for now
+    orderType,
     tableNumber: apiOrder.tableNumber,
+    deliveryAddress: apiOrder.deliveryAddress,
+    landmark: apiOrder.landmark,
+    zipCode: apiOrder.zipcode,
+    deliveryInstructions: apiOrder.deliveryInstructions,
     items: apiOrder.items?.map(mapOrderItemToDetail),
     subtotal: Number(apiOrder.totalAmount) - Number(apiOrder.tax || 0) + Number(apiOrder.orderDiscount || 0),
     discount: Number(apiOrder.orderDiscount),
@@ -65,8 +95,21 @@ export function mapOrderToRow(apiOrder: ApiOrder): OrderRow {
 
 function mapOrderItemToDetail(item: ApiOrderItem): OrderDetailItem {
   return {
+    id: String(item.id),
+    productId: String(item.productId),
+    variationId: item.variationId != null ? String(item.variationId) : undefined,
     name: (item.product as any)?.name || "Unknown Product",
     qty: item.quantity,
     price: Number(item.unitPrice),
+    image: item.product?.image,
+    variant: item.variation?.name,
+    addOns:
+      item.modifications
+        ?.map((modification) => modification.modification?.title)
+        .filter((title): title is string => Boolean(title)) ?? undefined,
+    modifications: item.modifications?.map((modification) => ({
+      modificationId: Number(modification.modificationId),
+      price: Number(modification.price),
+    })),
   };
 }

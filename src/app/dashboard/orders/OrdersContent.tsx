@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
-import { MENU_ITEMS } from "@/components/menu/menuData";
+import NewOrderDetailsModal from "@/components/menu/NewOrderDetailsModal";
 import ProcessPaymentModal from "@/components/menu/ProcessPaymentModal";
 import EditOrderModal from "@/components/orders/EditOrderModal";
 import OrderDetailsViewModal from "@/components/orders/OrderDetailsViewModal";
@@ -11,7 +11,9 @@ import OrdersHeader from "@/components/orders/OrdersHeader";
 import OrdersFilterSection from "@/components/orders/OrdersFilterSection";
 import OrdersTable from "@/components/orders/OrdersTable";
 import { useOrdersFilters } from "@/domains/orders/hooks/useOrdersFilters";
+import { mapOrderToRow } from "@/domains/orders/types";
 import { useOrderModals } from "@/domains/orders/hooks/useOrderModals";
+import { useGetOrderById } from "@/hooks/useOrder";
 import { Loader2 } from "lucide-react";
 
 type ProcessingPayment = {
@@ -37,6 +39,7 @@ export default function OrdersContent() {
   const {
     authModal,
     editOrderModal,
+    editOrderInfoModal,
     viewOrder,
     orderToView,
     handleDeleteClick,
@@ -45,11 +48,18 @@ export default function OrdersContent() {
     handleViewOrder,
     handleEditClick,
     handleEditOrderSubmit,
+    handleEditOrderInfoSubmit,
     closeEditModal,
+    closeEditInfoModal,
     closeViewModal,
     openEditFromView,
+    openEditInfoFromView,
     openCancelFromView,
+    isUpdatingOrder,
   } = useOrderModals();
+
+  const { data: viewOrderDetails } = useGetOrderById(viewOrder?.id);
+  const activeViewOrder = viewOrderDetails ? mapOrderToRow(viewOrderDetails) : viewOrder;
 
   const openPaymentFlow = (order: {
     id: string;
@@ -101,39 +111,59 @@ export default function OrdersContent() {
             orderNo: editOrderModal.orderNo,
             customerName: editOrderModal.customerName,
             totalAmount: editOrderModal.totalAmount,
-            items: (editOrderModal.items ?? []).map((item, index) => {
-              const matchingMenuItem = MENU_ITEMS.find(
-                (menuItem) => menuItem.name === item.name
-              );
-
-              return {
-                id: `line-${editOrderModal.orderNo}-${index}-${item.name}`,
-                productId: String(matchingMenuItem?.id ?? index + 1),
-                name: item.name,
-                qty: item.qty,
-                price: item.price,
-              };
-            }),
+            items: editOrderModal.items?.map((item, index) => ({
+              id: item.id ?? `line-${editOrderModal.orderNo}-${index}-${item.name}`,
+              productId: item.productId,
+              variationId: item.variationId,
+              name: item.name,
+              qty: item.qty,
+              price: item.price,
+              image: item.image,
+              variant: item.variant,
+              addOns: item.addOns,
+              modifications: item.modifications,
+            })),
           }}
           onSubmit={handleEditOrderSubmit}
           onClose={closeEditModal}
         />
       )}
 
-      {viewOrder && (
+      {editOrderInfoModal && (
+        <NewOrderDetailsModal
+          title="Edit Order Details"
+          submitButtonText="Save Details"
+          initialData={{
+            customerName: editOrderInfoModal.customerName,
+            phone: editOrderInfoModal.phone,
+            orderType: editOrderInfoModal.orderType ?? "Dine In",
+            tableNumber: editOrderInfoModal.tableNumber,
+            deliveryAddress: editOrderInfoModal.deliveryAddress,
+            landmark: editOrderInfoModal.landmark,
+            zipCode: editOrderInfoModal.zipCode,
+            deliveryInstructions: editOrderInfoModal.deliveryInstructions,
+          }}
+          isSubmitting={isUpdatingOrder}
+          onSubmit={handleEditOrderInfoSubmit}
+          onClose={closeEditInfoModal}
+        />
+      )}
+
+      {activeViewOrder && (
         <OrderDetailsViewModal
-          order={orderToView(viewOrder)}
+          order={orderToView(activeViewOrder)}
           onClose={closeViewModal}
+          onEditInfo={() => openEditInfoFromView(activeViewOrder)}
           onPayNow={() => {
-            openPaymentFlow(viewOrder);
+            openPaymentFlow(activeViewOrder);
             closeViewModal();
           }}
           onEdit={
-            viewOrder.status === "pending"
-              ? () => openEditFromView(viewOrder)
+            activeViewOrder.status === "pending"
+              ? () => openEditFromView(activeViewOrder)
               : undefined
           }
-          onCancel={() => openCancelFromView(viewOrder.id)}
+          onCancel={() => openCancelFromView(activeViewOrder.id)}
         />
       )}
 

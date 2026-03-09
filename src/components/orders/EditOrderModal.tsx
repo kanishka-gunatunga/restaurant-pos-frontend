@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useId } from "react";
+import { useMemo, useState, useId } from "react";
 import Image from "next/image";
 import {
   X,
@@ -10,9 +10,14 @@ import {
   Trash2,
   Minus,
   ChevronDown,
+  Loader2,
 } from "lucide-react";
-import { MENU_ITEMS, getProdImage } from "@/components/menu/menuData";
+import { getProdImage } from "@/components/menu/menuData";
+import { mapProductsToMenuItems } from "@/components/menu/menuItemMapper";
 import type { MenuItem, ProductVariant, ProductAddOn } from "@/components/menu/types";
+import { useGetAllModifications } from "@/hooks/useModification";
+import { useGetProductsByBranch } from "@/hooks/useProduct";
+import { useAuth } from "@/contexts/AuthContext";
 
 export type EditOrderLineItem = {
   id: string;
@@ -24,6 +29,7 @@ export type EditOrderLineItem = {
   image?: string;
   variant?: string;
   addOns?: string[];
+  modifications?: { modificationId: number; price: number }[];
 };
 
 type OrderForEdit = {
@@ -31,7 +37,18 @@ type OrderForEdit = {
   orderNo: string;
   customerName: string;
   totalAmount: number;
-  items?: { id: string; productId?: string; variationId?: string; name: string; qty: number; price: number }[];
+  items?: {
+    id: string;
+    productId?: string;
+    variationId?: string;
+    name: string;
+    qty: number;
+    price: number;
+    image?: string;
+    variant?: string;
+    addOns?: string[];
+    modifications?: { modificationId: number; price: number }[];
+  }[];
 };
 
 type Props = {
@@ -48,7 +65,16 @@ function AddItemCard({
   onAdd,
 }: {
   item: MenuItem;
-  onAdd: (params: { productId: string; variationId?: string; name: string; price: number; image: string; variant?: string; addOns?: string[] }) => void;
+  onAdd: (params: {
+    productId: string;
+    variationId?: string;
+    name: string;
+    price: number;
+    image: string;
+    variant?: string;
+    addOns?: string[];
+    modifications?: { modificationId: number; price: number }[];
+  }) => void;
 }) {
   const [variantOpen, setVariantOpen] = useState(false);
   const [addOnsOpen, setAddOnsOpen] = useState(false);
@@ -84,14 +110,19 @@ function AddItemCard({
     const addOnsList = selectedAddOns.flatMap(({ addOn, qty: n }) =>
       n > 1 ? [`${addOn.name} x${n}`] : [addOn.name]
     );
+    const modifications = selectedAddOns.map(({ addOn }) => ({
+      modificationId: Number(addOn.id),
+      price: addOn.price,
+    }));
     onAdd({
-      productId: String(item.id),
-      variationId: undefined,
+      productId: String(item.productId),
+      variationId: selectedVariant?.variationId != null ? String(selectedVariant.variationId) : undefined,
       name: item.name,
       price: unitPrice,
-      image: getProdImage(item.id),
+      image: item.image || getProdImage(String(item.productId)),
       variant: variantName,
       addOns: addOnsList.length > 0 ? addOnsList : undefined,
+      modifications: modifications.length > 0 ? modifications : undefined,
     });
     setSelectedAddOns([]);
     setSelectedVariant(item.variants?.[0] ?? null);
@@ -133,7 +164,7 @@ function AddItemCard({
               {variantOpen && (
                 <div
                   id={variantId}
-                  className="absolute left-0 top-full z-10 mt-0.5 min-w-[100px] max-h-32 overflow-y-auto rounded-[8px] border border-[#E2E8F0] bg-white py-0.5 shadow-md"
+                  className="absolute left-0 top-full z-10 mt-0.5 min-w-[100px] max-h-56 overflow-y-auto rounded-[8px] border border-[#E2E8F0] bg-white py-0.5 shadow-md"
                 >
                   {item.variants!.map((v) => (
                     <button
@@ -163,7 +194,7 @@ function AddItemCard({
               {addOnsOpen && (
                 <div
                   id={addOnsId}
-                  className="absolute left-0 top-full z-10 mt-0.5 max-h-36 min-w-[140px] overflow-y-auto rounded-[8px] border border-[#E2E8F0] bg-white py-0.5 shadow-md"
+                  className="absolute left-0 top-full z-10 mt-0.5 max-h-64 min-w-[140px] overflow-y-auto rounded-[8px] border border-[#E2E8F0] bg-white py-0.5 shadow-md"
                 >
                   {item.addOns!.map((addOn) => {
                     const sel = selectedAddOns.find((p) => p.addOn.id === addOn.id);
@@ -221,8 +252,29 @@ function AddItemCard({
 }
 
 export default function EditOrderModal({ order, onClose, onSubmit }: Props) {
+  const { user } = useAuth();
+  const branchId = user?.branchId || 1;
+  const { data: products = [], isLoading: isLoadingProducts } = useGetProductsByBranch(branchId, {
+    status: "active",
+  });
+  const { data: allModifications = [] } = useGetAllModifications("active");
+
+  const menuItems = useMemo(
+    () => mapProductsToMenuItems(products, branchId, allModifications),
+    [products, branchId, allModifications]
+  );
+
+  const menuItemByProductId = useMemo(
+    () =>
+      new Map(
+        menuItems.map((item) => [String(item.productId), item] as const)
+      ),
+    [menuItems]
+  );
+
   const initialItems: EditOrderLineItem[] = (order.items ?? []).map((it, i) => {
-    const menuItem = MENU_ITEMS.find((m) => m.name === it.name);
+    const matchedMenuItem = it.productId ? menuItemByProductId.get(String(it.productId)) : undefined;
+
     return {
       id: it.id || `line-${order.orderNo}-${i}-${it.name}`,
       productId: it.productId,
@@ -230,7 +282,10 @@ export default function EditOrderModal({ order, onClose, onSubmit }: Props) {
       name: it.name,
       qty: it.qty,
       price: it.price,
-      image: menuItem ? getProdImage(menuItem.id) : getProdImage(String((i % 7) + 1)),
+      image: it.image || matchedMenuItem?.image || getProdImage(String(it.productId ?? (i % 7) + 1)),
+      variant: it.variant,
+      addOns: it.addOns,
+      modifications: it.modifications,
     };
   });
 
@@ -255,7 +310,16 @@ export default function EditOrderModal({ order, onClose, onSubmit }: Props) {
     setLineItems((prev) => prev.filter((it) => it.id !== id));
   };
 
-  const addItemFromMenu = (params: { productId: string; variationId?: string; name: string; price: number; image: string; variant?: string; addOns?: string[] }) => {
+  const addItemFromMenu = (params: {
+    productId: string;
+    variationId?: string;
+    name: string;
+    price: number;
+    image: string;
+    variant?: string;
+    addOns?: string[];
+    modifications?: { modificationId: number; price: number }[];
+  }) => {
     const newItem: EditOrderLineItem = {
       id: `line-${order.orderNo}-${Date.now()}-${params.name}`,
       productId: params.productId,
@@ -266,6 +330,7 @@ export default function EditOrderModal({ order, onClose, onSubmit }: Props) {
       image: params.image,
       variant: params.variant,
       addOns: params.addOns?.length ? params.addOns : undefined,
+      modifications: params.modifications?.length ? params.modifications : undefined,
     };
     setLineItems((prev) => [...prev, newItem]);
   };
@@ -406,11 +471,21 @@ export default function EditOrderModal({ order, onClose, onSubmit }: Props) {
                   Close
                 </button>
               </div>
-              <div className="mt-3 max-h-[min(400px,50vh)] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#DBEAFE] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#93C5FD] [&::-webkit-scrollbar-thumb]:hover:bg-[#60A5FA]">
+              <div className="mt-3 max-h-[min(560px,65vh)] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#DBEAFE] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#93C5FD] [&::-webkit-scrollbar-thumb]:hover:bg-[#60A5FA]">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 pr-1">
-                  {MENU_ITEMS.map((menuItem) => (
-                    <AddItemCard key={menuItem.id} item={menuItem} onAdd={addItemFromMenu} />
-                  ))}
+                  {isLoadingProducts ? (
+                    <div className="col-span-full flex items-center justify-center py-10">
+                      <Loader2 className="h-6 w-6 animate-spin text-[#155DFC]" />
+                    </div>
+                  ) : menuItems.length > 0 ? (
+                    menuItems.map((menuItem) => (
+                      <AddItemCard key={menuItem.id} item={menuItem} onAdd={addItemFromMenu} />
+                    ))
+                  ) : (
+                    <div className="col-span-full rounded-[12px] border border-[#BFDBFE] bg-white px-4 py-6 text-center font-['Inter'] text-sm text-[#62748E]">
+                      No active products found for this branch.
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

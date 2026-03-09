@@ -4,11 +4,10 @@ import { ORDER_STATUS_OPTIONS, PAYMENT_STATUS_OPTIONS } from "@/domains/orders/c
 
 function formatOption(opt: string) {
   if (opt === "All") return "All";
-    if (opt === "partial_refund") return "Partial Refund";
   if (opt === "refund") return "Full Refund";
 
-
   return opt
+    .replace(/_/g, " ")
     .split(" ")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(" ");

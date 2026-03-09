@@ -110,6 +110,17 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
       modificationId: Number(a.addOn.id),
       price: a.addOn.price,
     }));
+    console.log("[ProductCard] Adding customized item", {
+      productId: item.productId,
+      productName: item.name,
+      qty,
+      selectedVariant,
+      variantName,
+      addOnsParsed,
+      modifications,
+      details,
+      unitPrice,
+    });
     for (let i = 0; i < qty; i++) {
       addItem(
         item.productId,

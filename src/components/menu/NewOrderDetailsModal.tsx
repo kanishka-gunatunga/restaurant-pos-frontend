@@ -11,6 +11,7 @@ type Props = {
   initialData?: OrderDetailsData | null;
   title?: string;
   submitButtonText?: string;
+  isSubmitting?: boolean;
 };
 
 const DineInIcon = ({ active }: { active: boolean }) => (
@@ -148,6 +149,7 @@ export default function NewOrderDetailsModal({
   initialData,
   title = "New Order Details",
   submitButtonText = "Proceed to Menu",
+  isSubmitting = false,
 }: Props) {
   const [customerName, setCustomerName] = useState(initialData?.customerName ?? "");
   const [phone, setPhone] = useState(initialData?.phone ?? "");
@@ -194,7 +196,7 @@ export default function NewOrderDetailsModal({
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
+      className="fixed inset-0 z-60 flex items-center justify-center bg-black/50 p-4"
       onClick={onClose}
     >
       <div
@@ -367,14 +369,15 @@ export default function NewOrderDetailsModal({
         <button
           type="button"
           onClick={handleSubmit}
-          className="mt-8 w-full rounded-[14px] bg-[#EA580C] py-4 font-['Arial'] text-lg font-bold leading-7 text-white shadow-[0px_4px_6px_-4px_#EA580C4D,0px_10px_15px_-3px_#EA580C4D] transition-all duration-300 ease-out hover:bg-[#DC4C04] active:scale-[0.98]"
+          disabled={isSubmitting}
+          className="mt-8 w-full rounded-[14px] bg-[#EA580C] py-4 font-['Arial'] text-lg font-bold leading-7 text-white shadow-[0px_4px_6px_-4px_#EA580C4D,0px_10px_15px_-3px_#EA580C4D] transition-all duration-300 ease-out hover:bg-[#DC4C04] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {submitButtonText}
+          {isSubmitting ? "Saving..." : submitButtonText}
         </button>
       </div>
 
       {toast && (
-        <div className="fixed bottom-6 left-0 right-0 z-[70] flex justify-center animate-[fadeInUp_0.3s_ease-out]">
+        <div className="fixed bottom-6 left-0 right-0 z-70 flex justify-center animate-[fadeInUp_0.3s_ease-out]">
           <div className="rounded-[14px] border border-red-200 bg-red-500 px-6 py-3 font-['Arial'] text-sm font-bold text-white shadow-lg">
             {toast}
           </div>
