@@ -30,6 +30,6 @@ export const PAYMENT_STATUS_OPTIONS: (PaymentStatus | "All")[] = [
   "All",
   "pending",
   "paid",
-  "refund",
   "partial_refund",
+    "refund",
 ];

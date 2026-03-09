@@ -3,12 +3,15 @@ import type { OrderStatus, PaymentStatus } from "@/domains/orders/types";
 import { ORDER_STATUS_OPTIONS, PAYMENT_STATUS_OPTIONS } from "@/domains/orders/constants";
 
 function formatOption(opt: string) {
-  return opt === "All"
-    ? "All"
-    : opt
-        .split(" ")
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-        .join(" ");
+  if (opt === "All") return "All";
+    if (opt === "partial_refund") return "Partial Refund";
+  if (opt === "refund") return "Full Refund";
+
+
+  return opt
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
 }
 
 type Props = {
@@ -49,28 +52,30 @@ export default function OrdersFilterSection({
             ))}
           </div>
         </div>
-        <div className="">
-          <div className="mb-3 flex items-center gap-2 font-['Inter'] text-sm font-bold leading-5 text-[#314158]">
-            <Filter className="h-4 w-4 shrink-0 text-[#90A1B9]" />
-            Payment Status
+        {orderStatusFilter !== "cancel" && (
+          <div className="">
+            <div className="mb-3 flex items-center gap-2 font-['Inter'] text-sm font-bold leading-5 text-[#314158]">
+              <Filter className="h-4 w-4 shrink-0 text-[#90A1B9]" />
+              Payment Status
+            </div>
+            <div className="flex flex-wrap gap-2 mt-3">
+              {PAYMENT_STATUS_OPTIONS.map((opt) => (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => onPaymentStatusChange(opt)}
+                  className={`rounded-[14px] px-4 py-2 text-center font-['Inter'] text-sm font-bold leading-5 transition-colors ${
+                    paymentStatusFilter === opt
+                      ? "bg-[#00BC7D] text-white shadow-[0px_4px_6px_-4px_#00BC7D4D,0px_10px_15px_-3px_#00BC7D4D]"
+                      : "bg-[#F1F5F9] text-[#45556C] hover:bg-[#E2E8F0]"
+                  }`}
+                >
+                  {formatOption(opt)}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="flex flex-wrap gap-2 mt-3">
-            {PAYMENT_STATUS_OPTIONS.map((opt) => (
-              <button
-                key={opt}
-                type="button"
-                onClick={() => onPaymentStatusChange(opt)}
-                className={`rounded-[14px] px-4 py-2 text-center font-['Inter'] text-sm font-bold leading-5 transition-colors ${
-                  paymentStatusFilter === opt
-                    ? "bg-[#00BC7D] text-white shadow-[0px_4px_6px_-4px_#00BC7D4D,0px_10px_15px_-3px_#00BC7D4D]"
-                    : "bg-[#F1F5F9] text-[#45556C] hover:bg-[#E2E8F0]"
-                }`}
-              >
-                {formatOption(opt)}
-              </button>
-            ))}
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );
