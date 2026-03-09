@@ -465,20 +465,20 @@ function OrderCard({
           <>
             <button
               onClick={() => onUpdateStatus(order.id, "preparing")}
-              className={`w-full py-3 rounded-xl font-bold text-white shadow-sm transition-colors flex items-center justify-center gap-2 ${theme.button}`}
+              className={`w-full py-3 rounded-xl font-bold text-white shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-2 ${theme.button}`}
             >
               <Play className="w-4 h-4" /> Start Preparing
             </button>
             <div className="flex gap-2">
               <button
                 onClick={() => onUpdateStatus(order.id, "hold")}
-                className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl flex justify-center items-center gap-2 transition-colors"
+                className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl cursor-pointer flex justify-center items-center gap-2 transition-colors"
               >
                 <Pause className="w-4 h-4" /> Hold
               </button>
               <button
                 onClick={() => onUpdateStatus(order.id, "cancel")}
-                className="flex-1 py-3 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-xl flex justify-center items-center gap-2 border border-red-200 transition-colors"
+                className="flex-1 py-3 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-xl cursor-pointer flex justify-center items-center gap-2 border border-red-200 transition-colors"
               >
                 <CircleX className="w-4 h-4" /> Cancel
               </button>
@@ -490,7 +490,7 @@ function OrderCard({
             <button
               disabled={!allItemsCompleted}
               onClick={() => onUpdateStatus(order.id, "ready")}
-              className={`w-full py-3 rounded-xl font-bold text-white shadow-sm transition-colors flex items-center justify-center gap-2 ${allItemsCompleted ? theme.button : 'bg-gray-300 text-gray-500 cursor-not-allowed border border-gray-200'
+              className={`w-full py-3 rounded-xl font-bold text-white shadow-sm transition-colors flex items-center justify-center gap-2 ${allItemsCompleted ? `cursor-pointer ${theme.button}` : 'bg-gray-300 text-gray-500 cursor-not-allowed border border-gray-200'
                 }`}
             >
               <CircleCheck className="w-4 h-4" />
@@ -498,7 +498,7 @@ function OrderCard({
             </button>
             <button
               onClick={() => onUpdateStatus(order.id, "hold")}
-              className="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl flex justify-center items-center gap-2 transition-colors"
+              className="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl cursor-pointer flex justify-center items-center gap-2 transition-colors"
             >
               <Pause className="w-4 h-4" /> Hold
             </button>
@@ -508,7 +508,7 @@ function OrderCard({
           <>
             <button
               onClick={() => onUpdateStatus(order.id, "delivered")}
-              className={`w-full py-3 rounded-xl font-bold text-white shadow-sm transition-colors flex items-center justify-center gap-2 ${theme.button}`}
+              className={`w-full py-3 rounded-xl font-bold text-white shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-2 ${theme.button}`}
             >
               <CircleCheck className="w-4 h-4" /> Mark as Served
             </button>
@@ -518,14 +518,14 @@ function OrderCard({
           <>
             <button
               onClick={() => onUpdateStatus(order.id, "preparing")}
-              className={`w-full py-3 rounded-xl font-bold text-white shadow-sm transition-colors flex items-center justify-center gap-2 ${theme.button}`}
+              className={`w-full py-3 rounded-xl font-bold text-white shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-2 ${theme.button}`}
             >
               <Play className="w-4 h-4" /> Resume Order
             </button>
             {!order.items.some(i => i.completed) && (
               <button
                 onClick={() => onUpdateStatus(order.id, "cancel")}
-                className="w-full mt-2 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl flex justify-center items-center gap-2 transition-colors"
+                className="w-full mt-2 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl cursor-pointer flex justify-center items-center gap-2 transition-colors"
               >
                 <CircleX className="w-4 h-4" /> Cancel Order
               </button>
