@@ -8,6 +8,7 @@ import { OrderProvider } from "@/contexts/OrderContext";
 import { useDrawerSession } from "@/contexts/DrawerSessionContext";
 import { useAuth } from "@/contexts/AuthContext";
 import DrawerSessionRequiredModal from "@/components/drawer/DrawerSessionRequiredModal";
+import type { OrderItem } from "@/contexts/OrderContext";
 
 function ManagerMenuContent() {
   const drawerSession = useDrawerSession();
@@ -23,6 +24,7 @@ function ManagerMenuContent() {
     setSessionData,
   } = drawerSession;
   const [showDrawerModal, setShowDrawerModal] = useState(false);
+  const [editingOrderItem, setEditingOrderItem] = useState<OrderItem | null>(null);
 
   const beforeAddItem = useCallback(() => {
     if (hasSession) return true;
@@ -64,9 +66,12 @@ function ManagerMenuContent() {
           <MenuPageHeader />
           <div className="flex min-h-0 flex-1 overflow-hidden pr-[320px] md:pr-[380px]">
             <div className="min-w-0 flex-1 overflow-y-auto pb-6">
-              <MenuContent />
+              <MenuContent 
+                editingOrderItem={editingOrderItem} 
+                onCancelEdit={() => setEditingOrderItem(null)} 
+              />
             </div>
-            <OrderSidebar />
+            <OrderSidebar onEditItem={(item) => setEditingOrderItem(item)} />
           </div>
         </div>
       </OrderProvider>
@@ -84,6 +89,7 @@ function ManagerMenuContent() {
 
 export default function MenuPageContent() {
   const { isManagerOrAdmin } = useAuth();
+  const [editingOrderItem, setEditingOrderItem] = useState<OrderItem | null>(null);
 
   if (isManagerOrAdmin) {
     return <ManagerMenuContent />;
@@ -95,9 +101,12 @@ export default function MenuPageContent() {
         <MenuPageHeader />
         <div className="flex min-h-0 flex-1 overflow-hidden pr-[320px] md:pr-[380px]">
           <div className="min-w-0 flex-1 overflow-y-auto pb-6">
-            <MenuContent />
+            <MenuContent 
+              editingOrderItem={editingOrderItem} 
+              onCancelEdit={() => setEditingOrderItem(null)} 
+            />
           </div>
-          <OrderSidebar />
+          <OrderSidebar onEditItem={(item) => setEditingOrderItem(item)} />
         </div>
       </div>
     </OrderProvider>

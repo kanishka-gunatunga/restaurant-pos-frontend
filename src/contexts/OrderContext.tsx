@@ -73,6 +73,20 @@ type OrderContextType = {
   ) => void;
   updateQty: (id: string, delta: number) => void;
   removeItem: (id: string) => void;
+  updateItem: (
+    itemId: string,
+    productId: number,
+    name: string,
+    price: number,
+    details?: string,
+    image?: string,
+    variant?: string,
+    addOnsList?: string[],
+    variationId?: number,
+    variationOptionId?: number,
+    modifications?: { modificationId: number; price: number }[],
+    qty?: number
+  ) => void;
   canAddOrder: boolean;
   canCloseOrder: boolean;
   loadOrderById: (orderId: string, orderData?: Partial<Order>) => void;
@@ -462,6 +476,57 @@ export function OrderProvider({
     [activeOrderId, orders]
   );
 
+  const updateItem = useCallback(
+    (
+      itemId: string,
+      productId: number,
+      name: string,
+      price: number,
+      details = "REGULAR",
+      image?: string,
+      variant?: string,
+      addOnsList?: string[],
+      variationId?: number,
+      variationOptionId?: number,
+      modifications?: { modificationId: number; price: number }[],
+      qty?: number
+    ) => {
+      if (hasPendingPaymentLock()) return;
+      const orderId = activeOrderId ?? orders[0]?.id;
+      if (!orderId) return;
+
+      setOrders((prev) => {
+        const updated = prev.map((order) => {
+          if (order.id !== orderId) return order;
+          return {
+            ...order,
+            items: order.items.map((i) =>
+              i.id === itemId
+                ? {
+                  ...i,
+                  productId,
+                  variationId,
+                  variationOptionId,
+                  modifications,
+                  name,
+                  details,
+                  price,
+                  qty: qty !== undefined ? qty : i.qty,
+                  image,
+                  variant,
+                  addOnsList,
+                }
+                : i
+            ),
+          };
+        });
+        saveOrdersToStorage(updated);
+        return updated;
+      });
+    },
+    [activeOrderId, orders]
+  );
+
   const loadOrderById = useCallback(
     (orderId: string, orderData?: Partial<Order>) => {
       const existingOrder = orders.find((o) => o.id === orderId);
@@ -543,6 +608,7 @@ export function OrderProvider({
         addItem,
         updateQty,
         removeItem,
+        updateItem,
         canAddOrder,
         canCloseOrder,
         loadOrderById,

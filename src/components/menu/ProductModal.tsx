@@ -20,22 +20,66 @@ type ProductModalProps = {
     variationOptionId?: number,
     modifications?: { modificationId: number; price: number }[]
   ) => void;
+  onUpdateOrder?: (
+    productId: number,
+    name: string,
+    price: number,
+    details: string,
+    image?: string,
+    variant?: string,
+    addOnsList?: string[],
+    variationId?: number,
+    variationOptionId?: number,
+    modifications?: { modificationId: number; price: number }[],
+    qty?: number
+  ) => void;
   getProdImage: (id: string) => string;
+  initialQty?: number;
+  initialVariantId?: number;
+  initialAddOns?: { modificationId: number; price: number }[];
+  isEditing?: boolean;
 };
 
 export default function ProductModal({
   item,
   onClose,
   onAddToOrder,
+  onUpdateOrder,
   getProdImage,
+  initialQty,
+  initialVariantId,
+  initialAddOns,
+  isEditing,
 }: ProductModalProps) {
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
-    item.variants?.[0] ?? null
+    initialVariantId
+      ? (item.variants?.find(v => v.id === initialVariantId) ?? item.variants?.[0] ?? null)
+      : (item.variants?.[0] ?? null)
   );
   const [selectedAddOns, setSelectedAddOns] = useState<
     { addOn: ProductAddOn; qty: number }[]
-  >([]);
-  const [qty, setQty] = useState(1);
+  >(() => {
+    if (initialAddOns && item.addOns) {
+      // Group by modificationId and count occurrences (or use the price if unique)
+      // Actually, myOrderItem modifications is a list of {modificationId, price}
+      // ProductModal selectedAddOns is {addOn, qty}
+      const mapped: { addOn: ProductAddOn; qty: number }[] = [];
+      initialAddOns.forEach(mod => {
+        const addOn = item.addOns?.find(a => Number(a.id) === mod.modificationId);
+        if (addOn) {
+          const existing = mapped.find(m => m.addOn.id === addOn.id);
+          if (existing) {
+            existing.qty += 1;
+          } else {
+            mapped.push({ addOn, qty: 1 });
+          }
+        }
+      });
+      return mapped;
+    }
+    return [];
+  });
+  const [qty, setQty] = useState(initialQty ?? 1);
   const [addOnSearch, setAddOnSearch] = useState("");
 
   const hasVariants = item.variants && item.variants.length > 0;
@@ -89,29 +133,21 @@ export default function ProductModal({
   const getAddOnsList = () =>
     selectedAddOns.map(({ addOn, qty: n }) => (n > 1 ? `${addOn.name} x${n}` : addOn.name));
 
-  const handleAddToOrder = () => {
+  const handleAction = () => {
     const unitPrice = totalPrice / qty;
     const details = getDetailsString();
     const image = item.image || getProdImage(item.id);
     const variantName = selectedVariant?.name;
     const addOnsParsed = getAddOnsList();
-    const modifications = selectedAddOns.map((a) => ({
-      modificationId: Number(a.addOn.id),
-      price: a.addOn.price,
-    }));
-    console.log("[ProductModal] Adding customized item", {
-      productId: item.productId,
-      productName: item.name,
-      qty,
-      selectedVariant,
-      variantName,
-      addOnsParsed,
-      modifications,
-      details,
-      unitPrice,
-    });
-    for (let i = 0; i < qty; i++) {
-      onAddToOrder(
+    const modifications = selectedAddOns.flatMap((a) =>
+      Array.from({ length: a.qty }).map(() => ({
+        modificationId: Number(a.addOn.id),
+        price: a.addOn.price,
+      }))
+    );
+
+    if (isEditing && onUpdateOrder) {
+      onUpdateOrder(
         item.productId,
         item.name,
         unitPrice,
@@ -121,8 +157,24 @@ export default function ProductModal({
         addOnsParsed.length > 0 ? addOnsParsed : undefined,
         selectedVariant?.variationId,
         selectedVariant?.id,
-        modifications.length > 0 ? modifications : undefined
+        modifications.length > 0 ? modifications : undefined,
+        qty
       );
+    } else {
+      for (let i = 0; i < qty; i++) {
+        onAddToOrder(
+          item.productId,
+          item.name,
+          unitPrice,
+          details,
+          image,
+          variantName,
+          addOnsParsed.length > 0 ? addOnsParsed : undefined,
+          selectedVariant?.variationId,
+          selectedVariant?.id,
+          modifications.length > 0 ? modifications : undefined
+        );
+      }
     }
     onClose();
   };
@@ -327,7 +379,7 @@ export default function ProductModal({
 
             <button
               type="button"
-              onClick={handleAddToOrder}
+              onClick={handleAction}
               className="mt-4 flex w-full items-center justify-center gap-2 rounded-[14px] bg-[#EA580C] py-3 font-['Arial'] text-sm font-bold leading-4 text-white shadow-[0px_4px_6px_-4px_#EA580C33,0px_10px_15px_-3px_#EA580C33] transition-all duration-300 ease-out hover:bg-[#DC4C04] active:scale-95"
             >
               <svg
@@ -343,7 +395,7 @@ export default function ProductModal({
                   d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
                 />
               </svg>
-              Add to Order
+              {isEditing ? "Update Item" : "Add to Order"}
             </button>
           </div>
         </div>

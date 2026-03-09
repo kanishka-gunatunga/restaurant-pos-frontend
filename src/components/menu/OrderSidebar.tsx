@@ -3,12 +3,13 @@
 import { AxiosError } from "axios";
 import { useState } from "react";
 import Image from "next/image";
-import { User, Phone, ChefHat, Trash2, X } from "lucide-react";
+import { User, Phone, ChefHat, Trash2, X, Tag } from "lucide-react";
 import { useOrder } from "@/contexts/OrderContext";
 import { useCreateOrder } from "@/hooks/useOrder";
+import { useGetAllDiscounts, findApplicableDiscount, calculateItemDiscount } from "@/hooks/useDiscount";
 import NewOrderDetailsModal from "./NewOrderDetailsModal";
 import ProcessPaymentModal from "./ProcessPaymentModal";
-import type { OrderDetailsData } from "@/contexts/OrderContext";
+import type { OrderDetailsData, OrderItem } from "@/contexts/OrderContext";
 import type { CreateOrderData } from "@/types/order";
 
 const TAX_RATE = 0.1;
@@ -112,7 +113,11 @@ function NoteModal({
   );
 }
 
-export default function OrderSidebar() {
+export default function OrderSidebar({
+  onEditItem,
+}: {
+  onEditItem?: (item: OrderItem) => void;
+}) {
   const { mutateAsync: createOrder, isPending: isCreatingOrder } = useCreateOrder();
 
   const {
@@ -137,6 +142,9 @@ export default function OrderSidebar() {
   );
   const [isOrderAndPaySubmitting, setIsOrderAndPaySubmitting] = useState(false);
 
+  const { data: discountsData } = useGetAllDiscounts({ status: "active" });
+  const discounts = discountsData || [];
+
   const orderDetails = activeOrderDetails;
   const orderLabel = "Current Order";
   const hasDetails = orderDetails !== null;
@@ -148,7 +156,27 @@ export default function OrderSidebar() {
     setEditOrderId(null);
   };
 
-  const subtotal = items.reduce((sum, i) => sum + i.price * i.qty, 0);
+  const itemsWithDiscounts = items.map(item => {
+    const applicable = findApplicableDiscount(item, discounts);
+    let discountAmount = 0;
+    if (applicable) {
+      discountAmount = calculateItemDiscount(item.price, item.qty, applicable.discountItem);
+    }
+    return {
+      ...item,
+      discountAmount,
+      discountName: applicable?.discountName,
+      discountOffer: applicable
+        ? (applicable.discountItem.discountType === "percentage"
+          ? `${applicable.discountItem.discountValue}%`
+          : `Rs.${Number(applicable.discountItem.discountValue).toLocaleString()}`)
+        : ""
+    };
+  });
+
+  const subtotalBeforeDiscount = itemsWithDiscounts.reduce((sum, i) => sum + i.price * i.qty, 0);
+  const totalItemDiscount = itemsWithDiscounts.reduce((sum, i) => sum + i.discountAmount, 0);
+  const subtotal = subtotalBeforeDiscount - totalItemDiscount;
   const tax = subtotal * TAX_RATE;
   const total = subtotal + tax;
 
@@ -176,7 +204,7 @@ export default function OrderSidebar() {
         variationId: item.variationId,
         quantity: item.qty,
         unitPrice: item.price,
-        productDiscount: 0,
+        productDiscount: (itemsWithDiscounts.find(i => i.id === item.id)?.discountAmount || 0) / item.qty,
         modifications: item.modifications?.map(m => ({
           modificationId: m.modificationId,
           price: m.price
@@ -333,14 +361,16 @@ export default function OrderSidebar() {
                   </p>
                 </div>
               ) : (
-                items.map((item) => {
+                itemsWithDiscounts.map((item) => {
                   const variant = item.variant || "";
                   const addOns = item.addOnsList || [];
+                  const hasDiscount = item.discountAmount > 0;
 
                   return (
                     <div
                       key={item.id}
-                      className="flex gap-4 rounded-[14px] border border-[#F1F5F9] bg-white px-3 pb-2.5 pt-3"
+                      onClick={() => !hasPendingPayment && onEditItem?.(item)}
+                      className={`flex gap-4 rounded-[14px] border border-[#F1F5F9] bg-white px-3 pb-2.5 pt-3 transition-colors ${onEditItem ? "cursor-pointer hover:bg-[#F8FAFC]" : ""}`}
                     >
                       <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-zinc-200">
                         {item.image ? (
@@ -376,7 +406,7 @@ export default function OrderSidebar() {
                           </div>
                           <button
                             type="button"
-                              onClick={() => removeItem(item.id)}
+                              onClick={(e) => { e.stopPropagation(); removeItem(item.id); }}
                               disabled={hasPendingPayment}
                               className="shrink-0 text-[#CAD5E2] hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:text-[#CAD5E2]"
                             aria-label="Remove item"
@@ -391,7 +421,7 @@ export default function OrderSidebar() {
                           <div className="flex items-center gap-3 rounded-[10px] border border-[#F1F5F9] bg-[#F8FAFC] px-2">
                             <button
                               type="button"
-                              onClick={() => updateQty(item.id, -1)}
+                              onClick={(e) => { e.stopPropagation(); updateQty(item.id, -1); }}
                               disabled={hasPendingPayment}
                               className="py-1 text-[#90A1B9] hover:text-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:text-[#90A1B9]"
                             >
@@ -402,7 +432,7 @@ export default function OrderSidebar() {
                             </span>
                             <button
                               type="button"
-                              onClick={() => updateQty(item.id, 1)}
+                              onClick={(e) => { e.stopPropagation(); updateQty(item.id, 1); }}
                               disabled={hasPendingPayment}
                               className="py-1 text-[#90A1B9] hover:text-primary disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:text-[#90A1B9]"
                             >
@@ -454,11 +484,36 @@ export default function OrderSidebar() {
               </button>
             </div>
 
+            <div className="flex flex-col gap-1 rounded-[14px] border-2 border-[#E2E8F0] bg-white px-3 py-2 font-['Arial'] text-sm font-bold leading-5 text-[#62748E]">
+              <div className="flex items-center justify-center text-center">
+                <p className="font-['Arial'] text-[14px] font-bold leading-4 text-[#62748E]">% Discount Applied</p>
+                {/* <Tag className="h-4 w-4" /> */}
+              </div>
+              {totalItemDiscount > 0 ? (
+                <div className="mt-1 space-y-1">
+                  {itemsWithDiscounts.filter(i => i.discountAmount > 0).map((item, idx) => (
+                    <div key={idx} className="flex justify-between text-[11px] font-normal text-[#45556C]">
+                      <span>{item.name} ({item.discountName})</span>
+                      <span>- Rs.{item.discountAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-center text-xs font-normal text-[#90A1B9] mt-1">No discounts available</p>
+              )}
+            </div>
+
             <div className="space-y-1">
               <div className="flex justify-between font-['Arial'] text-sm leading-5 text-[#62748E]">
                 <span>Subtotal</span>
-                <span>Rs.{subtotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                <span>Rs.{subtotalBeforeDiscount.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
               </div>
+              {totalItemDiscount > 0 && (
+                <div className="flex justify-between font-['Arial'] text-sm leading-5 text-[#10B981]">
+                  <span>Discount</span>
+                  <span>- Rs.{totalItemDiscount.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                </div>
+              )}
               <div className="flex justify-between font-['Arial'] text-sm leading-5 text-[#62748E]">
                 <span>Tax (10%)</span>
                 <span>Rs.{tax.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
@@ -470,13 +525,6 @@ export default function OrderSidebar() {
                 </span>
               </div>
             </div>
-
-            <button
-              type="button"
-              className="w-full rounded-[14px] border-2 border-[#E2E8F0] bg-white py-2 font-['Arial'] text-sm font-bold leading-5 text-[#62748E] hover:bg-zinc-50"
-            >
-              % Add Discount
-            </button>
 
             <div className="flex gap-2.5">
               <button
