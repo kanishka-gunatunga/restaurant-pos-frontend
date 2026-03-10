@@ -22,7 +22,7 @@ export const useGetAllOrders = () => {
   return useQuery({
     queryKey: ORDER_KEYS.lists(),
     queryFn: orderService.getAllOrders,
-    staleTime: 0.5 * 60 * 1000,
+    // staleTime: 0.5 * 60 * 1000,
   });
 };
 
@@ -30,7 +30,7 @@ export const useGetOrdersExcludeStatus = (status: string) => {
   return useQuery({
     queryKey: [...ORDER_KEYS.lists(), "exclude", status],
     queryFn: () => orderService.getOrdersExcludeStatus(status),
-    staleTime: 0.5 * 60 * 1000,
+    // staleTime: 0.5 * 60 * 1000,
   });
 };
 
