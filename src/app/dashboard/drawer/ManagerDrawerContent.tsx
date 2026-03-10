@@ -339,12 +339,20 @@ export default function ManagerDrawerContent() {
   const activeSessionsCount = todaysSessions.filter((s) => s.isActive).length;
 
   const handleStartDrawer = async (openingAmount: number, managerPasscode: string) => {
-    console.log("Start drawer:", { openingAmount, managerPasscode });
+    await sessionService.startSession({ startBalance: openingAmount, passcode: managerPasscode });
+    const now = new Date();
+    const startedAt = now.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+    setSessionData({ initialAmount: openingAmount, startedAt });
     setHasDrawerStarted(true);
+    setHasActiveSession(true);
   };
 
   const handleCreateSession = async (openingAmount: number) => {
-    console.log("Create session:", { openingAmount });
+    await sessionService.startSession({ startBalance: openingAmount });
     const now = new Date();
     const startedAt = now.toLocaleTimeString("en-US", {
       hour: "2-digit",
@@ -356,24 +364,32 @@ export default function ManagerDrawerContent() {
   };
 
   const handleEditInitialAmount = async (newAmount: number, reason: string, passcode: string) => {
-    console.log("Edit initial amount:", { newAmount, reason, passcode });
+    await sessionData
+      ? sessionService.adjustInitialAmount({
+          currentAmount: sessionData.initialAmount,
+          newAmount,
+          reason,
+          passcode,
+        })
+      : Promise.resolve();
     if (sessionData) {
       setSessionData({ ...sessionData, initialAmount: newAmount });
     }
   };
 
   const handleCashOut = async (amount: number, reason: string, passcode: string) => {
-    console.log("Process cash out:", { amount, reason, passcode });
+    // Cash out from drawer: backend models this as cash-action remove.
+    await sessionService.cashAction({ type: "remove", amount, description: reason, passcode });
   };
 
   const handleCloseSession = async (actualBalance: number, passcode: string) => {
-    console.log("Close drawer session:", { actualBalance, passcode });
+    await sessionService.closeSession({ passcode, actualBalance, closingAmount: actualBalance });
     setHasActiveSession(false);
     setSessionData(null);
   };
 
   const handleCloseTheDrawer = async (amount: number, passcode: string) => {
-    console.log("Close the drawer:", { amount, passcode });
+    await sessionService.closeSession({ passcode, actualBalance: amount, closingAmount: amount });
     setHasDrawerStarted(false);
     setHasActiveSession(false);
     setSessionData(null);

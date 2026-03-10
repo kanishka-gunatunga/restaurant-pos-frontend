@@ -2,8 +2,17 @@ import axios from "axios";
 import Cookies from "js-cookie";
 import { getSession } from "next-auth/react";
 
+function getBackendOrigin(): string {
+  const raw = process.env.NEXT_PUBLIC_API_URL?.trim();
+  const fallback = "http://localhost:5000";
+  if (!raw) return fallback;
+  // Accept either origin ("https://api.example.com") or accidentally-provided ".../api"
+  return raw.replace(/\/+$/, "").replace(/\/api$/i, "") || fallback;
+}
+
 const axiosInstance = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL + "/api" || "http://localhost:5000/api",
+  baseURL:
+    `${getBackendOrigin()}/api`,
   headers: {
     "Content-Type": "application/json",
   },

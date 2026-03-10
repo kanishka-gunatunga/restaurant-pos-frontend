@@ -25,7 +25,7 @@ Copy the example env file and configure:
 cp .env.example .env.local
 ```
 
-Edit `.env.local` and set `NEXT_PUBLIC_API_URL` to your Express backend URL (e.g. `http://localhost:3001/api`).
+Edit `.env.local` and set `NEXT_PUBLIC_API_URL` to your Express backend **origin** (e.g. `http://localhost:5000`). The frontend will call `${NEXT_PUBLIC_API_URL}/api/...`.
 
 ### 3. Run development server
 

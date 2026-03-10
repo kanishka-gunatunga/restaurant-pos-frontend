@@ -3,7 +3,10 @@
  * Use getSession() or the token from useAuth() to send Authorization header.
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000")
+  .trim()
+  .replace(/\/+$/, "")
+  .replace(/\/api$/i, "");
 
 export function getApiUrl(path: string): string {
   const base = API_URL.replace(/\/$/, "");
