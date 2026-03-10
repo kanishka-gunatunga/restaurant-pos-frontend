@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import type { OrderRow, OrderDetailsView } from "../types";
+import { EditOrderLineItem } from "@/components/orders/EditOrderModal";
 import { useUpdateOrderStatus, useUpdateOrder } from "@/hooks/useOrder";
 import { useUpdatePaymentStatus, useGetPaymentsByOrder } from "@/hooks/usePayment";
 import type { OrderDetailsData } from "@/contexts/OrderContext";
@@ -82,10 +83,10 @@ export function useOrderModals() {
   }, []);
 
   const handleEditOrderSubmit = useCallback(
-    (data: { items: { id: string; productId?: string; variationId?: string; qty: number; price: number; productDiscount: number; modifications?: { modificationId: number; price: number }[] }[] }) => {
+    (data: { items: EditOrderLineItem[] }) => {
       if (editOrderModal) {
         const TAX_RATE = 0.1;
-        const subtotal = data.items.reduce((sum, it) => sum + it.qty * (it.price - it.productDiscount), 0);
+        const subtotal = data.items.reduce((sum, it) => sum + it.qty * (it.price - (it.productDiscount ?? 0)), 0);
         const newTotal = subtotal * (1 + TAX_RATE);
         const originalTotal = editOrderModal.totalAmount;
         const refundAmount = originalTotal - newTotal;
@@ -104,7 +105,7 @@ export function useOrderModals() {
               variationId: item.variationId ? Number(item.variationId) : undefined,
               quantity: item.qty,
               unitPrice: item.price,
-              productDiscount: item.productDiscount,
+              productDiscount: item.productDiscount ?? 0,
               modifications: item.modifications,
             }))
           }

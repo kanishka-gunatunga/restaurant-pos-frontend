@@ -15,7 +15,7 @@ export const MOCK_ORDERS: OrderRow[] = [
     tableNumber: "4",
     subtotal: 1800,
     discount: 0,
-    items: [{ name: "Classic Beef Burger", qty: 2, price: 900 }],
+    items: [{ name: "Classic Beef Burger", qty: 2, price: 900, productDiscount: 0 }],
   },
   {
     id: "2",
@@ -28,8 +28,8 @@ export const MOCK_ORDERS: OrderRow[] = [
     status: "pending",
     paymentStatus: "pending",
     items: [
-      { name: "Classic Beef Burger", qty: 1, price: 2500 },
-      { name: "Iced Latte", qty: 1, price: 1390 },
+      { name: "Classic Beef Burger", qty: 1, price: 2500, productDiscount: 0 },
+      { name: "Iced Latte", qty: 1, price: 1390, productDiscount: 0 },
     ],
   },
   {

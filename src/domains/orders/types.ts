@@ -13,7 +13,7 @@ export type OrderDetailItem = {
   name: string;
   qty: number;
   price: number;
-  productDiscount: number;
+  productDiscount?: number;
   image?: string;
   variant?: string;
   addOns?: string[];

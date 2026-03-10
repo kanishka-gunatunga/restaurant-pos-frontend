@@ -29,7 +29,7 @@ export type EditOrderLineItem = {
   name: string;
   qty: number;
   price: number;
-  productDiscount: number;
+  productDiscount?: number;
   image?: string;
   variant?: string;
   addOns?: string[];
@@ -48,7 +48,7 @@ type OrderForEdit = {
     name: string;
     qty: number;
     price: number;
-    productDiscount: number;
+    productDiscount?: number;
     image?: string;
     variant?: string;
     addOns?: string[];
@@ -302,7 +302,7 @@ export default function EditOrderModal({ order, onClose, onSubmit }: Props) {
 
   const originalAmount = order.totalAmount;
   const subtotalBeforeDiscount = lineItems.reduce((sum, it) => sum + it.qty * it.price, 0);
-  const totalItemDiscount = lineItems.reduce((sum, it) => sum + it.qty * it.productDiscount, 0);
+  const totalItemDiscount = lineItems.reduce((sum, it) => sum + it.qty * (it.productDiscount ?? 0), 0);
   const subtotal = subtotalBeforeDiscount - totalItemDiscount;
   const updatedAmount = subtotal * (1 + TAX_RATE);
   const paymentDiff = updatedAmount - originalAmount;
@@ -464,13 +464,13 @@ export default function EditOrderModal({ order, onClose, onSubmit }: Props) {
                     <div className="text-right">
                       <p className="font-['Inter'] text-xs font-medium text-[#62748E]">Item Total</p>
                       <p className="font-['Inter'] text-base font-bold text-[#1D293D]">
-                        {formatRs(it.qty * (it.price - it.productDiscount))}
+                        {formatRs(it.qty * (it.price - (it.productDiscount ?? 0)))}
                       </p>
-                      {it.productDiscount > 0 && (
+                      {it.productDiscount ? it.productDiscount > 0 && (
                         <p className="text-[10px] text-[#10B981]">
                           (Incl. {formatRs(it.productDiscount)} discount/ea)
                         </p>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                 </div>
