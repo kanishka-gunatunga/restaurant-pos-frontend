@@ -52,20 +52,16 @@ export function useOrderModals() {
     setAuthModal({ isOpen: true, orderNo });
   }, []);
 
-  const handleVerify = useCallback((passcode: string) => {
-    if (authModal.orderNo) {
-      updateStatusMutation.mutate({
-        id: authModal.orderNo,
-        data: {
-          status: "cancel",
-          passcode,
-        },
-      }, {
-        onSuccess: () => {
-          setAuthModal({ isOpen: false, orderNo: null });
-        }
-      });
-    }
+  const handleVerify = useCallback(async (passcode: string) => {
+    if (!authModal.orderNo) return;
+    await updateStatusMutation.mutateAsync({
+      id: authModal.orderNo,
+      data: {
+        status: "cancel",
+        passcode,
+      },
+    });
+    setAuthModal({ isOpen: false, orderNo: null });
   }, [authModal.orderNo, updateStatusMutation]);
 
   const handleCloseAuthModal = useCallback(() => {

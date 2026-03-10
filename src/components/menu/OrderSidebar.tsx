@@ -3,7 +3,8 @@
 import { AxiosError } from "axios";
 import { useState } from "react";
 import Image from "next/image";
-import { User, Phone, ChefHat, Trash2, X, Tag } from "lucide-react";
+import { toast } from "sonner";
+import { User, Phone, ChefHat, Trash2, X } from "lucide-react";
 import { useOrder } from "@/contexts/OrderContext";
 import { useCreateOrder } from "@/hooks/useOrder";
 import { useGetAllDiscounts, findApplicableDiscount, calculateItemDiscount } from "@/hooks/useDiscount";
@@ -222,7 +223,7 @@ export default function OrderSidebar({
       const result = await createOrder(payload);
       if (!isPayNow) {
         clearActiveOrder();
-        alert("Order submitted successfully!");
+        toast.success("Order submitted successfully");
       }
       return result.id;
     } catch (err) {
@@ -232,7 +233,7 @@ export default function OrderSidebar({
           : err instanceof Error
             ? err.message
             : "Unknown error";
-      alert("Failed to submit order: " + message);
+      toast.error("Failed to submit order", { description: message });
       return null;
     }
   };

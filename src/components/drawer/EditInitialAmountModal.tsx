@@ -54,8 +54,18 @@ export default function EditInitialAmountModal({
     try {
       await Promise.resolve(onVerify(amountNum, reason.trim(), passcode.trim()));
       onClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Verification failed.");
+    } catch (err: unknown) {
+      const raw =
+        (err as { response?: { status?: number; data?: { message?: string } } })?.response?.data?.message ||
+        (err instanceof Error ? err.message : "Verification failed.");
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 401 || /invalid passcode|invalid manager passcode|unauthorized/i.test(String(raw))) {
+        setError("Wrong passcode.");
+      } else if (/request failed|status code|ECONNREFUSED|ECONNRESET|ENOTFOUND/i.test(String(raw))) {
+        setError("Unable to update amount. Please try again or contact support.");
+      } else {
+        setError(raw || "Verification failed.");
+      }
     } finally {
       setIsSubmitting(false);
     }

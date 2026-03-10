@@ -29,11 +29,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     </div>
   );
 
-  return isManagerOrAdmin ? (
-    <DrawerSessionProvider>{content}</DrawerSessionProvider>
-  ) : (
-    content
-  );
+  return <DrawerSessionProvider>{content}</DrawerSessionProvider>;
 }
 
 export default function DashboardLayoutClient({ children }: { children: React.ReactNode }) {

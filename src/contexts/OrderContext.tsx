@@ -92,6 +92,20 @@ type OrderContextType = {
   loadOrderById: (orderId: string, orderData?: Partial<Order>) => void;
 };
 
+/** Params for one add-item call. Used when blocking add (e.g. no drawer session) so we can replay after session starts. */
+export type PendingAddParams = {
+  productId: number;
+  name: string;
+  price: number;
+  details?: string;
+  image?: string;
+  variant?: string;
+  addOnsList?: string[];
+  variationId?: number;
+  variationOptionId?: number;
+  modifications?: { modificationId: number; price: number }[];
+};
+
 const OrderContext = createContext<OrderContextType | null>(null);
 
 function generateId(): string {
@@ -201,7 +215,7 @@ export function OrderProvider({
   beforeAddOrder,
 }: {
   children: ReactNode;
-  beforeAddItem?: () => boolean;
+  beforeAddItem?: (pending?: PendingAddParams) => boolean;
   beforeAddOrder?: () => boolean;
 }) {
   const initialOrders = (() => {
@@ -378,7 +392,19 @@ export function OrderProvider({
       modifications?: { modificationId: number; price: number }[]
     ) => {
       if (hasPendingPaymentLock()) return;
-      if (beforeAddItem && !beforeAddItem()) return;
+      const pending: PendingAddParams = {
+        productId,
+        name,
+        price,
+        details,
+        image,
+        variant,
+        addOnsList,
+        variationId,
+        variationOptionId,
+        modifications,
+      };
+      if (beforeAddItem && !beforeAddItem(pending)) return;
       const orderId = activeOrderId ?? orders[0]?.id;
       if (!orderId) return;
 
