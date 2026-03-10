@@ -1,6 +1,8 @@
 import { useState, useCallback } from "react";
 import type { OrderRow, OrderDetailsView } from "../types";
+import { EditOrderLineItem } from "@/components/orders/EditOrderModal";
 import { useUpdateOrderStatus, useUpdateOrder } from "@/hooks/useOrder";
+import { useUpdatePaymentStatus, useGetPaymentsByOrder } from "@/hooks/usePayment";
 import type { OrderDetailsData } from "@/contexts/OrderContext";
 
 function mapOrderTypeToApi(orderType: OrderDetailsData["orderType"]) {
@@ -41,6 +43,10 @@ export function useOrderModals() {
 
   const updateStatusMutation = useUpdateOrderStatus();
   const updateOrderMutation = useUpdateOrder();
+  const updatePaymentStatusMutation = useUpdatePaymentStatus();
+
+  // We'll fetch payments for the current edit order to handle refunds
+  const { data: payments = [] } = useGetPaymentsByOrder(Number(editOrderModal?.id || 0));
 
   const handleDeleteClick = useCallback((orderNo: string) => {
     setAuthModal({ isOpen: true, orderNo });
@@ -77,28 +83,55 @@ export function useOrderModals() {
   }, []);
 
   const handleEditOrderSubmit = useCallback(
-    (data: { items: { id: string; productId?: string; variationId?: string; qty: number; price: number; modifications?: { modificationId: number; price: number }[] }[] }) => {
+    (data: { items: EditOrderLineItem[] }) => {
       if (editOrderModal) {
+        const TAX_RATE = 0.1;
+        const subtotal = data.items.reduce((sum, it) => sum + it.qty * (it.price - (it.productDiscount ?? 0)), 0);
+        const newTotal = subtotal * (1 + TAX_RATE);
+        const originalTotal = editOrderModal.totalAmount;
+        const refundAmount = originalTotal - newTotal;
+
+        const isPaid = editOrderModal.paymentStatus === "paid";
+
         updateOrderMutation.mutate({
           id: editOrderModal.id,
           data: {
+            // If already paid, don't change the totalAmount on the order itself
+            // The difference will be handled as a refund in the payments table
+            ...(isPaid ? {} : { totalAmount: newTotal }),
+            tax: subtotal * TAX_RATE,
             order_products: data.items.map(item => ({
               productId: Number(item.productId || item.id),
               variationId: item.variationId ? Number(item.variationId) : undefined,
               quantity: item.qty,
               unitPrice: item.price,
-              productDiscount: 0,
+              productDiscount: item.productDiscount ?? 0,
               modifications: item.modifications,
             }))
           }
         }, {
           onSuccess: () => {
+            // Handle refund if necessary
+            if (refundAmount > 0 && payments.length > 0) {
+              const payment = payments[0]; // Assuming first payment for now
+              const isFullRefund = refundAmount >= Number(payment.amount);
+              
+              updatePaymentStatusMutation.mutate({
+                id: payment.id,
+                payload: {
+                  is_refund: 1,
+                  refund_type: isFullRefund ? "full" : "partial",
+                  refund_amount: refundAmount,
+                  status: isFullRefund ? "refund" : "partial_refund"
+                }
+              });
+            }
             setEditOrderModal(null);
           }
         });
       }
     },
-    [editOrderModal, updateOrderMutation]
+    [editOrderModal, updateOrderMutation, updatePaymentStatusMutation, payments]
   );
 
   const closeEditModal = useCallback(() => setEditOrderModal(null), []);

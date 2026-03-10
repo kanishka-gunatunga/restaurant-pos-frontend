@@ -12,12 +12,15 @@ import {
   ChevronDown,
   Loader2,
 } from "lucide-react";
+import { useGetAllDiscounts, findApplicableDiscount, calculateItemDiscount } from "@/hooks/useDiscount";
 import { getProdImage } from "@/components/menu/menuData";
 import { mapProductsToMenuItems } from "@/components/menu/menuItemMapper";
 import type { MenuItem, ProductVariant, ProductAddOn } from "@/components/menu/types";
 import { useGetAllModifications } from "@/hooks/useModification";
 import { useGetProductsByBranch } from "@/hooks/useProduct";
 import { useAuth } from "@/contexts/AuthContext";
+
+const TAX_RATE = 0.1;
 
 export type EditOrderLineItem = {
   id: string;
@@ -26,6 +29,7 @@ export type EditOrderLineItem = {
   name: string;
   qty: number;
   price: number;
+  productDiscount?: number;
   image?: string;
   variant?: string;
   addOns?: string[];
@@ -44,6 +48,7 @@ type OrderForEdit = {
     name: string;
     qty: number;
     price: number;
+    productDiscount?: number;
     image?: string;
     variant?: string;
     addOns?: string[];
@@ -258,6 +263,7 @@ export default function EditOrderModal({ order, onClose, onSubmit }: Props) {
     status: "active",
   });
   const { data: allModifications = [] } = useGetAllModifications("active");
+  const { data: discountsData = [] } = useGetAllDiscounts({ status: "active" });
 
   const menuItems = useMemo(
     () => mapProductsToMenuItems(products, branchId, allModifications),
@@ -282,6 +288,7 @@ export default function EditOrderModal({ order, onClose, onSubmit }: Props) {
       name: it.name,
       qty: it.qty,
       price: it.price,
+      productDiscount: it.productDiscount ?? 0,
       image: it.image || matchedMenuItem?.image || getProdImage(String(it.productId ?? (i % 7) + 1)),
       variant: it.variant,
       addOns: it.addOns,
@@ -294,7 +301,10 @@ export default function EditOrderModal({ order, onClose, onSubmit }: Props) {
   const refundClipId = useId();
 
   const originalAmount = order.totalAmount;
-  const updatedAmount = lineItems.reduce((sum, it) => sum + it.qty * it.price, 0);
+  const subtotalBeforeDiscount = lineItems.reduce((sum, it) => sum + it.qty * it.price, 0);
+  const totalItemDiscount = lineItems.reduce((sum, it) => sum + it.qty * (it.productDiscount ?? 0), 0);
+  const subtotal = subtotalBeforeDiscount - totalItemDiscount;
+  const updatedAmount = subtotal * (1 + TAX_RATE);
   const paymentDiff = updatedAmount - originalAmount;
   const hasAdditionalPayment = paymentDiff > 0;
 
@@ -320,6 +330,13 @@ export default function EditOrderModal({ order, onClose, onSubmit }: Props) {
     addOns?: string[];
     modifications?: { modificationId: number; price: number }[];
   }) => {
+    // Find applicable discount for the new item
+    const mockOrderItem = { productId: params.productId, variationOptionId: params.variationId } as any;
+    const applicable = findApplicableDiscount(mockOrderItem, discountsData);
+    const productDiscount = applicable 
+      ? calculateItemDiscount(params.price, 1, applicable.discountItem)
+      : 0;
+
     const newItem: EditOrderLineItem = {
       id: `line-${order.orderNo}-${Date.now()}-${params.name}`,
       productId: params.productId,
@@ -327,6 +344,7 @@ export default function EditOrderModal({ order, onClose, onSubmit }: Props) {
       name: params.name,
       qty: 1,
       price: params.price,
+      productDiscount,
       image: params.image,
       variant: params.variant,
       addOns: params.addOns?.length ? params.addOns : undefined,
@@ -446,8 +464,13 @@ export default function EditOrderModal({ order, onClose, onSubmit }: Props) {
                     <div className="text-right">
                       <p className="font-['Inter'] text-xs font-medium text-[#62748E]">Item Total</p>
                       <p className="font-['Inter'] text-base font-bold text-[#1D293D]">
-                        {formatRs(it.qty * it.price)}
+                        {formatRs(it.qty * (it.price - (it.productDiscount ?? 0)))}
                       </p>
+                      {it.productDiscount ? it.productDiscount > 0 && (
+                        <p className="text-[10px] text-[#10B981]">
+                          (Incl. {formatRs(it.productDiscount)} discount/ea)
+                        </p>
+                      ) : null}
                     </div>
                   </div>
                 </div>

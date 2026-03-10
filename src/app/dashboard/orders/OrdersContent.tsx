@@ -118,6 +118,7 @@ export default function OrdersContent() {
               name: item.name,
               qty: item.qty,
               price: item.price,
+              productDiscount: item.productDiscount ?? 0,
               image: item.image,
               variant: item.variant,
               addOns: item.addOns,

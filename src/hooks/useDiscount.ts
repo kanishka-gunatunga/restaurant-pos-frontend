@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as discountService from "@/services/discountService";
-import { CreateDiscountPayload, UpdateDiscountPayload } from "@/types/product";
+import { CreateDiscountPayload, UpdateDiscountPayload, Discount, DiscountItem } from "@/types/product";
+import { OrderItem } from "@/contexts/OrderContext";
 
 export const DISCOUNT_KEYS = {
   all: ["discounts"] as const,
@@ -77,4 +78,49 @@ export const useDeactivateDiscount = () => {
       queryClient.invalidateQueries({ queryKey: DISCOUNT_KEYS.detail(id) });
     },
   });
+};
+
+
+export const findApplicableDiscount = (
+  item: OrderItem,
+  discounts: Discount[]
+): { discountName: string; discountItem: DiscountItem } | null => {
+  if (!discounts || discounts.length === 0) return null;
+
+  for (const discount of discounts) {
+    if (discount.status !== "active") continue;
+
+    const matchedItem = discount.items?.find((di) => {
+      if (di.variationOptionId) {
+        return (
+          di.productId === item.productId &&
+          di.variationOptionId === item.variationOptionId
+        );
+      }
+      return di.productId === item.productId && !di.variationOptionId;
+    });
+
+    if (matchedItem) {
+      return {
+        discountName: discount.name,
+        discountItem: matchedItem,
+      };
+    }
+  }
+
+  return null;
+};
+
+
+export const calculateItemDiscount = (
+  price: number,
+  qty: number,
+  discountItem: DiscountItem
+): number => {
+  const value = Number(discountItem.discountValue);
+  if (discountItem.discountType === "percentage") {
+    return (price * qty * value) / 100;
+  } else {
+    return value * qty;
+  }
 };

@@ -13,6 +13,7 @@ export type OrderDetailItem = {
   name: string;
   qty: number;
   price: number;
+  productDiscount?: number;
   image?: string;
   variant?: string;
   addOns?: string[];
@@ -101,6 +102,7 @@ function mapOrderItemToDetail(item: ApiOrderItem): OrderDetailItem {
     name: (item.product as any)?.name || "Unknown Product",
     qty: item.quantity,
     price: Number(item.unitPrice),
+    productDiscount: Number(item.productDiscount || 0),
     image: item.product?.image,
     variant: item.variation?.name,
     addOns:
