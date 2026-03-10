@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import * as sessionService from "@/services/sessionService";
 import {
   Wallet,
   ArrowUpCircle,
@@ -325,10 +326,12 @@ export default function ManagerDrawerContent() {
     { dateTime: "2/27/2026 • 04:06 PM", by: "Dowson", amount: 100000 },
   ];
 
-  // TODO: Replace with API data - manager's own previous sessions
-  const previousSessions: { closedAt: string; closedBy: string; closingAmount: number }[] = [
-    { closedAt: "2/27/2026 • 03:06 PM", closedBy: "Dowson", closingAmount: 4000 },
-  ];
+  const [previousSessions, setPreviousSessions] = useState<{ closedAt: string; closedBy: string; closingAmount: number }[]>([]);
+  useEffect(() => {
+    sessionService.getSessionHistory().then((list) => {
+      setPreviousSessions(list.map(sessionService.mapHistoryItemToSummary));
+    }).catch(() => {});
+  }, []);
 
   const expectedBalance = 29230;
   const cashSales = 125230;
@@ -739,7 +742,9 @@ export default function ManagerDrawerContent() {
                 {sessionHistory.map((row, i) => (
                   <tr key={i} className="border-b border-[#F1F5F9] bg-white">
                     <td className="min-w-0 overflow-hidden px-3 py-2.5 font-['Inter'] text-sm font-bold leading-5 text-[#1D293D]">
-                      <span className="block truncate" title={row.cashier}>{row.cashier}</span>
+                      <span className="block truncate" title={row.cashier}>
+                        {row.cashier}
+                      </span>
                     </td>
                     <td className="px-3 py-2.5 font-['Inter'] text-sm font-normal leading-5 text-[#45556C]">
                       {row.date}
@@ -773,7 +778,9 @@ export default function ManagerDrawerContent() {
                           {formatRs(row.cashOuts)}
                         </span>
                       </div>
-                      <p className="mt-0.5 font-['Inter'] text-xs font-normal leading-4 text-[#62748E]">{row.cashOutsTimes} times</p>
+                      <p className="mt-0.5 font-['Inter'] text-xs font-normal leading-4 text-[#62748E]">
+                        {row.cashOutsTimes} times
+                      </p>
                     </td>
                     <td className="min-w-0 px-3 py-2.5 text-right">
                       <div className="scrollbar-subtle ml-auto max-w-full overflow-x-auto">
@@ -792,11 +799,32 @@ export default function ManagerDrawerContent() {
                     <td className="min-w-0 px-3 py-2.5">
                       {row.difference === null ? (
                         <span className="inline-flex h-[30px] items-center gap-1.5 rounded-[10px] border border-[#A4F4CF] bg-[#D0FAE5] px-2.5 py-1">
-                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
-                            <path d="M6.99984 12.8337C10.2215 12.8337 12.8332 10.222 12.8332 7.00033C12.8332 3.77866 10.2215 1.16699 6.99984 1.16699C3.77818 1.16699 1.1665 3.77866 1.1665 7.00033C1.1665 10.222 3.77818 12.8337 6.99984 12.8337Z" stroke="#007A55" strokeWidth="1.16667" strokeLinecap="round" strokeLinejoin="round" />
-                            <path d="M5.25 6.99967L6.41667 8.16634L8.75 5.83301" stroke="#007A55" strokeWidth="1.16667" strokeLinecap="round" strokeLinejoin="round" />
+                          <svg
+                            width="14"
+                            height="14"
+                            viewBox="0 0 14 14"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="shrink-0"
+                          >
+                            <path
+                              d="M6.99984 12.8337C10.2215 12.8337 12.8332 10.222 12.8332 7.00033C12.8332 3.77866 10.2215 1.16699 6.99984 1.16699C3.77818 1.16699 1.1665 3.77866 1.1665 7.00033C1.1665 10.222 3.77818 12.8337 6.99984 12.8337Z"
+                              stroke="#007A55"
+                              strokeWidth="1.16667"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                            <path
+                              d="M5.25 6.99967L6.41667 8.16634L8.75 5.83301"
+                              stroke="#007A55"
+                              strokeWidth="1.16667"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
                           </svg>
-                          <span className="font-['Inter'] text-sm font-bold leading-5 text-[#007A55]">Balanced</span>
+                          <span className="font-['Inter'] text-sm font-bold leading-5 text-[#007A55]">
+                            Balanced
+                          </span>
                         </span>
                       ) : row.difference > 0 ? (
                         <div className="badge-amount-scroll scrollbar-subtle max-w-full overflow-x-auto">
@@ -819,7 +847,9 @@ export default function ManagerDrawerContent() {
                       )}
                     </td>
                     <td className="min-w-0 overflow-hidden px-3 py-2.5 font-['Inter'] text-sm font-normal leading-5 text-[#45556C]">
-                      <span className="block truncate" title={row.closedBy}>{row.closedBy}</span>
+                      <span className="block truncate" title={row.closedBy}>
+                        {row.closedBy}
+                      </span>
                     </td>
                   </tr>
                 ))}
@@ -1124,7 +1154,9 @@ export default function ManagerDrawerContent() {
               )}
               {previousSessions.length > 0 && (
                 <div className="flex shrink-0 flex-col gap-2 border-t border-[#E2E8F0] pt-4 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-4">
-                  <h3 className="font-['Inter'] text-xs font-bold text-[#62748E]">Previous Sessions</h3>
+                  <h3 className="font-['Inter'] text-xs font-bold text-[#62748E]">
+                    Previous Sessions
+                  </h3>
                   {previousSessions.map((session, i) => (
                     <div
                       key={i}
@@ -1134,7 +1166,9 @@ export default function ManagerDrawerContent() {
                         <p className="truncate font-['Inter'] text-xs font-bold text-[#1D293D]">
                           {session.closedAt}
                         </p>
-                        <p className="font-['Inter'] text-[11px] text-[#62748E]">by {session.closedBy}</p>
+                        <p className="font-['Inter'] text-[11px] text-[#62748E]">
+                          by {session.closedBy}
+                        </p>
                       </div>
                       <span className="shrink-0 font-['Inter'] text-xs font-bold text-[#1D293D]">
                         {formatRs(session.closingAmount)}

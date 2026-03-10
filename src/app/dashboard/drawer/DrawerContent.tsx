@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { Wallet, ArrowUpCircle, Clock, Lock, Pencil } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Wallet, ArrowUpCircle, Clock, Lock, Pencil, Loader2 } from "lucide-react";
+import * as sessionService from "@/services/sessionService";
+import { useDrawerSession } from "@/contexts/DrawerSessionContext";
 import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
 import StartDrawerModal from "@/components/drawer/StartDrawerModal";
 import CreateDrawerSessionModal from "@/components/drawer/CreateDrawerSessionModal";
@@ -29,23 +31,32 @@ interface CashOutEntry {
 }
 
 export default function DrawerContent() {
+  const drawerSession = useDrawerSession();
+  if (!drawerSession) throw new Error("DrawerContent must be used within DrawerSessionProvider");
+
+  const {
+    hasDrawerStarted,
+    hasActiveSession,
+    sessionData,
+    setHasDrawerStarted,
+    setHasActiveSession,
+    setSessionData,
+    isSessionLoading,
+  } = drawerSession;
+
   const [isStartModalOpen, setIsStartModalOpen] = useState(false);
   const [isCreateSessionModalOpen, setIsCreateSessionModalOpen] = useState(false);
   const [isEditAmountModalOpen, setIsEditAmountModalOpen] = useState(false);
   const [isCashOutModalOpen, setIsCashOutModalOpen] = useState(false);
   const [isCloseSessionModalOpen, setIsCloseSessionModalOpen] = useState(false);
   const [isCloseDrawerModalOpen, setIsCloseDrawerModalOpen] = useState(false);
-  const [hasDrawerStarted, setHasDrawerStarted] = useState(false);
-  const [hasActiveSession, setHasActiveSession] = useState(false);
-  const [sessionData, setSessionData] = useState<{
-    initialAmount: number;
-    startedAt: string;
-  } | null>(null);
+  const [previousSessions, setPreviousSessions] = useState<PreviousSessionSummary[]>([]);
 
-  // TODO: Replace with API data when backend is ready
-  const previousSessions: PreviousSessionSummary[] = [
-    { closedAt: "2/27/2026 • 03:06 PM", closedBy: "Dowson", closingAmount: 4000 },
-  ];
+  useEffect(() => {
+    sessionService.getSessionHistory().then((list) => {
+      setPreviousSessions(list.map(sessionService.mapHistoryItemToSummary));
+    }).catch(() => {});
+  }, []);
 
   const cashOutHistory: CashOutEntry[] = [
     { dateTime: "2/27/2026 • 04:06 PM", by: "Dowson", amount: 100000 },
@@ -56,49 +67,58 @@ export default function DrawerContent() {
   const cashOuts = 100000;
 
   const handleStartDrawer = async (openingAmount: number, managerPasscode: string) => {
-    // TODO: Call API to start drawer when backend is ready
-    console.log("Start drawer:", { openingAmount, managerPasscode });
+    await sessionService.startSession({ startBalance: openingAmount, passcode: managerPasscode });
+    const now = new Date();
+    const startedAt = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
+    setSessionData({ initialAmount: openingAmount, startedAt });
     setHasDrawerStarted(true);
+    setHasActiveSession(true);
   };
 
   const handleCreateSession = async (openingAmount: number) => {
-    // TODO: Call API to create drawer session when backend is ready
-    console.log("Create session:", { openingAmount });
+    await sessionService.startSession({ startBalance: openingAmount });
     const now = new Date();
-    const startedAt = now.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
+    const startedAt = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
     setSessionData({ initialAmount: openingAmount, startedAt });
     setHasActiveSession(true);
   };
 
   const handleEditInitialAmount = async (newAmount: number, reason: string, passcode: string) => {
-    // TODO: Call API when backend is ready
-    console.log("Edit initial amount:", { newAmount, reason, passcode });
+    const current = sessionData?.initialAmount ?? 0;
+    await sessionService.adjustInitialAmount({ currentAmount: current, newAmount, reason, passcode });
     setSessionData((prev) => (prev ? { ...prev, initialAmount: newAmount } : null));
   };
 
   const handleCashOut = async (amount: number, reason: string, passcode: string) => {
-    // TODO: Call API when backend is ready
-    console.log("Process cash out:", { amount, reason, passcode });
+    await sessionService.cashAction({ type: "remove", amount, description: reason, passcode });
   };
 
-  const handleCloseSession = async (actualBalance: number, passcode: string) => {
-    // TODO: Call API when backend is ready
-    console.log("Close drawer session:", { actualBalance, passcode });
+  const handleCloseSession = async (_actualBalance: number, passcode: string) => {
+    await sessionService.closeSession({ passcode });
     setHasActiveSession(false);
     setSessionData(null);
   };
 
-  const handleCloseTheDrawer = async (amount: number, passcode: string) => {
-    // TODO: Call API when backend is ready
-    console.log("Close the drawer:", { amount, passcode });
+  const handleCloseTheDrawer = async (_amount: number, passcode: string) => {
+    await sessionService.closeSession({ passcode });
     setHasDrawerStarted(false);
     setHasActiveSession(false);
     setSessionData(null);
   };
+
+  if (isSessionLoading) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#F8FAFC]">
+        <DashboardPageHeader />
+        <div className="flex flex-1 items-center justify-center p-8">
+          <div className="flex flex-col items-center gap-3 text-[#62748E]">
+            <Loader2 className="h-8 w-8 animate-spin" />
+            <p className="font-['Inter'] text-sm">Loading drawer session…</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#F8FAFC]">

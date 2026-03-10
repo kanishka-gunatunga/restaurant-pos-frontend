@@ -26,6 +26,10 @@ import { useSidebar } from "@/contexts/SidebarContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDrawerSession } from "@/contexts/DrawerSessionContext";
 import CloseDrawerBeforeLogoutModal from "@/components/drawer/CloseDrawerBeforeLogoutModal";
+import * as sessionService from "@/services/sessionService";
+
+const ORDER_STORAGE_KEY = "pos_orders";
+const ACTIVE_ORDER_ID_KEY = "pos_active_order_id";
 
 const navLinks = [
   { href: ROUTES.DASHBOARD, label: "Dashboard", icon: LayoutGrid },
@@ -114,6 +118,9 @@ export default function ManagerAdminSidebar() {
   const [isCloseDrawerModalOpen, setIsCloseDrawerModalOpen] = useState(false);
 
   const hasActiveSession = drawerSession?.hasActiveSession ?? false;
+  const setHasActiveSession = drawerSession?.setHasActiveSession;
+  const setSessionData = drawerSession?.setSessionData;
+  const setHasDrawerStarted = drawerSession?.setHasDrawerStarted;
 
   const handleLogoutClick = () => {
     if (hasActiveSession) {
@@ -121,6 +128,19 @@ export default function ManagerAdminSidebar() {
     } else {
       logout();
     }
+  };
+
+  const handleCloseSessionAndLogout = async (actualBalance: number, passcode: string) => {
+    await sessionService.closeSession({ passcode, closingAmount: actualBalance, actualBalance });
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem(ORDER_STORAGE_KEY);
+      sessionStorage.removeItem(ACTIVE_ORDER_ID_KEY);
+    }
+    setHasActiveSession?.(false);
+    setSessionData?.(null);
+    setHasDrawerStarted?.(false);
+    setIsCloseDrawerModalOpen(false);
+    logout();
   };
 
   return (
@@ -150,56 +170,60 @@ export default function ManagerAdminSidebar() {
         </div>
 
         <nav className="flex min-h-0 flex-1 flex-col items-center gap-2 overflow-y-auto overflow-x-hidden pt-5 pb-2 min-[1920px]:gap-3 min-[1920px]:pt-6 min-[2560px]:gap-4 min-[2560px]:pt-7 [scrollbar-width:thin] [scrollbar-color:#E2E8F0_transparent]">
-          {navLinks.filter((l) => l.label !== "Report" && l.label !== "Activity").map(({ href, label, icon: Icon }) => {
-            const isDashboard = label === "Dashboard";
-            const isMenu = label === "Menu";
-            const isDrawer = label === "Drawer";
-            const isBranches = label === "Branches";
-            const isInventory = label === "Inventory";
-            const isActive = isDashboard
-              ? pathname === ROUTES.DASHBOARD
-              : isMenu
-                ? pathname === ROUTES.DASHBOARD_MENU
-                : isDrawer
-                  ? pathname === ROUTES.DASHBOARD_DRAWER
-                  : isBranches
-                  ? pathname === ROUTES.DASHBOARD_BRANCHES ||
-                    pathname.startsWith(`${ROUTES.DASHBOARD_BRANCHES}/`)
-                  : isInventory
-                    ? pathname === ROUTES.DASHBOARD_INVENTORY ||
-                      pathname.startsWith(`${ROUTES.DASHBOARD_INVENTORY}/`)
-                    : pathname === href || pathname.startsWith(`${href}/`);
-            return (
-              <NavLink
-                key={label}
-                href={href}
-                label={label}
-                icon={Icon}
-                isActive={isActive}
-                onNavigate={close}
-              />
-            );
-          })}
+          {navLinks
+            .filter((l) => l.label !== "Report" && l.label !== "Activity")
+            .map(({ href, label, icon: Icon }) => {
+              const isDashboard = label === "Dashboard";
+              const isMenu = label === "Menu";
+              const isDrawer = label === "Drawer";
+              const isBranches = label === "Branches";
+              const isInventory = label === "Inventory";
+              const isActive = isDashboard
+                ? pathname === ROUTES.DASHBOARD
+                : isMenu
+                  ? pathname === ROUTES.DASHBOARD_MENU
+                  : isDrawer
+                    ? pathname === ROUTES.DASHBOARD_DRAWER
+                    : isBranches
+                      ? pathname === ROUTES.DASHBOARD_BRANCHES ||
+                        pathname.startsWith(`${ROUTES.DASHBOARD_BRANCHES}/`)
+                      : isInventory
+                        ? pathname === ROUTES.DASHBOARD_INVENTORY ||
+                          pathname.startsWith(`${ROUTES.DASHBOARD_INVENTORY}/`)
+                        : pathname === href || pathname.startsWith(`${href}/`);
+              return (
+                <NavLink
+                  key={label}
+                  href={href}
+                  label={label}
+                  icon={Icon}
+                  isActive={isActive}
+                  onNavigate={close}
+                />
+              );
+            })}
           <CalculatorTab onToggle={close} />
-          {navLinks.filter((l) => l.label === "Report" || l.label === "Activity").map(({ href, label, icon: Icon }) => {
-            const isActivity = label === "Activity";
-            const isReports = label === "Report";
-            const isActive = isActivity
-              ? pathname === ROUTES.DASHBOARD_ACTIVITY ||
-                pathname.startsWith(`${ROUTES.DASHBOARD_ACTIVITY}/`)
-              : pathname === ROUTES.DASHBOARD_REPORTS ||
-                pathname.startsWith(`${ROUTES.DASHBOARD_REPORTS}/`);
-            return (
-              <NavLink
-                key={label}
-                href={href}
-                label={label}
-                icon={Icon}
-                isActive={isActive}
-                onNavigate={close}
-              />
-            );
-          })}
+          {navLinks
+            .filter((l) => l.label === "Report" || l.label === "Activity")
+            .map(({ href, label, icon: Icon }) => {
+              const isActivity = label === "Activity";
+              const isReports = label === "Report";
+              const isActive = isActivity
+                ? pathname === ROUTES.DASHBOARD_ACTIVITY ||
+                  pathname.startsWith(`${ROUTES.DASHBOARD_ACTIVITY}/`)
+                : pathname === ROUTES.DASHBOARD_REPORTS ||
+                  pathname.startsWith(`${ROUTES.DASHBOARD_REPORTS}/`);
+              return (
+                <NavLink
+                  key={label}
+                  href={href}
+                  label={label}
+                  icon={Icon}
+                  isActive={isActive}
+                  onNavigate={close}
+                />
+              );
+            })}
         </nav>
 
         <div className="shrink-0 flex flex-col items-center gap-4 pb-4 pt-2 border-t border-[#E2E8F0] min-[1920px]:gap-5 min-[1920px]:pb-5 min-[2560px]:gap-6 min-[2560px]:pb-5">
@@ -232,6 +256,7 @@ export default function ManagerAdminSidebar() {
       <CloseDrawerBeforeLogoutModal
         isOpen={isCloseDrawerModalOpen}
         onClose={() => setIsCloseDrawerModalOpen(false)}
+        onCloseAndLogout={handleCloseSessionAndLogout}
       />
     </>
   );

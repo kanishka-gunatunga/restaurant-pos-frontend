@@ -1,25 +1,51 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Lock, X } from "lucide-react";
 
 type Props = {
   orderNo: string;
   isOpen: boolean;
   onClose: () => void;
-  onVerify: (passcode: string) => void;
+  onVerify: (passcode: string) => void | Promise<void>;
 };
 
 export default function ManagerAuthorizationModal({ orderNo, isOpen, onClose, onVerify }: Props) {
   const [passcode, setPasscode] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setError(null);
+      setPasscode("");
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (passcode.length === 4) {
-      onVerify(passcode);
+    if (passcode.length !== 4) return;
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      await Promise.resolve(onVerify(passcode));
       setPasscode("");
+    } catch (err: unknown) {
+      const raw =
+        (err as { response?: { status?: number; data?: { message?: string } } })?.response?.data?.message ||
+        (err instanceof Error ? err.message : "Verification failed.");
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 401 || /invalid passcode|invalid manager passcode|unauthorized/i.test(String(raw))) {
+        setError("Wrong passcode.");
+      } else if (/request failed|status code|ECONNREFUSED|ECONNRESET|ENOTFOUND/i.test(String(raw))) {
+        setError("Unable to verify. Please try again or contact support.");
+      } else {
+        setError(raw || "Verification failed.");
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -60,6 +86,12 @@ export default function ManagerAuthorizationModal({ orderNo, isOpen, onClose, on
           </p>
         </div>
 
+        {error && (
+          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 font-['Inter'] text-sm text-red-700">
+            {error}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="mt-6">
           <input
             type="password"
@@ -85,10 +117,10 @@ export default function ManagerAuthorizationModal({ orderNo, isOpen, onClose, on
             </button>
             <button
               type="submit"
-              disabled={passcode.length !== 4}
+              disabled={passcode.length !== 4 || isSubmitting}
               className="flex-1 rounded-[16px] bg-[#FF2056] px-4 py-3 text-center font-['Inter'] text-base font-bold leading-6 text-white shadow-[0px_4px_6px_-4px_#FFCCD3,0px_10px_15px_-3px_#FFCCD3] transition-opacity disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
             >
-              Verify & Cancel
+              {isSubmitting ? "Verifying…" : "Verify & Cancel"}
             </button>
           </div>
         </form>

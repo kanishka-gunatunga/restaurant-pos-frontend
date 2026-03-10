@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutGrid, ShoppingBag, CreditCard, Users, Calculator, LogOut, X } from "lucide-react";
@@ -10,6 +11,12 @@ import { getFirstName } from "@/lib/format";
 import { useCalculator } from "@/contexts/CalculatorContext";
 import { useSidebar } from "@/contexts/SidebarContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDrawerSession } from "@/contexts/DrawerSessionContext";
+import CloseDrawerBeforeLogoutModal from "@/components/drawer/CloseDrawerBeforeLogoutModal";
+import * as sessionService from "@/services/sessionService";
+
+const ORDER_STORAGE_KEY = "pos_orders";
+const ACTIVE_ORDER_ID_KEY = "pos_active_order_id";
 
 const navLinks = [
   { href: ROUTES.DASHBOARD, label: "Dashboard", icon: LayoutGrid },
@@ -90,6 +97,34 @@ export default function DashboardSidebar() {
   const pathname = usePathname();
   const { isOpen, close } = useSidebar();
   const { user, logout } = useAuth();
+  const drawerSession = useDrawerSession();
+  const [isCloseDrawerModalOpen, setIsCloseDrawerModalOpen] = useState(false);
+
+  const hasActiveSession = drawerSession?.hasActiveSession ?? false;
+  const setHasActiveSession = drawerSession?.setHasActiveSession;
+  const setSessionData = drawerSession?.setSessionData;
+  const setHasDrawerStarted = drawerSession?.setHasDrawerStarted;
+
+  const handleLogoutClick = () => {
+    if (hasActiveSession) {
+      setIsCloseDrawerModalOpen(true);
+    } else {
+      logout();
+    }
+  };
+
+  const handleCloseSessionAndLogout = async (actualBalance: number, passcode: string) => {
+    await sessionService.closeSession({ passcode, closingAmount: actualBalance, actualBalance });
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem(ORDER_STORAGE_KEY);
+      sessionStorage.removeItem(ACTIVE_ORDER_ID_KEY);
+    }
+    setHasActiveSession?.(false);
+    setSessionData?.(null);
+    setHasDrawerStarted?.(false);
+    setIsCloseDrawerModalOpen(false);
+    logout();
+  };
 
   return (
     <>
@@ -147,7 +182,10 @@ export default function DashboardSidebar() {
             href={drawerLink.href}
             label={drawerLink.label}
             icon={drawerLink.icon}
-            isActive={pathname === ROUTES.DASHBOARD_DRAWER || pathname.startsWith(`${ROUTES.DASHBOARD_DRAWER}/`)}
+            isActive={
+              pathname === ROUTES.DASHBOARD_DRAWER ||
+              pathname.startsWith(`${ROUTES.DASHBOARD_DRAWER}/`)
+            }
             onNavigate={close}
           />
         </nav>
@@ -169,7 +207,7 @@ export default function DashboardSidebar() {
           </div>
           <button
             type="button"
-            onClick={logout}
+            onClick={handleLogoutClick}
             className="flex flex-col items-center gap-1 text-[#90A1B9] transition-colors hover:text-zinc-700 min-[1920px]:gap-1.5 min-[2560px]:gap-2"
           >
             <LogOut className="h-4 w-4 min-[1920px]:h-5 min-[1920px]:w-5 min-[2560px]:h-[22px] min-[2560px]:w-[22px]" />
@@ -179,6 +217,12 @@ export default function DashboardSidebar() {
           </button>
         </div>
       </aside>
+
+      <CloseDrawerBeforeLogoutModal
+        isOpen={isCloseDrawerModalOpen}
+        onClose={() => setIsCloseDrawerModalOpen(false)}
+        onCloseAndLogout={handleCloseSessionAndLogout}
+      />
     </>
   );
 }

@@ -32,8 +32,15 @@ export default function CreateDrawerSessionModal({
     try {
       await Promise.resolve(onCreate(amountNum));
       onClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create session.");
+    } catch (err: unknown) {
+      const raw =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        (err instanceof Error ? err.message : "Failed to create session.");
+      if (/request failed|status code|ECONNREFUSED|ECONNRESET|ENOTFOUND/i.test(String(raw))) {
+        setError("Unable to create session. Please try again or contact support.");
+      } else {
+        setError(raw || "Failed to create session.");
+      }
     } finally {
       setIsSubmitting(false);
     }

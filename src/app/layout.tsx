@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist_Mono } from "next/font/google";
+import { Toaster } from "sonner";
 import "./globals.css";
 import MinWidthGuard from "@/components/MinWidthGuard";
 import QueryProvider from "@/utils/providers";
@@ -27,7 +28,10 @@ export default function RootLayout({
         <MinWidthGuard>
           <SessionProvider>
             <QueryProvider>
-              <Auth.AuthProvider>{children}</Auth.AuthProvider>
+              <Auth.AuthProvider>
+                {children}
+                <Toaster position="top-center" richColors closeButton />
+              </Auth.AuthProvider>
             </QueryProvider>
           </SessionProvider>
         </MinWidthGuard>
