@@ -328,7 +328,11 @@ export default function ActivityContent() {
                       type="date"
                       value={fromDate}
                       onChange={(e) => setFromDate(e.target.value)}
-                      className="h-11 w-full rounded-[14px] border-2 border-[#E2E8F0] bg-white py-2.5 pl-10 pr-4 text-[14px] text-[#1D293D] outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-3 [&::-webkit-calendar-picker-indicator]:h-4 [&::-webkit-calendar-picker-indicator]:w-4 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
+                      onClick={(e) => {
+                        // Ensure clicking anywhere on the input opens the date picker
+                        (e.currentTarget as HTMLInputElement).showPicker?.();
+                      }}
+                      className="h-11 w-full rounded-[14px] border-2 border-[#E2E8F0] bg-white py-2.5 pl-10 pr-4 text-[14px] text-[#1D293D] outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                     />
                   </div>
                 </div>
@@ -342,7 +346,10 @@ export default function ActivityContent() {
                       type="date"
                       value={toDate}
                       onChange={(e) => setToDate(e.target.value)}
-                      className="h-11 w-full rounded-[14px] border-2 border-[#E2E8F0] bg-white py-2.5 pl-10 pr-4 text-[14px] text-[#1D293D] outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-3 [&::-webkit-calendar-picker-indicator]:h-4 [&::-webkit-calendar-picker-indicator]:w-4 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
+                      onClick={(e) => {
+                        (e.currentTarget as HTMLInputElement).showPicker?.();
+                      }}
+                      className="h-11 w-full rounded-[14px] border-2 border-[#E2E8F0] bg-white py-2.5 pl-10 pr-4 text-[14px] text-[#1D293D] outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                     />
                   </div>
                 </div>
