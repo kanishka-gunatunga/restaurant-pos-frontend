@@ -22,6 +22,7 @@ import {
 } from "@/types/product";
 import { useGetAllProducts } from "@/hooks/useProduct";
 import { useCreateDiscount, useUpdateDiscount } from "@/hooks/useDiscount";
+import { useGetAllBranches } from "@/hooks/useBranch";
 
 type DiscountType = "percentage" | "fixed";
 
@@ -33,6 +34,7 @@ type SelectedDiscount = {
   basePrice: number;
   type: DiscountType;
   value: number;
+  branchId?: number; // Added to track which branch this configuration belongs to
 };
 
 type AddDiscountModalProps = {
@@ -53,11 +55,17 @@ export default function AddDiscountModal({
   editingDiscount,
 }: AddDiscountModalProps) {
   const { data: products } = useGetAllProducts({ status: "active" });
+  const { data: branches } = useGetAllBranches("active");
   const createMutation = useCreateDiscount();
   const updateMutation = useUpdateDiscount();
 
+  const [step, setStep] = useState(1);
   const [discountName, setDiscountName] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
+  const [isForAllBranches, setIsForAllBranches] = useState(true);
+  const [selectedBranchIds, setSelectedBranchIds] = useState<number[]>([]);
+  const [activeBranchId, setActiveBranchId] = useState<number | null>(null); // For branch-specific product selection in Step 2
+
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedProduct, setExpandedProduct] = useState<number | null>(null);
   const [selectedDiscounts, setSelectedDiscounts] = useState<SelectedDiscount[]>([]);
@@ -70,6 +78,8 @@ export default function AddDiscountModal({
       if (editingDiscount) {
         setDiscountName(editingDiscount.name);
         setExpiryDate(editingDiscount.expiryDate || "");
+        setIsForAllBranches(editingDiscount.isForAllBranches);
+        setSelectedBranchIds(editingDiscount.branches?.map(b => b.branchId) || []);
         setSelectedDiscounts(
           editingDiscount.items?.map((item) => ({
             productId: item.productId!,
@@ -79,15 +89,26 @@ export default function AddDiscountModal({
             basePrice: Number(item.variationOption?.prices?.[0]?.price || item.product?.variations?.[0]?.options?.[0]?.prices?.[0]?.price || 0),
             type: item.discountType as DiscountType,
             value: Number(item.discountValue),
+            branchId: item.branchId || undefined,
           })) || []
         );
       } else {
+        setStep(1);
         setDiscountName("");
         setExpiryDate("");
+        setIsForAllBranches(true);
+        setSelectedBranchIds([]);
         setSelectedDiscounts([]);
+        setActiveBranchId(null);
       }
     }
   }, [open, editingDiscount]);
+
+  useEffect(() => {
+    if (step === 2 && !isForAllBranches && selectedBranchIds.length > 0 && activeBranchId === null) {
+      setActiveBranchId(selectedBranchIds[0]);
+    }
+  }, [step, isForAllBranches, selectedBranchIds, activeBranchId]);
 
   const filteredProducts = products?.filter((p) =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -97,20 +118,23 @@ export default function AddDiscountModal({
     setExpandedProduct((prev: number | null) => (prev === productId ? null : productId));
   };
 
-  const isSelected = (productId: number, variantId?: number) =>
-    selectedDiscounts.some(
-      (s) => s.productId === productId && s.variantId === variantId
+  const isSelected = (productId: number, variantId?: number) => {
+    const currentBranchContext = isForAllBranches ? undefined : (activeBranchId === -1 ? null : activeBranchId);
+    return selectedDiscounts.some(
+      (s) => s.productId === productId && s.variantId === variantId && s.branchId === (currentBranchContext || undefined)
     );
+  };
 
   const handleToggleSelect = (
     product: Product,
     variant?: VariationOption
   ) => {
     const variantId = variant?.id;
+    const currentBranchContext = isForAllBranches ? undefined : (activeBranchId === -1 ? null : activeBranchId);
     if (isSelected(product.id, variantId)) {
       setSelectedDiscounts((prev: SelectedDiscount[]) =>
         prev.filter(
-          (s: SelectedDiscount) => !(s.productId === product.id && s.variantId === variantId)
+          (s: SelectedDiscount) => !(s.productId === product.id && s.variantId === variantId && s.branchId === (currentBranchContext || undefined))
         )
       );
     } else {
@@ -125,15 +149,17 @@ export default function AddDiscountModal({
           basePrice,
           type: "percentage" as DiscountType,
           value: 10,
+          branchId: isForAllBranches ? undefined : (activeBranchId === -1 ? undefined : (activeBranchId || undefined)),
         },
       ]);
     }
   };
 
   const handleRemove = (productId: number, variantId?: number) => {
+    const currentBranchContext = isForAllBranches ? undefined : (activeBranchId === -1 ? null : activeBranchId);
     setSelectedDiscounts((prev: SelectedDiscount[]) =>
       prev.filter(
-        (s: SelectedDiscount) => !(s.productId === productId && s.variantId === variantId)
+        (s: SelectedDiscount) => !(s.productId === productId && s.variantId === variantId && s.branchId === (currentBranchContext || undefined))
       )
     );
   };
@@ -144,9 +170,10 @@ export default function AddDiscountModal({
     field: "type" | "value",
     value: DiscountType | number
   ) => {
+    const currentBranchContext = isForAllBranches ? undefined : (activeBranchId === -1 ? null : activeBranchId);
     setSelectedDiscounts((prev: SelectedDiscount[]) =>
       prev.map((s: SelectedDiscount) =>
-        s.productId === productId && s.variantId === variantId
+        s.productId === productId && s.variantId === variantId && s.branchId === (currentBranchContext || undefined)
           ? { ...s, [field]: value }
           : s
       )
@@ -158,20 +185,41 @@ export default function AddDiscountModal({
     if (!discountName.trim()) return;
     if (selectedDiscounts.length === 0) return;
 
-    for (const s of selectedDiscounts) {
-      if (s.type === "percentage" && (s.value <= 0 || s.value > 100)) return;
-      if (s.type === "fixed" && s.value <= 0) return;
-    }
+    // Group items by unique product/variant combination
+    const uniqueItems = Array.from(new Set(selectedDiscounts.map(s => `${s.productId}-${s.variantId || 'base'}`)));
 
     const payload: CreateDiscountPayload = {
       name: discountName.trim(),
       expiryDate: expiryDate || undefined,
-      items: selectedDiscounts.map((s) => ({
-        productId: s.productId,
-        variationOptionId: s.variantId,
-        discountType: s.type,
-        discountValue: s.value,
-      })),
+      isForAllBranches,
+      branches: isForAllBranches ? undefined : selectedBranchIds,
+      items: uniqueItems.map(key => {
+        const [pId, vIdStr] = key.split('-');
+        const pIdNum = parseInt(pId);
+        const vIdNum = vIdStr === 'base' ? undefined : parseInt(vIdStr);
+        
+        const configs = selectedDiscounts.filter(s => s.productId === pIdNum && s.variantId === vIdNum);
+        const first = configs[0];
+
+        if (isForAllBranches) {
+          return {
+            productId: pIdNum,
+            variationOptionId: vIdNum,
+            discountType: first.type,
+            discountValue: first.value,
+          };
+        } else {
+          return {
+            productId: pIdNum,
+            variationOptionId: vIdNum,
+            discountType: first.type,
+            branchDiscounts: configs.map(c => ({
+              branchId: c.branchId!,
+              discountValue: c.value
+            }))
+          };
+        }
+      })
     };
 
     try {
@@ -227,331 +275,316 @@ export default function AddDiscountModal({
           onSubmit={handleSubmit}
           className="flex min-h-0 flex-1 flex-col gap-6 overflow-hidden"
         >
-          <div className="grid shrink-0 gap-6 sm:grid-cols-2">
-            <div>
-              <label className="mb-2 block font-['Inter'] text-xs font-bold uppercase tracking-wide text-[#45556C]">
-                Discount Name <span className="text-[#EC003F]">*</span>
-              </label>
-              <input
-                type="text"
-                value={discountName}
-                onChange={(e) => setDiscountName(e.target.value)}
-                placeholder="e.g. Summer Sale, Weekend Special"
-                className="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3 font-['Inter'] text-sm text-[#1D293D] placeholder:text-[#90A1B9] focus:border-[#EA580C] focus:outline-none focus:ring-2 focus:ring-[#EA580C]/20"
-                required
-              />
-            </div>
-            <div>
-              <label className="mb-2 block font-['Inter'] text-xs font-bold uppercase tracking-wide text-[#45556C]">
-                Expiry Date (Optional)
-              </label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#90A1B9]" />
-                <input
-                  type="text"
-                  value={expiryDate}
-                  onChange={(e) => setExpiryDate(e.target.value)}
-                  placeholder="DD/MM/YYYY"
-                  className="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] py-3 pl-10 pr-4 font-['Inter'] text-sm text-[#1D293D] placeholder:text-[#90A1B9] focus:border-[#EA580C] focus:outline-none focus:ring-2 focus:ring-[#EA580C]/20"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="min-h-0 flex-1 grid gap-6 overflow-hidden sm:grid-cols-2">
-            <div className="flex flex-col overflow-hidden rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-6">
-              <label className="mb-3 block font-['Inter'] text-xs font-bold uppercase tracking-wide text-[#45556C]">
-                Select Products <span className="text-[#EC003F]">*</span>
-              </label>
-              <div className="relative mb-4">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#90A1B9]" />
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search products..."
-                  className="w-full rounded-xl border border-[#E2E8F0] bg-white py-2.5 pl-10 pr-4 font-['Inter'] text-sm text-[#1D293D] placeholder:text-[#90A1B9] focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C]"
-                />
-              </div>
-              <div className="min-h-0 flex-1 space-y-2 overflow-y-auto [scrollbar-color:#E2E8F0_transparent] [scrollbar-width:thin]">
-                {filteredProducts.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-8 text-center">
-                    <Package className="mx-auto h-8 w-8 text-[#90A1B9] opacity-50" />
-                    <p className="mt-2 font-['Inter'] text-sm text-[#90A1B9]">
-                      No products found
-                    </p>
+          {step === 1 ? (
+            <div className="flex flex-col gap-6 overflow-hidden">
+              <div className="grid shrink-0 gap-6 sm:grid-cols-2">
+                <div>
+                  <label className="mb-2 block font-['Inter'] text-xs font-bold uppercase tracking-wide text-[#45556C]">
+                    Discount Name <span className="text-[#EC003F]">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={discountName}
+                    onChange={(e) => setDiscountName(e.target.value)}
+                    placeholder="e.g. Summer Sale, Weekend Special"
+                    className="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3 font-['Inter'] text-sm text-[#1D293D] placeholder:text-[#90A1B9] focus:border-[#EA580C] focus:outline-none focus:ring-2 focus:ring-[#EA580C]/20"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="mb-2 block font-['Inter'] text-xs font-bold uppercase tracking-wide text-[#45556C]">
+                    Expiry Date (Optional)
+                  </label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#90A1B9]" />
+                    <input
+                      type="text"
+                      value={expiryDate}
+                      onChange={(e) => setExpiryDate(e.target.value)}
+                      placeholder="DD/MM/YYYY"
+                      className="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] py-3 pl-10 pr-4 font-['Inter'] text-sm text-[#1D293D] placeholder:text-[#90A1B9] focus:border-[#EA580C] focus:outline-none focus:ring-2 focus:ring-[#EA580C]/20"
+                    />
                   </div>
-                ) : (
-                  filteredProducts.map((product) => {
-                    const variants = product.variations?.[0]?.options || [];
-                    const hasVariants = variants.length > 1;
-                    const isExpanded = expandedProduct === product.id;
+                </div>
+              </div>
 
+              <div className="flex flex-1 flex-col overflow-hidden">
+                <label className="mb-3 block font-['Inter'] text-xs font-bold uppercase tracking-wide text-[#45556C]">
+                  Select Branches <span className="text-[#EC003F]">*</span>
+                </label>
+                <div className="grid grid-cols-1 gap-4 overflow-y-auto pr-2 [scrollbar-color:#E2E8F0_transparent] [scrollbar-width:thin] sm:grid-cols-2 lg:grid-cols-3">
+                  <div
+                    onClick={() => {
+                      setIsForAllBranches(true);
+                      setSelectedBranchIds([]);
+                    }}
+                    className={`relative cursor-pointer rounded-2xl border-2 p-4 transition-all ${isForAllBranches
+                        ? "border-[#EA580C] bg-[#EA580C]/5 shadow-sm"
+                        : "border-[#E2E8F0] bg-white hover:border-[#CBD5E1]"
+                      }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F8FAFC]">
+                        <Package className={`h-5 w-5 ${isForAllBranches ? "text-[#EA580C]" : "text-[#64748B]"}`} />
+                      </div>
+                      <div className={`flex h-6 w-6 items-center justify-center rounded-full border-2 transition-colors ${isForAllBranches ? "border-[#EA580C] bg-[#EA580C]" : "border-[#CBD5E1]"
+                        }`}>
+                        {isForAllBranches && <Check className="h-4 w-4 text-white" />}
+                      </div>
+                    </div>
+                    <p className="mt-4 font-['Inter'] text-sm font-bold text-[#1D293D]">All Branches</p>
+                    <p className="mt-1 font-['Inter'] text-xs text-[#90A1B9]">Apply to all locations</p>
+                  </div>
+
+                  {branches?.map((branch) => {
+                    const isSelected = !isForAllBranches && selectedBranchIds.includes(branch.id);
                     return (
                       <div
-                        key={product.id}
-                        className="overflow-hidden rounded-xl border border-[#E2E8F0] bg-white"
+                        key={branch.id}
+                        onClick={() => {
+                          setIsForAllBranches(false);
+                          setSelectedBranchIds(prev =>
+                            isSelected ? prev.filter(id => id !== branch.id) : [...prev, branch.id]
+                          );
+                        }}
+                        className={`relative cursor-pointer rounded-2xl border-2 p-4 transition-all ${isSelected
+                            ? "border-[#EA580C] bg-[#EA580C]/5 shadow-sm"
+                            : "border-[#E2E8F0] bg-white hover:border-[#CBD5E1]"
+                          }`}
                       >
-                        <div
-                          className="flex cursor-pointer items-center gap-3 p-3"
-                          onClick={() => handleToggleExpand(product.id)}
-                        >
-                          <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-[#E2E8F0]">
-                            <img
-                              src={product.image || ""}
-                              alt={product.name}
-                              className="h-full w-full object-cover"
+                        <div className="flex items-start justify-between">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F8FAFC]">
+                            <Package className={`h-5 w-5 ${isSelected ? "text-[#EA580C]" : "text-[#64748B]"}`} />
+                          </div>
+                          <div className={`flex h-6 w-6 items-center justify-center rounded-full border-2 transition-colors ${isSelected ? "border-[#EA580C] bg-[#EA580C]" : "border-[#CBD5E1]"
+                            }`}>
+                            {isSelected && <Check className="h-4 w-4 text-white" />}
+                          </div>
+                        </div>
+                        <p className="mt-4 font-['Inter'] text-sm font-bold text-[#1D293D]">{branch.name}</p>
+                        <p className="mt-1 font-['Inter'] text-xs text-[#90A1B9] truncate">{branch.location || "123 Main St"}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-2 [scrollbar-color:#E2E8F0_transparent] [scrollbar-width:thin]">
+              <label className="mb-2 block font-['Inter'] text-xs font-bold uppercase tracking-wide text-[#45556C]">CONFIGURE DISCOUNTS FOR EACH BRANCH</label>
+              
+              {(isForAllBranches ? [{ id: -1, name: "All Branches", location: "Global configuration" }] : selectedBranchIds.map(id => branches?.find(b => b.id === id)).filter(Boolean)).map((branch, idx) => {
+                const bId = branch?.id === -1 ? null : branch?.id;
+                const isExpanded = activeBranchId === (bId || -1); // use -1 for global in state
+                const branchDiscounts = selectedDiscounts.filter(s => isForAllBranches ? s.branchId === undefined : s.branchId === bId);
+
+                return (
+                  <div key={branch?.id} className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white">
+                    <div 
+                      className={`flex cursor-pointer items-center justify-between p-5 transition-colors ${isExpanded ? "bg-[#F8FAFC]" : "hover:bg-[#F8FAFC]"}`}
+                      onClick={() => setActiveBranchId(isExpanded ? null : (bId || -1))}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F1F5F9] text-[#64748B]">
+                          <Package className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="font-['Inter'] text-sm font-bold text-[#1D293D]">{branch?.name}</p>
+                          <p className="font-['Inter'] text-xs text-[#90A1B9]">{branch?.location}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        {branchDiscounts.length > 0 && (
+                          <span className="rounded-full bg-[#EA580C]/10 px-3 py-1 font-['Inter'] text-xs font-bold text-[#EA580C]">
+                            {branchDiscounts.length} item(s) configured
+                          </span>
+                        )}
+                        {isExpanded ? <ChevronUp className="h-5 w-5 text-[#90A1B9]" /> : <ChevronDown className="h-5 w-5 text-[#90A1B9]" />}
+                      </div>
+                    </div>
+
+                    {isExpanded && (
+                      <div className="grid grid-cols-1 gap-6 border-t border-[#E2E8F0] p-6 lg:grid-cols-2">
+                        {/* Left Panel: Select Products */}
+                        <div className="flex flex-col overflow-hidden rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-5">
+                          <label className="mb-3 block font-['Inter'] text-xs font-bold text-[#45556C]">SELECT PRODUCTS <span className="text-[#EC003F]">*</span></label>
+                          <div className="relative mb-4">
+                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#90A1B9]" />
+                            <input
+                              type="text"
+                              value={searchTerm}
+                              onChange={(e) => setSearchTerm(e.target.value)}
+                              placeholder="Search products..."
+                              className="w-full rounded-xl border border-[#E2E8F0] bg-white py-2.5 pl-10 pr-4 font-['Inter'] text-sm text-[#1D293D] placeholder:text-[#90A1B9] focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C]"
                             />
                           </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="font-['Inter'] text-sm font-bold text-[#1D293D]">
-                              {product.name}
-                            </p>
-                            <p className="font-['Inter'] text-xs text-[#90A1B9]">
-                              {formatPrice(Number(product.variations?.[0]?.options?.[0]?.prices?.[0]?.price || 0))}
-                              {product.variations?.[0]?.options && product.variations[0].options.length > 1 &&
-                                ` • ${product.variations[0].options.length} variants`}
-                            </p>
-                          </div>
-                          <button
-                            type="button"
-                            className="shrink-0 rounded-lg p-2 text-[#90A1B9] hover:bg-[#F1F5F9]"
-                            aria-label={isExpanded ? "Collapse" : "Expand"}
-                          >
-                            {isExpanded ? (
-                              <ChevronUp className="h-4 w-4" />
-                            ) : (
-                              <ChevronDown className="h-4 w-4" />
-                            )}
-                          </button>
-                        </div>
+                          <div className="max-h-[400px] space-y-2 overflow-y-auto [scrollbar-color:#E2E8F0_transparent] [scrollbar-width:thin]">
+                            {filteredProducts.map((product) => {
+                              const variants = product.variations?.[0]?.options || [];
+                              const hasVariants = variants.length > 1;
+                              const isProdExpanded = expandedProduct === product.id;
 
-                        {isExpanded && (
-                          <div className="border-t border-[#E2E8F0] p-3 pt-0">
-                            {!hasVariants ? (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleToggleSelect(product);
-                                }}
-                                className={`mt-2 flex w-full items-center gap-2 rounded-xl border p-3 text-left transition-colors ${isSelected(product.id)
-                                  ? "border-[#EA580C] bg-[#EA580C]/10"
-                                  : "border-[#E2E8F0] hover:border-[#CBD5E1]"
-                                  }`}
-                              >
-                                <span
-                                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-lg border-2 ${isSelected(product.id)
-                                    ? "border-[#EA580C] bg-[#EA580C]"
-                                    : "border-[#CBD5E1]"
-                                    }`}
-                                >
-                                  {isSelected(product.id) && (
-                                    <Check className="h-3 w-3 text-white" />
-                                  )}
-                                </span>
-                                <span className="font-['Inter'] text-sm text-[#1D293D]">
-                                  {product.name}
-                                </span>
-                                <span className="font-['Inter'] text-xs text-[#90A1B9]">
-                                  {formatPrice(Number(product.variations?.[0]?.options?.[0]?.prices?.[0]?.price || 0))}
-                                </span>
-                              </button>
-                            ) : (
-                              <div className="mt-2 space-y-2">
-                                {variants.map((variant: VariationOption) => (
-                                  <button
-                                    key={variant.id}
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleToggleSelect(product, variant);
-                                    }}
-                                    className={`flex w-full items-center gap-2 rounded-xl border p-3 text-left transition-colors ${isSelected(product.id, variant.id)
-                                      ? "border-[#EA580C] bg-[#EA580C]/10"
-                                      : "border-[#E2E8F0] hover:border-[#CBD5E1]"
-                                      }`}
-                                  >
-                                    <span
-                                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-lg border-2 ${isSelected(product.id, variant.id)
-                                        ? "border-[#EA580C] bg-[#EA580C]"
-                                        : "border-[#CBD5E1]"
-                                        }`}
-                                    >
-                                      {isSelected(product.id, variant.id) && (
-                                        <Check className="h-3 w-3 text-white" />
+                              return (
+                                <div key={product.id} className="rounded-xl border border-[#E2E8F0] bg-white">
+                                  <div className="flex cursor-pointer items-center gap-3 p-3" onClick={() => handleToggleExpand(product.id)}>
+                                    <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg">
+                                      <img src={product.image || ""} alt={product.name} className="h-full w-full object-cover" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <p className="truncate font-['Inter'] text-sm font-bold text-[#1D293D]">{product.name}</p>
+                                      <p className="font-['Inter'] text-xs text-[#90A1B9]">
+                                        {formatPrice(Number(product.variations?.[0]?.options?.[0]?.prices?.[0]?.price || 0))}
+                                        {hasVariants && ` • ${variants.length} variants`}
+                                      </p>
+                                    </div>
+                                    <button type="button" className="shrink-0 text-[#90A1B9] bg-[#EA580C1A] rounded-[14px] p-2 cursor-pointer">
+                                      {isProdExpanded ? <ChevronUp className="h-4 w-4 text-[#EA580C]" /> : <ChevronDown className="h-4 w-4 text-[#EA580C]" />}
+                                    </button>
+                                  </div>
+                                  {isProdExpanded && (
+                                    <div className="space-y-2 border-t border-[#E2E8F0] p-3">
+                                      {!hasVariants ? (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleToggleSelect(product)}
+                                          className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all ${isSelected(product.id) ? "border-[#EA580C] bg-[#EA580C]/5" : "border-[#E2E8F0] hover:border-[#CBD5E1]"}`}
+                                        >
+                                          <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-lg border-2 ${isSelected(product.id) ? "border-[#EA580C] bg-[#EA580C]" : "border-[#CBD5E1]"}`}>
+                                            {isSelected(product.id) && <Check className="h-3 w-3 text-white" />}
+                                          </div>
+                                          <div className="flex flex-col">
+                                          <span className="flex-1 font-['Inter'] text-sm font-medium text-[#1D293D]">{product.name}</span>
+                                          <span className="font-['Inter'] text-xs text-[#90A1B9]">{formatPrice(Number(product.variations?.[0]?.options?.[0]?.prices?.[0]?.price || 0))}</span>
+                                          </div>
+                                        </button>
+                                      ) : (
+                                        variants.map((v) => (
+                                          <button
+                                            key={v.id}
+                                            type="button"
+                                            onClick={() => handleToggleSelect(product, v)}
+                                            className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all ${isSelected(product.id, v.id) ? "border-[#EA580C] bg-[#EA580C0D]" : "border-[#E2E8F0] hover:border-[#CBD5E1]"}`}
+                                          >
+                                            <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-lg cursor-pointer border-2 ${isSelected(product.id, v.id) ? "border-[#EA580C] bg-[#EA580C]" : "border-[#CBD5E1]"}`}>
+                                              {isSelected(product.id, v.id) && <Check className="h-3 w-3 text-white" />}
+                                            </div>
+                                            <div className="flex flex-col">
+                                              <span className="flex-1 font-['Inter'] text-sm font-medium text-[#314158]">{v.name}</span>
+                                              <span className="font-['Inter'] text-xs text-[#90A1B9]">{formatPrice(Number(v.prices?.[0]?.price || 0))}</span>
+                                            </div>
+                                          </button>
+                                        ))
                                       )}
-                                    </span>
-                                    <span className="flex-1 font-['Inter'] text-sm text-[#1D293D]">
-                                      {variant.name}
-                                    </span>
-                                    <span className="font-['Inter'] text-xs text-[#90A1B9]">
-                                      {formatPrice(Number(variant.prices?.[0]?.price || 0))}
-                                    </span>
-                                  </button>
-                                ))}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Right Panel: Selected Items */}
+                        <div className="flex flex-col overflow-hidden rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-5">
+                          <label className="mb-1 block font-['Inter'] text-xs font-bold text-[#45556C]">SELECTED PRODUCTS & DISCOUNTS</label>
+                          <p className="mb-4 font-['Inter'] text-xs text-[#90A1B9]">{branchDiscounts.length} item(s) selected</p>
+                          <div className="max-h-[500px] space-y-4 overflow-y-auto pr-1 [scrollbar-color:#E2E8F0_transparent] [scrollbar-width:thin]">
+                            {branchDiscounts.length === 0 ? (
+                              <div className="flex flex-col items-center justify-center py-20 text-center">
+                                <Percent className="mb-2 h-10 w-10 text-[#E2E8F0]" />
+                                <p className="font-['Inter'] text-sm font-medium text-[#90A1B9]">No products selected</p>
+                                <p className="font-['Inter'] text-xs text-[#90A1B9]">Select products from the left panel</p>
                               </div>
+                            ) : (
+                              branchDiscounts.map((config) => {
+                                const discountAmount = config.type === "percentage" ? (config.basePrice * config.value) / 100 : config.value;
+                                const finalPrice = Math.max(0, config.basePrice - discountAmount);
+                                return (
+                                  <div key={`${config.productId}-${config.variantId}-${config.branchId}`} className="rounded-2xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
+                                    <div className="mb-4 flex items-start justify-between">
+                                      <div>
+                                        <p className="font-['Inter'] text-sm font-bold text-[#1D293D]">{config.productName}</p>
+                                        {config.variantName && <p className="font-['Inter'] text-[11px] text-[#90A1B9]">Variant: {config.variantName}</p>}
+                                      </div>
+                                      <button type="button" onClick={() => handleRemove(config.productId, config.variantId)} className="text-[#90A1B9] hover:text-[#EC003F]">
+                                        <X className="h-4 w-4" />
+                                      </button>
+                                    </div>
+                                    <div className="mb-4 flex gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleUpdateDiscount(config.productId, config.variantId, "type", "percentage")}
+                                        className={`flex flex-1 items-center justify-center gap-2 rounded-xl border py-2 font-['Inter'] text-xs font-bold transition-all ${config.type === "percentage" ? "border-[#EA580C] bg-[#EA580C]/5 text-[#EA580C]" : "border-[#E2E8F0] bg-white text-[#90A1B9]"}`}
+                                      >
+                                        <Percent className="h-3.5 w-3.5" /> Percentage
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleUpdateDiscount(config.productId, config.variantId, "type", "fixed")}
+                                        className={`flex flex-1 items-center justify-center gap-2 rounded-xl border py-2 font-['Inter'] text-xs font-bold transition-all ${config.type === "fixed" ? "border-[#EA580C] bg-[#EA580C]/5 text-[#EA580C]" : "border-[#E2E8F0] bg-white text-[#90A1B9]"}`}
+                                      >
+                                        <DollarSign className="h-3.5 w-3.5" /> Fixed Price
+                                      </button>
+                                    </div>
+                                    <div className="mb-4">
+                                      <label className="mb-1 block font-['Inter'] text-[10px] font-bold text-[#90A1B9]">DISCOUNT ({config.type === "percentage" ? "%" : "Rs."})</label>
+                                      <input
+                                        type="number"
+                                        value={config.value}
+                                        onChange={(e) => handleUpdateDiscount(config.productId, config.variantId, "value", parseFloat(e.target.value) || 0)}
+                                        className="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-2 font-['Inter'] text-[#0A0A0A] text-sm focus:border-[#EA580C] focus:outline-none"
+                                      />
+                                    </div>
+                                    <div className="rounded-xl border border-[#D0FAE5] bg-[#D0FAE5]/20 p-3">
+                                      <div className="flex justify-between text-xs">
+                                        <span className="text-[#64748B]">Original:</span>
+                                        <span className="text-[#90A1B9] line-through">{formatPrice(config.basePrice)}</span>
+                                      </div>
+                                      <div className="mt-1 flex justify-between text-sm font-bold">
+                                        <span className="text-[#1D293D]">Final Price:</span>
+                                        <span className="text-[#009966]">{formatPrice(finalPrice)}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })
                             )}
                           </div>
-                        )}
+                        </div>
                       </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-
-            <div className="flex flex-col overflow-hidden rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-6">
-              <label className="mb-1 block font-['Inter'] text-xs font-bold uppercase tracking-wide text-[#45556C]">
-                Selected Products & Discounts
-              </label>
-              <p className="mb-4 font-['Inter'] text-xs text-[#90A1B9]">
-                {selectedDiscounts.length} item(s) selected
-              </p>
-              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto [scrollbar-color:#E2E8F0_transparent] [scrollbar-width:thin]">
-                {selectedDiscounts.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <Percent className="mx-auto h-8 w-8 text-[#90A1B9] opacity-50" />
-                    <p className="mt-2 font-['Inter'] text-sm font-medium text-[#90A1B9]">
-                      No products selected
-                    </p>
-                    <p className="font-['Inter'] text-xs text-[#90A1B9]">
-                      Select products from the left panel
-                    </p>
+                    )}
                   </div>
-                ) : (
-                  selectedDiscounts.map((config: SelectedDiscount) => {
-                    const basePriceNum = config.basePrice;
-                    const discountAmount =
-                      config.type === "percentage"
-                        ? (basePriceNum * config.value) / 100
-                        : config.value;
-                    const finalPrice = Math.max(0, basePriceNum - discountAmount);
-
-                    return (
-                      <div
-                        key={`${config.productId}-${config.variantId ?? "base"}`}
-                        className="rounded-xl border border-[#E2E8F0] bg-white p-4"
-                      >
-                        <div className="mb-3 flex items-start justify-between">
-                          <div>
-                            <p className="font-['Inter'] text-sm font-bold text-[#1D293D]">
-                              {config.productName}
-                              {config.variantName &&
-                                ` Variant: ${config.variantName}`}
-                            </p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleRemove(config.productId, config.variantId)
-                            }
-                            className="rounded p-1 text-[#90A1B9] hover:bg-[#FEE2E2] hover:text-[#DC2626]"
-                            aria-label="Remove"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                        </div>
-
-                        <div className="mb-3 flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleUpdateDiscount(
-                                config.productId,
-                                config.variantId,
-                                "type",
-                                "percentage"
-                              )
-                            }
-                            className={`flex flex-1 items-center justify-center gap-1 rounded-xl border px-3 py-2 font-['Inter'] text-xs font-bold transition-colors ${config.type === "percentage"
-                              ? "border-[#EA580C] bg-[#EA580C]/10 text-[#EA580C]"
-                              : "border-[#E2E8F0] text-[#90A1B9] hover:border-[#CBD5E1]"
-                              }`}
-                          >
-                            <Percent className="h-3.5 w-3.5" />
-                            Percentage
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleUpdateDiscount(
-                                config.productId,
-                                config.variantId,
-                                "type",
-                                "fixed"
-                              )
-                            }
-                            className={`flex flex-1 items-center justify-center gap-1 rounded-xl border px-3 py-2 font-['Inter'] text-xs font-bold transition-colors ${config.type === "fixed"
-                              ? "border-[#EA580C] bg-[#EA580C]/10 text-[#EA580C]"
-                              : "border-[#E2E8F0] text-[#90A1B9] hover:border-[#CBD5E1]"
-                              }`}
-                          >
-                            <DollarSign className="h-3.5 w-3.5" />
-                            Fixed Price
-                          </button>
-                        </div>
-
-                        <div className="mb-3">
-                          <label className="mb-1 block font-['Inter'] text-[10px] font-bold uppercase tracking-wide text-[#90A1B9]">
-                            Discount {config.type === "percentage" ? "(%)" : "(Rs.)"}
-                          </label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            min={0}
-                            max={config.type === "percentage" ? 100 : undefined}
-                            value={config.value}
-                            onChange={(e) =>
-                              handleUpdateDiscount(
-                                config.productId,
-                                config.variantId,
-                                "value",
-                                parseFloat(e.target.value) || 0
-                              )
-                            }
-                            className="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 font-['Inter'] text-sm text-[#1D293D] focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C]"
-                          />
-                        </div>
-
-                        <div className="rounded-lg border border-[#D0FAE5] bg-[#D0FAE5]/30 p-2">
-                          <div className="flex justify-between font-['Inter'] text-xs">
-                            <span className="text-[#62748E]">Original:</span>
-                            <span className="text-[#90A1B9] line-through">
-                              {config.basePrice}
-                            </span>
-                          </div>
-                          <div className="mt-1 flex justify-between font-['Inter'] text-xs font-bold">
-                            <span className="text-[#1D293D]">Final Price:</span>
-                            <span className="text-[#009966]">
-                              {formatPrice(finalPrice)}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
+                );
+              })}
             </div>
-          </div>
+          )}
 
           <div className="flex shrink-0 justify-end gap-3 border-t border-[#E2E8F0] pt-6">
             <button
               type="button"
-              onClick={onClose}
+              onClick={step === 1 ? onClose : () => setStep(1)}
               className="rounded-[14px] border border-[#E2E8F0] bg-white px-4 py-2.5 font-['Inter'] text-sm font-bold text-[#45556C] hover:bg-[#F8FAFC]"
             >
-              Cancel
+              {step === 1 ? "Cancel" : "Back"}
             </button>
-            <button
-              type="submit"
-              disabled={isLoading || !discountName.trim() || selectedDiscounts.length === 0}
-              className="flex items-center gap-2 rounded-[14px] bg-[#EA580C] px-4 py-2.5 font-['Inter'] text-sm font-bold text-white shadow-[0px_4px_6px_-4px_#EA580C33,0px_10px_15px_-3px_#EA580C33] hover:bg-[#c2410c] disabled:opacity-50"
-            >
-              {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-              {isEditing ? "Update Discount" : "Create Discount"}
-            </button>
+            {step === 1 ? (
+              <button
+                type="button"
+                onClick={() => setStep(2)}
+                disabled={!discountName.trim() || (!isForAllBranches && selectedBranchIds.length === 0)}
+                className="flex items-center gap-2 rounded-[14px] bg-[#EA580C] px-4 py-2.5 font-['Inter'] text-sm font-bold text-white shadow-[0px_4px_6px_-4px_#EA580C33,0px_10px_15px_-3px_#EA580C33] hover:bg-[#c2410c] disabled:opacity-50"
+              >
+                Continue
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={isLoading || selectedDiscounts.length === 0}
+                className="flex items-center gap-2 rounded-[14px] bg-[#EA580C] px-4 py-2.5 font-['Inter'] text-sm font-bold text-white shadow-[0px_4px_6px_-4px_#EA580C33,0px_10px_15px_-3px_#EA580C33] hover:bg-[#c2410c] disabled:opacity-50"
+              >
+                {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                {isEditing ? "Update Discount" : "Create Discount"}
+              </button>
+            )}
           </div>
         </form>
       </div>
