@@ -1,13 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import * as sessionService from "@/services/sessionService";
+import type { AllHistorySession } from "@/services/sessionService";
 import {
   Wallet,
   ArrowUpCircle,
   Clock,
   Lock,
   Pencil,
+  RefreshCw,
   TrendingUp,
   TrendingDown,
   Users,
@@ -23,6 +25,7 @@ import CreateDrawerSessionModal from "@/components/drawer/CreateDrawerSessionMod
 import CashSalesIcon from "@/components/icons/CashSalesIcon";
 import DrawerCashIcon from "@/components/icons/DrawerCashIcon";
 import { useDrawerSession } from "@/contexts/DrawerSessionContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 function formatRs(n: number) {
   return `Rs.${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -44,6 +47,9 @@ interface CashierSession {
 }
 
 interface SessionHistoryRow {
+  id: number;
+  cashierId?: number;
+  closedAtRaw: string | null;
   cashier: string;
   date: string;
   startTime: string;
@@ -66,6 +72,7 @@ interface CashOutEntry {
 }
 
 export default function ManagerDrawerContent() {
+  const { user } = useAuth();
   const drawerSession = useDrawerSession();
   if (!drawerSession)
     throw new Error("ManagerDrawerContent must be used within DrawerSessionProvider");
@@ -88,255 +95,248 @@ export default function ManagerDrawerContent() {
   const [discrepancyFilter, setDiscrepancyFilter] = useState("all");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [historyRows, setHistoryRows] = useState<SessionHistoryRow[]>([]);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(true);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [activeSessionDetail, setActiveSessionDetail] = useState<sessionService.ActiveSessionDetail | null>(null);
 
-  // TODO: Replace with API data
-  const totalExpectedBalance = 25000;
-  const totalCashSales = 25230;
-  const totalCashOuts = 5000;
-
-  const todaysSessions: CashierSession[] = [
-    {
-      id: "1",
-      cashierName: "James Westervelt",
-      sessionTime: "08:30 AM - 10:30 AM",
-      drawerBalance: 5000,
-      cashSales: 5230,
-      cashSalesOrders: 12,
-      cashOuts: 0,
-      cashOutsTimes: 0,
-      outstanding: 0,
-      expectedBalance: 10230,
-      actualBalance: 10230,
-      isActive: false,
-    },
-    {
-      id: "2",
-      cashierName: "Emma Johnson",
-      sessionTime: "10:30 AM - 11:30 AM",
-      drawerBalance: 10230,
-      cashSales: 10000,
-      cashSalesOrders: 8,
-      cashOuts: 5000,
-      cashOutsTimes: 1,
-      outstanding: 230,
-      expectedBalance: 15230,
-      actualBalance: 15000,
-      isActive: false,
-    },
-    {
-      id: "3",
-      cashierName: "Michael Brown",
-      sessionTime: "11:30 AM - Present",
-      drawerBalance: 15000,
-      cashSales: 5000,
-      cashSalesOrders: 15,
-      cashOuts: 0,
-      cashOutsTimes: 0,
-      outstanding: 0,
-      expectedBalance: 20000,
-      actualBalance: null,
-      isActive: true,
-    },
-  ];
-
-  const sessionHistory: SessionHistoryRow[] = [
-    {
-      cashier: "Emma Johnson",
-      date: "Feb 26, 2026",
-      startTime: "09:30 AM",
-      endTime: "05:30 PM",
-      initial: 1150,
-      cashSales: 8325.5,
-      cashSalesOrders: 14,
-      cashOuts: 500,
-      cashOutsTimes: 1,
-      expected: 425.5,
-      actual: 430,
-      difference: 4.5,
-      closedBy: "Roger Korsgaard",
-    },
-    {
-      cashier: "Wilson Kenter",
-      date: "Feb 26, 2026",
-      startTime: "08:00 AM",
-      endTime: "04:00 PM",
-      initial: 2000,
-      cashSales: 3367.8,
-      cashSalesOrders: 18,
-      cashOuts: 0,
-      cashOutsTimes: 0,
-      expected: 567.8,
-      actual: 567.8,
-      difference: null,
-      closedBy: "Davis Bergson",
-    },
-    {
-      cashier: "Michael Brown",
-      date: "Feb 25, 2026",
-      startTime: "07:00 AM",
-      endTime: "03:00 PM",
-      initial: 5000,
-      cashSales: 12500.75,
-      cashSalesOrders: 32,
-      cashOuts: 2000,
-      cashOutsTimes: 2,
-      expected: 15500.75,
-      actual: 15498.45,
-      difference: -2.3,
-      closedBy: "Roger Korsgaard",
-    },
-    {
-      cashier: "Sarah Williams",
-      date: "Feb 25, 2026",
-      startTime: "10:00 AM",
-      endTime: "06:00 PM",
-      initial: 3000,
-      cashSales: 8920.25,
-      cashSalesOrders: 22,
-      cashOuts: 1500,
-      cashOutsTimes: 1,
-      expected: 10420.25,
-      actual: 10420.25,
-      difference: null,
-      closedBy: "Davis Bergson",
-    },
-    {
-      cashier: "James Westervelt",
-      date: "Feb 24, 2026",
-      startTime: "08:30 AM",
-      endTime: "04:30 PM",
-      initial: 4500,
-      cashSales: 18250,
-      cashSalesOrders: 45,
-      cashOuts: 5000,
-      cashOutsTimes: 3,
-      expected: 17750,
-      actual: 17755.5,
-      difference: 5.5,
-      closedBy: "Roger Korsgaard",
-    },
-    {
-      cashier: "Emma Johnson",
-      date: "Feb 24, 2026",
-      startTime: "09:00 AM",
-      endTime: "05:00 PM",
-      initial: 2500,
-      cashSales: 6750.5,
-      cashSalesOrders: 19,
-      cashOuts: 0,
-      cashOutsTimes: 0,
-      expected: 9250.5,
-      actual: 9248,
-      difference: -2000000.5,
-      closedBy: "Wilson Kenter",
-    },
-    {
-      cashier: "Davis Bergson",
-      date: "Feb 23, 2026",
-      startTime: "06:30 AM",
-      endTime: "02:30 PM",
-      initial: 4000,
-      cashSales: 11200,
-      cashSalesOrders: 28,
-      cashOuts: 3000,
-      cashOutsTimes: 2,
-      expected: 12200,
-      actual: 12200,
-      difference: null,
-      closedBy: "Roger Korsgaard",
-    },
-    {
-      cashier: "Wilson Kenter",
-      date: "Feb 23, 2026",
-      startTime: "11:00 AM",
-      endTime: "07:00 PM",
-      initial: 1500,
-      cashSales: 4520.75,
-      cashSalesOrders: 12,
-      cashOuts: 800,
-      cashOutsTimes: 1,
-      expected: 5220.75,
-      actual: 5223,
-      difference: 2000000.25,
-      closedBy: "Davis Bergson",
-    },
-    {
-      cashier: "Sarah Williams",
-      date: "Feb 22, 2026",
-      startTime: "08:00 AM",
-      endTime: "04:00 PM",
-      initial: 3500,
-      cashSales: 9850000.25,
-      cashSalesOrders: 25,
-      cashOuts: 1200000,
-      cashOutsTimes: 1,
-      expected: 1215000.25,
-      actual: 1214700.5,
-      difference: -2.75,
-      closedBy: "Roger Korsgaard",
-    },
-    {
-      cashier: "Michael Brown",
-      date: "Feb 22, 2026",
-      startTime: "07:30 AM",
-      endTime: "03:30 PM",
-      initial: 6000,
-      cashSales: 15600,
-      cashSalesOrders: 38,
-      cashOuts: 4000,
-      cashOutsTimes: 2,
-      expected: 17600,
-      actual: 17600,
-      difference: null,
-      closedBy: "Davis Bergson",
-    },
-    {
-      cashier: "James Westervelt",
-      date: "Feb 21, 2026",
-      startTime: "09:30 AM",
-      endTime: "05:30 PM",
-      initial: 2200,
-      cashSales: 7230.5,
-      cashSalesOrders: 21,
-      cashOuts: 500,
-      cashOutsTimes: 1,
-      expected: 8930.5,
-      actual: 8935,
-      difference: 4.5,
-      closedBy: "Wilson Kenter",
-    },
-    {
-      cashier: "Emma Johnson",
-      date: "Feb 21, 2026",
-      startTime: "10:00 AM",
-      endTime: "06:00 PM",
-      initial: 1800,
-      cashSales: 5420.75,
-      cashSalesOrders: 15,
-      cashOuts: 0,
-      cashOutsTimes: 0,
-      expected: 7220.75,
-      actual: 7218.25,
-      difference: -2.5,
-      closedBy: "Roger Korsgaard",
-    },
-  ];
-
-  const cashOutHistory: CashOutEntry[] = [
-    { dateTime: "2/27/2026 • 04:06 PM", by: "Dowson", amount: 100000 },
-  ];
-
-  const [previousSessions, setPreviousSessions] = useState<{ closedAt: string; closedBy: string; closingAmount: number }[]>([]);
-  useEffect(() => {
-    sessionService.getSessionHistory().then((list) => {
-      setPreviousSessions(list.map(sessionService.mapHistoryItemToSummary));
-    }).catch(() => {});
+  /** Map GET /api/sessions/all-history item to table row. Uses backend's camelCase shape. */
+  const mapAllHistoryToRow = useCallback((item: AllHistorySession): SessionHistoryRow => {
+    const rawEnd = item.endTime ?? item.date;
+    const endDate = rawEnd ? new Date(rawEnd) : null;
+    const startDate = item.startTime ? new Date(item.startTime) : null;
+    const date = endDate
+      ? endDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+      : "";
+    const startTime = startDate
+      ? startDate.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })
+      : "";
+    const endTime = endDate
+      ? endDate.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })
+      : "";
+    const cashSales = item.cashSales?.amount ?? 0;
+    const cashSalesOrders = item.cashSales?.count ?? 0;
+    const cashOuts = item.cashOuts?.amount ?? 0;
+    const cashOutsTimes = item.cashOuts?.count ?? 0;
+    const diff =
+      item.expected === 0 && item.actual === 0 ? null : Number((item.actual - item.expected).toFixed(2));
+    return {
+      id: item.id,
+      cashierId: item.cashierId,
+      closedAtRaw: rawEnd,
+      cashier: item.cashierName,
+      date,
+      startTime,
+      endTime,
+      initial: item.initial,
+      cashSales,
+      cashSalesOrders,
+      cashOuts,
+      cashOutsTimes,
+      expected: item.expected,
+      actual: item.actual,
+      difference: diff,
+      closedBy: item.closedBy,
+    };
   }, []);
 
-  const expectedBalance = 29230;
-  const cashSales = 125230;
-  const cashOuts = 100000;
-  const activeSessionsCount = todaysSessions.filter((s) => s.isActive).length;
+  const fetchSessionHistory = useCallback(async () => {
+    setIsHistoryLoading(true);
+    setHistoryError(null);
+    try {
+      const items = await sessionService.getAllSessionHistory({
+        fromDate: fromDate || undefined,
+        toDate: toDate || undefined,
+      });
+      setHistoryRows(items.map(mapAllHistoryToRow));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to load session history.";
+      setHistoryError(message);
+      setHistoryRows([]);
+    } finally {
+      setIsHistoryLoading(false);
+    }
+  }, [fromDate, toDate, mapAllHistoryToRow]);
+
+  useEffect(() => {
+    fetchSessionHistory();
+  }, [fetchSessionHistory]);
+
+  const fetchActiveSessionDetail = useCallback(async () => {
+    if (!hasActiveSession) {
+      setActiveSessionDetail(null);
+      return;
+    }
+    try {
+      const detail = await sessionService.getActiveSessionDetail();
+      setActiveSessionDetail(detail);
+    } catch {
+      setActiveSessionDetail(null);
+    }
+  }, [hasActiveSession]);
+
+  useEffect(() => {
+    if (!hasActiveSession) {
+      setActiveSessionDetail(null);
+      return;
+    }
+    fetchActiveSessionDetail();
+    const onFocus = () => {
+      fetchActiveSessionDetail().catch(() => {});
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [hasActiveSession, fetchActiveSessionDetail]);
+
+  const uniqueCashiers = useMemo(
+    () => [...new Set(historyRows.map((r) => r.cashier).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+    [historyRows]
+  );
+
+  const filteredRows = historyRows.filter((row) => {
+    const matchesSearch =
+      !searchQuery.trim() ||
+      row.cashier.toLowerCase().includes(searchQuery.trim().toLowerCase());
+
+    const matchesCashier =
+      cashierFilter === "all" ||
+      row.cashier.toLowerCase() === cashierFilter.toLowerCase();
+
+    const matchesDiscrepancy =
+      discrepancyFilter === "all"
+        ? true
+        : discrepancyFilter === "balanced"
+          ? row.difference === null || Math.abs(row.difference) < 0.01
+          : discrepancyFilter === "overage"
+            ? (row.difference ?? 0) > 0.01
+            : (row.difference ?? 0) < -0.01;
+
+    const rowDate = row.closedAtRaw ? new Date(row.closedAtRaw) : null;
+    const matchesFrom =
+      !fromDate || !rowDate || rowDate >= new Date(fromDate + "T00:00:00");
+    const matchesTo =
+      !toDate || !rowDate || rowDate <= new Date(toDate + "T23:59:59");
+
+    return (
+      matchesSearch && matchesCashier && matchesDiscrepancy && matchesFrom && matchesTo
+    );
+  });
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todaysSessions: CashierSession[] = filteredRows
+    .filter((row) => {
+      if (!row.closedAtRaw) return false;
+      const d = new Date(row.closedAtRaw);
+      d.setHours(0, 0, 0, 0);
+      return d.getTime() === today.getTime();
+    })
+    .map((row, index) => ({
+      id: String(index),
+      cashierName: row.cashier,
+      sessionTime:
+        row.startTime && row.endTime ? `${row.startTime} - ${row.endTime}` : "",
+      drawerBalance: row.initial,
+      cashSales: row.cashSales,
+      cashSalesOrders: row.cashSalesOrders,
+      cashOuts: row.cashOuts,
+      cashOutsTimes: row.cashOutsTimes,
+      outstanding: row.difference ?? 0,
+      expectedBalance: row.expected,
+      actualBalance: row.actual,
+      isActive: false,
+    }));
+
+  // Active session (current user): show as first card with "Present", ACTIVE badge, "Session hasn't ended".
+  // Drawer Balance = opening/initial amount; cash sales/outs and expected balance from live API when available.
+  const activeSessionCard: CashierSession | null =
+    hasActiveSession && sessionData
+      ? {
+          id: "active",
+          cashierName: user?.name ?? "Current user",
+          sessionTime: `${activeSessionDetail?.startedAt ?? sessionData.startedAt} - Present`,
+          drawerBalance: activeSessionDetail?.initialAmount ?? sessionData.initialAmount,
+          cashSales: activeSessionDetail?.cashSalesAmount ?? 0,
+          cashSalesOrders: activeSessionDetail?.cashSalesCount ?? 0,
+          cashOuts: activeSessionDetail?.cashOutsAmount ?? 0,
+          cashOutsTimes: activeSessionDetail?.cashOutsCount ?? 0,
+          outstanding: 0,
+          expectedBalance:
+            activeSessionDetail != null
+              ? activeSessionDetail.currentBalance
+              : sessionData.initialAmount,
+          actualBalance: null,
+          isActive: true,
+        }
+      : null;
+
+  // When showing active session card, don't duplicate it from history (backend may sometimes return open session in history).
+  const closedTodaySessions =
+    activeSessionCard && user?.name
+      ? todaysSessions.filter(
+          (s) => !(s.cashierName === user.name && s.sessionTime.startsWith(sessionData?.startedAt ?? "")
+          )
+        )
+      : todaysSessions;
+  const sessionsToDisplay: CashierSession[] = activeSessionCard
+    ? [activeSessionCard, ...closedTodaySessions]
+    : todaysSessions;
+
+  // Summary cards: today's closed sessions only — actual balances, cash sales, cash outs (exclude active)
+  const totalExpectedBalance = todaysSessions.reduce(
+    (sum, s) => sum + (s.actualBalance ?? 0),
+    0,
+  );
+  const totalCashSales = todaysSessions.reduce(
+    (sum, s) => sum + (Number.isFinite(s.cashSales) ? s.cashSales : 0),
+    0,
+  );
+  const totalCashOuts = todaysSessions.reduce(
+    (sum, s) => sum + (Number.isFinite(s.cashOuts) ? s.cashOuts : 0),
+    0,
+  );
+
+  const cashOutHistory: CashOutEntry[] = filteredRows
+    .filter((row) => row.cashOuts > 0)
+    .slice(0, 5)
+    .map((row) => ({
+      dateTime: row.endTime ? `${row.date} • ${row.endTime}` : row.date,
+      by: row.cashier,
+      amount: row.cashOuts,
+    }));
+
+  const [previousSessions, setPreviousSessions] = useState<{
+    closedAt: string;
+    closedBy: string;
+    closingAmount: number;
+  }[]>([]);
+  useEffect(() => {
+    sessionService
+      .getSessionHistory()
+      .then((list) => {
+        if (!list || list.length === 0) {
+          setPreviousSessions([]);
+          return;
+        }
+        // Sort by closed time descending and keep only the most recent closed session
+        const sorted = [...list].sort((a, b) => {
+          const aTimeRaw = (a.closedAt ?? a.endTime) ?? "";
+          const bTimeRaw = (b.closedAt ?? b.endTime) ?? "";
+          const aTime = aTimeRaw ? new Date(aTimeRaw).getTime() : 0;
+          const bTime = bTimeRaw ? new Date(bTimeRaw).getTime() : 0;
+          return bTime - aTime;
+        });
+        const latest = sorted[0] ? [sessionService.mapHistoryItemToSummary(sorted[0])] : [];
+        setPreviousSessions(latest);
+      })
+      .catch(() => {});
+  }, []);
+
+  const expectedBalance =
+    activeSessionDetail?.currentBalance ?? sessionData?.initialAmount ?? 0;
+  const cashSales = activeSessionDetail?.cashSalesAmount ?? 0;
+  const cashOuts = activeSessionDetail?.cashOutsAmount ?? 0;
+  const activeSessionsCount = sessionsToDisplay.length;
 
   const handleStartDrawer = async (openingAmount: number, managerPasscode: string) => {
     await sessionService.startSession({ startBalance: openingAmount, passcode: managerPasscode });
@@ -364,28 +364,27 @@ export default function ManagerDrawerContent() {
   };
 
   const handleEditInitialAmount = async (newAmount: number, reason: string, passcode: string) => {
-    await sessionData
-      ? sessionService.adjustInitialAmount({
-          currentAmount: sessionData.initialAmount,
-          newAmount,
-          reason,
-          passcode,
-        })
-      : Promise.resolve();
-    if (sessionData) {
-      setSessionData({ ...sessionData, initialAmount: newAmount });
-    }
+    if (!sessionData) return;
+    await sessionService.adjustInitialAmount({
+      currentAmount: sessionData.initialAmount,
+      newAmount,
+      reason,
+      passcode,
+    });
+    setSessionData({ ...sessionData, initialAmount: newAmount });
   };
 
   const handleCashOut = async (amount: number, reason: string, passcode: string) => {
     // Cash out from drawer: backend models this as cash-action remove.
     await sessionService.cashAction({ type: "remove", amount, description: reason, passcode });
+    fetchActiveSessionDetail().catch(() => {});
   };
 
   const handleCloseSession = async (actualBalance: number, passcode: string) => {
     await sessionService.closeSession({ passcode, actualBalance, closingAmount: actualBalance });
     setHasActiveSession(false);
     setSessionData(null);
+    fetchSessionHistory().catch(() => {});
   };
 
   const handleCloseTheDrawer = async (amount: number, passcode: string) => {
@@ -393,6 +392,7 @@ export default function ManagerDrawerContent() {
     setHasDrawerStarted(false);
     setHasActiveSession(false);
     setSessionData(null);
+    fetchSessionHistory().catch(() => {});
   };
 
   return (
@@ -470,7 +470,7 @@ export default function ManagerDrawerContent() {
             </span>
           </div>
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-            {todaysSessions.map((session) => (
+            {sessionsToDisplay.map((session) => (
               <div
                 key={session.id}
                 className="flex flex-col gap-4 rounded-2xl border-2 border-[#E2E8F0] bg-[#F8FAFC] p-[22px] shadow-[0px_1px_2px_-1px_#0000001A,0px_1px_3px_0px_#0000001A]"
@@ -594,53 +594,74 @@ export default function ManagerDrawerContent() {
 
         {/* Session History */}
         <div className="mb-10 flex flex-col gap-6 rounded-[24px] border border-[#E2E8F0] bg-white p-[25px] shadow-[0px_1px_2px_-1px_#0000001A,0px_1px_3px_0px_#0000001A]">
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-[16px] bg-[#F1F5F9]">
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                className="text-[#45556C]"
-              >
-                <path
-                  d="M8 2V6"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M16 2V6"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M19 4H5C3.89543 4 3 4.89543 3 6V20C3 21.1046 3.89543 22 5 22H19C20.1046 22 21 21.1046 21 20V6C21 4.89543 20.1046 4 19 4Z"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M3 10H21"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[16px] bg-[#F1F5F9]">
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="text-[#45556C]"
+                >
+                  <path
+                    d="M8 2V6"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M16 2V6"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M19 4H5C3.89543 4 3 4.89543 3 6V20C3 21.1046 3.89543 22 5 22H19C20.1046 22 21 21.1046 21 20V6C21 4.89543 20.1046 4 19 4Z"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M3 10H21"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </div>
+              <div className="flex flex-col min-w-0">
+                <h2 className="font-['Inter'] text-2xl font-bold leading-8 text-[#1D293D]">
+                  Session History
+                </h2>
+                <p className="font-['Inter'] text-sm font-normal leading-5 text-[#62748E]">
+                  View all closed drawer sessions
+                </p>
+              </div>
             </div>
-            <div className="flex flex-col">
-              <h2 className="font-['Inter'] text-2xl font-bold leading-8 text-[#1D293D]">
-                Session History
-              </h2>
-              <p className="font-['Inter'] text-sm font-normal leading-5 text-[#62748E]">
-                View all closed drawer sessions
-              </p>
+            <div className="flex shrink-0 items-center gap-2">
+              {historyRows.length >= sessionService.ALL_HISTORY_CAP && (
+                <span className="hidden font-['Inter'] text-xs text-[#62748E] sm:inline">
+                  Latest {sessionService.ALL_HISTORY_CAP} sessions
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={fetchSessionHistory}
+                disabled={isHistoryLoading}
+                title="Refresh session history"
+                className="flex h-10 w-10 items-center justify-center rounded-[12px] border border-[#E2E8F0] bg-white text-[#45556C] transition-colors hover:bg-[#F1F5F9] hover:text-[#1D293D] disabled:opacity-50"
+              >
+                <RefreshCw
+                  className={`h-5 w-5 ${isHistoryLoading ? "animate-spin" : ""}`}
+                  aria-hidden
+                />
+              </button>
             </div>
           </div>
           <div className="grid grid-cols-1 gap-4 rounded-[16px] border border-[#E2E8F0] bg-[#F8FAFC] px-[25px] pt-[25px] pb-[15px] sm:grid-cols-2 lg:grid-cols-5">
@@ -666,6 +687,11 @@ export default function ManagerDrawerContent() {
                 className="h-[44px] w-full min-w-0 appearance-none rounded-[14px] border-2 border-[#E2E8F0] bg-white bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2390A1B9%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:20px_20px] bg-[right_12px_center] bg-no-repeat pl-4 pr-12 font-['Inter'] text-sm text-[#1D293D] outline-none focus:border-[#EA580C]"
               >
                 <option value="all">All Cashiers</option>
+                {uniqueCashiers.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="flex min-w-0 flex-col gap-1.5">
@@ -715,10 +741,27 @@ export default function ManagerDrawerContent() {
               </div>
             </div>
           </div>
+          {historyError && (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 font-['Inter'] text-sm text-red-700 flex items-center justify-between gap-3">
+              <span>{historyError}</span>
+              <button
+                type="button"
+                onClick={fetchSessionHistory}
+                className="shrink-0 rounded-lg bg-red-100 px-3 py-1.5 font-['Inter'] text-sm font-bold text-red-800 hover:bg-red-200"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+          {isHistoryLoading && historyRows.length === 0 ? (
+            <div className="flex min-h-[200px] items-center justify-center rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] font-['Inter'] text-sm text-[#62748E]">
+              Loading session history…
+            </div>
+          ) : (
           <div className="scrollbar-subtle max-h-[500px] overflow-y-auto overflow-x-hidden">
             <table className="w-full table-fixed font-['Inter']">
-              <thead>
-                <tr className="h-12 border-b-2 border-[#E2E8F0] bg-[#F8FAFC]">
+              <thead className="sticky top-0 z-10 border-b-2 border-[#E2E8F0] bg-[#F8FAFC] shadow-[0_1px_0_0_#E2E8F0]">
+                <tr className="h-12 bg-[#F8FAFC]">
                   <th className="w-[10%] px-3 py-2.5 text-left font-['Inter'] text-sm font-bold leading-5 text-[#45556C]">
                     Cashier
                   </th>
@@ -755,8 +798,8 @@ export default function ManagerDrawerContent() {
                 </tr>
               </thead>
               <tbody>
-                {sessionHistory.map((row, i) => (
-                  <tr key={i} className="border-b border-[#F1F5F9] bg-white">
+                {filteredRows.map((row: SessionHistoryRow) => (
+                  <tr key={row.id} className="border-b border-[#F1F5F9] bg-white">
                     <td className="min-w-0 overflow-hidden px-3 py-2.5 font-['Inter'] text-sm font-bold leading-5 text-[#1D293D]">
                       <span className="block truncate" title={row.cashier}>
                         {row.cashier}
@@ -813,7 +856,8 @@ export default function ManagerDrawerContent() {
                       </div>
                     </td>
                     <td className="min-w-0 px-3 py-2.5">
-                      {row.difference === null ? (
+                      {row.difference === null ||
+                      (typeof row.difference === "number" && Math.abs(row.difference) < 0.01) ? (
                         <span className="inline-flex h-[30px] items-center gap-1.5 rounded-[10px] border border-[#A4F4CF] bg-[#D0FAE5] px-2.5 py-1">
                           <svg
                             width="14"
@@ -821,19 +865,13 @@ export default function ManagerDrawerContent() {
                             viewBox="0 0 14 14"
                             fill="none"
                             xmlns="http://www.w3.org/2000/svg"
-                            className="shrink-0"
+                            className="shrink-0 text-[#007A55]"
+                            aria-hidden
                           >
                             <path
-                              d="M6.99984 12.8337C10.2215 12.8337 12.8332 10.222 12.8332 7.00033C12.8332 3.77866 10.2215 1.16699 6.99984 1.16699C3.77818 1.16699 1.1665 3.77866 1.1665 7.00033C1.1665 10.222 3.77818 12.8337 6.99984 12.8337Z"
-                              stroke="#007A55"
-                              strokeWidth="1.16667"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                            <path
-                              d="M5.25 6.99967L6.41667 8.16634L8.75 5.83301"
-                              stroke="#007A55"
-                              strokeWidth="1.16667"
+                              d="M11.6668 3.5L5.25016 9.91667L2.3335 7"
+                              stroke="currentColor"
+                              strokeWidth="1.75"
                               strokeLinecap="round"
                               strokeLinejoin="round"
                             />
@@ -872,6 +910,7 @@ export default function ManagerDrawerContent() {
               </tbody>
             </table>
           </div>
+          )}
         </div>
 
         {/* Manager's own session - active session or no-session guidance */}
