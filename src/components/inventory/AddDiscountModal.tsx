@@ -34,7 +34,7 @@ type SelectedDiscount = {
   basePrice: number;
   type: DiscountType;
   value: number;
-  branchId?: number; // Added to track which branch this configuration belongs to
+  branchId?: number;
 };
 
 type AddDiscountModalProps = {
@@ -64,7 +64,7 @@ export default function AddDiscountModal({
   const [expiryDate, setExpiryDate] = useState("");
   const [isForAllBranches, setIsForAllBranches] = useState(true);
   const [selectedBranchIds, setSelectedBranchIds] = useState<number[]>([]);
-  const [activeBranchId, setActiveBranchId] = useState<number | null>(null); // For branch-specific product selection in Step 2
+  const [activeBranchId, setActiveBranchId] = useState<number | null>(null);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedProduct, setExpandedProduct] = useState<number | null>(null);
@@ -453,8 +453,8 @@ export default function AddDiscountModal({
                                             {isSelected(product.id) && <Check className="h-3 w-3 text-white" />}
                                           </div>
                                           <div className="flex flex-col">
-                                          <span className="flex-1 font-['Inter'] text-sm font-medium text-[#1D293D]">{product.name}</span>
-                                          <span className="font-['Inter'] text-xs text-[#90A1B9]">{formatPrice(Number(product.variations?.[0]?.options?.[0]?.prices?.[0]?.price || 0))}</span>
+                                            <span className="flex-1 font-['Inter'] text-sm font-medium text-[#314158]">{product.name}</span>
+                                            <span className="font-['Inter'] text-xs text-[#90A1B9]">{formatPrice(Number(product.variations?.[0]?.options?.[0]?.prices?.[0]?.price || 0))}</span>
                                           </div>
                                         </button>
                                       ) : (
