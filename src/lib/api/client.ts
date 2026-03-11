@@ -4,9 +4,14 @@
 
 const getBaseUrl = () => {
   if (typeof window !== "undefined") {
-    return process.env.NEXT_PUBLIC_API_URL ?? "/api";
+    const origin =
+      (process.env.NEXT_PUBLIC_API_URL ?? "").trim().replace(/\/+$/, "").replace(/\/api$/i, "");
+    // In the browser, default to same-origin Next.js API routes if no backend origin is configured.
+    return origin ? `${origin}/api` : "/api";
   }
-  return process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
+  const origin =
+    (process.env.NEXT_PUBLIC_API_URL ?? "").trim().replace(/\/+$/, "").replace(/\/api$/i, "");
+  return origin ? `${origin}/api` : "http://localhost:3001/api";
 };
 
 export class ApiError extends Error {

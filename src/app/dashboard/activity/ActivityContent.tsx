@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import {
   Search,
@@ -55,6 +55,7 @@ function PaymentReceivedIcon({ className }: { className?: string }) {
 import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
 import { ROUTES } from "@/lib/constants";
 import { BRANCHES } from "@/lib/branchData";
+import { getActivityLogs } from "@/services/activityLogService";
 
 export type ActivityType =
   | "order_placed"
@@ -79,61 +80,6 @@ export interface ActivityLogEntry {
   currency: string;
   hasManagerApproval: boolean;
 }
-
-const MOCK_ACTIVITIES: ActivityLogEntry[] = [
-  {
-    id: "1",
-    dateTime: "2026-03-04T12:52:00",
-    activityType: "order_placed",
-    description: "New order placed for dine-in at Table 5",
-    userName: "Emma Johnson",
-    role: "Cashier",
-    branchName: "Maharagama",
-    orderId: "ORD-0032",
-    amount: 4700.5,
-    currency: "Rs.",
-    hasManagerApproval: false,
-  },
-  {
-    id: "2",
-    dateTime: "2026-03-04T12:22:00",
-    activityType: "order_refunded",
-    description: "Order refunded due to customer complaint about food quality",
-    userName: "Michael Brown",
-    role: "Manager",
-    branchName: "Maharagama",
-    orderId: "ORD-0028",
-    amount: 47000000.5,
-    currency: "Rs.",
-    hasManagerApproval: true,
-  },
-  {
-    id: "3",
-    dateTime: "2026-03-04T11:37:00",
-    activityType: "cash_out",
-    description: "Cash out performed during shift",
-    userName: "Emma Johnson",
-    role: "Cashier",
-    branchName: "Maharagama",
-    orderId: null,
-    amount: 4700.5,
-    currency: "Rs.",
-    hasManagerApproval: true,
-  },
-  {
-    id: "4",
-    dateTime: "2026-03-04T11:07:00",
-    activityType: "payment_received",
-    description: "Payment received for Order #ORD-0031",
-    userName: "Emma Johnson",
-    role: "Cashier",
-    branchName: "Maharagama",
-    orderId: "ORD-0031",
-    amount: 89.75,
-    currency: "Rs.",
-    hasManagerApproval: false,
-  },
-];
 
 const ACTIVITY_TYPES = [
   { value: "all", label: "All Types" },
@@ -204,45 +150,78 @@ function formatTime(dateStr: string) {
 
 export default function ActivityContent() {
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [activityType, setActivityType] = useState("all");
   const [userRole, setUserRole] = useState("all");
   const [branch, setBranch] = useState("all");
-  const [fromDate, setFromDate] = useState("");
-  const [toDate, setToDate] = useState("");
+  const [fromDate, setFromDate] = useState(() => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    return start.toISOString().slice(0, 10);
+  });
+  const [toDate, setToDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [managerApprovalOnly, setManagerApprovalOnly] = useState(false);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [activities, setActivities] = useState<ActivityLogEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const requestSeqRef = useRef(0);
 
-  const filteredActivities = useMemo(() => {
-    return MOCK_ACTIVITIES.filter((activity) => {
-      const matchesSearch =
-        !search ||
-        activity.description.toLowerCase().includes(search.toLowerCase()) ||
-        activity.userName.toLowerCase().includes(search.toLowerCase()) ||
-        (activity.orderId?.toLowerCase().includes(search.toLowerCase()) ?? false);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 350);
+    return () => clearTimeout(t);
+  }, [search]);
 
-      const matchesActivityType = activityType === "all" || activity.activityType === activityType;
+  const fetchActivities = useCallback(async () => {
+    const requestSeq = ++requestSeqRef.current;
+    setLoading(true);
+    setError(null);
+    try {
+      const activityTypeLabel =
+        activityType === "all"
+          ? undefined
+          : ACTIVITY_TYPES.find((t) => t.value === activityType)?.label;
+      const branchId =
+        branch === "all"
+          ? undefined
+          : BRANCHES.find((b) => b.name === branch)?.numericId;
 
-      const matchesRole = userRole === "all" || activity.role === userRole;
+      const res = await getActivityLogs({
+        search: debouncedSearch.trim() || undefined,
+        activityType: activityTypeLabel,
+        userRole: userRole === "all" ? undefined : userRole,
+        branchId,
+        // Default: keep the payload bounded to current month unless user changes it.
+        fromDate: fromDate,
+        toDate: toDate,
+        withManagerApproval: managerApprovalOnly ? true : undefined,
+      });
 
-      const matchesBranch =
-        branch === "all" || activity.branchName.toLowerCase().includes(branch.toLowerCase());
+      // Ignore stale responses (fast filter changes / slow network)
+      if (requestSeq !== requestSeqRef.current) return;
 
-      const matchesDateRange =
-        (!fromDate || new Date(activity.dateTime) >= new Date(fromDate)) &&
-        (!toDate || new Date(activity.dateTime) <= new Date(toDate));
+      setActivities(res.items);
+    } catch (err) {
+      if (requestSeq !== requestSeqRef.current) return;
+      setError(err instanceof Error ? err.message : "Failed to load activity log");
+      setActivities([]);
+    } finally {
+      if (requestSeq !== requestSeqRef.current) return;
+      setLoading(false);
+    }
+  }, [
+    debouncedSearch,
+    activityType,
+    userRole,
+    branch,
+    fromDate,
+    toDate,
+    managerApprovalOnly,
+  ]);
 
-      const matchesManagerApproval = !managerApprovalOnly || activity.hasManagerApproval;
-
-      return (
-        matchesSearch &&
-        matchesActivityType &&
-        matchesRole &&
-        matchesBranch &&
-        matchesDateRange &&
-        matchesManagerApproval
-      );
-    });
-  }, [search, activityType, userRole, branch, fromDate, toDate, managerApprovalOnly]);
+  useEffect(() => {
+    fetchActivities();
+  }, [fetchActivities]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#F8FAFC]">
@@ -403,42 +382,50 @@ export default function ActivityContent() {
                   <col className="w-[6%]" />
                   <col className="w-[7%]" />
                 </colgroup>
-                <thead className="border-b-2 border-[#E2E8F0] bg-[#F8FAFC]">
+                <thead className="sticky top-0 z-20 border-b-2 border-[#E2E8F0] bg-[#F8FAFC]">
                   <tr className="h-10 sm:h-11 xl:h-12">
-                    <th className="px-2.5 py-2.5 font-['Inter'] text-[11px] font-bold uppercase leading-4 tracking-[0.5px] text-[#45556C] sm:px-3 sm:py-3 sm:text-[12px] xl:px-4 xl:py-3.5 xl:text-[13px]">
+                    <th className="sticky top-0 z-20 bg-[#F8FAFC] px-2.5 py-2.5 font-['Inter'] text-[11px] font-bold uppercase leading-4 tracking-[0.5px] text-[#45556C] sm:px-3 sm:py-3 sm:text-[12px] xl:px-4 xl:py-3.5 xl:text-[13px]">
                       Date & Time
                     </th>
-                    <th className="px-2 py-2.5 font-['Inter'] text-[11px] font-bold uppercase leading-4 tracking-[0.5px] text-[#45556C] sm:px-2.5 sm:py-3 sm:text-[12px] xl:px-3 xl:py-3.5 xl:text-[13px]">
+                    <th className="sticky top-0 z-20 bg-[#F8FAFC] px-2 py-2.5 font-['Inter'] text-[11px] font-bold uppercase leading-4 tracking-[0.5px] text-[#45556C] sm:px-2.5 sm:py-3 sm:text-[12px] xl:px-3 xl:py-3.5 xl:text-[13px]">
                       Activity Type
                     </th>
-                    <th className="px-2 py-2.5 font-['Inter'] text-[11px] font-bold uppercase leading-4 tracking-[0.5px] text-[#45556C] sm:px-2.5 sm:py-3 sm:text-[12px] xl:px-3 xl:py-3.5 xl:text-[13px]">
+                    <th className="sticky top-0 z-20 bg-[#F8FAFC] px-2 py-2.5 font-['Inter'] text-[11px] font-bold uppercase leading-4 tracking-[0.5px] text-[#45556C] sm:px-2.5 sm:py-3 sm:text-[12px] xl:px-3 xl:py-3.5 xl:text-[13px]">
                       Description
                     </th>
-                    <th className="px-2 py-2.5 font-['Inter'] text-[11px] font-bold uppercase leading-4 tracking-[0.5px] text-[#45556C] sm:px-2.5 sm:py-3 sm:text-[12px] xl:px-3 xl:py-3.5 xl:text-[13px]">
+                    <th className="sticky top-0 z-20 bg-[#F8FAFC] px-2 py-2.5 font-['Inter'] text-[11px] font-bold uppercase leading-4 tracking-[0.5px] text-[#45556C] sm:px-2.5 sm:py-3 sm:text-[12px] xl:px-3 xl:py-3.5 xl:text-[13px]">
                       User
                     </th>
-                    <th className="px-2 py-2.5 font-['Inter'] text-[11px] font-bold uppercase leading-4 tracking-[0.5px] text-[#45556C] sm:px-2.5 sm:py-3 sm:text-[12px] xl:px-3 xl:py-3.5 xl:text-[13px]">
+                    <th className="sticky top-0 z-20 bg-[#F8FAFC] px-2 py-2.5 font-['Inter'] text-[11px] font-bold uppercase leading-4 tracking-[0.5px] text-[#45556C] sm:px-2.5 sm:py-3 sm:text-[12px] xl:px-3 xl:py-3.5 xl:text-[13px]">
                       Role
                     </th>
-                    <th className="px-2 py-2.5 font-['Inter'] text-[11px] font-bold uppercase leading-4 tracking-[0.5px] text-[#45556C] sm:px-2.5 sm:py-3 sm:text-[12px] xl:px-3 xl:py-3.5 xl:text-[13px]">
+                    <th className="sticky top-0 z-20 bg-[#F8FAFC] px-2 py-2.5 font-['Inter'] text-[11px] font-bold uppercase leading-4 tracking-[0.5px] text-[#45556C] sm:px-2.5 sm:py-3 sm:text-[12px] xl:px-3 xl:py-3.5 xl:text-[13px]">
                       Branch
                     </th>
-                    <th className="px-2 py-2.5 font-['Inter'] text-[11px] font-bold uppercase leading-4 tracking-[0.5px] text-[#45556C] sm:px-2.5 sm:py-3 sm:text-[12px] xl:px-3 xl:py-3.5 xl:text-[13px]">
+                    <th className="sticky top-0 z-20 bg-[#F8FAFC] px-2 py-2.5 font-['Inter'] text-[11px] font-bold uppercase leading-4 tracking-[0.5px] text-[#45556C] sm:px-2.5 sm:py-3 sm:text-[12px] xl:px-3 xl:py-3.5 xl:text-[13px]">
                       Order ID
                     </th>
-                    <th className="px-2 py-2.5 font-['Inter'] text-[11px] font-bold uppercase leading-4 tracking-[0.5px] text-[#45556C] sm:px-2.5 sm:py-3 sm:text-[12px] xl:px-3 xl:py-3.5 xl:text-[13px]">
+                    <th className="sticky top-0 z-20 bg-[#F8FAFC] px-2 py-2.5 font-['Inter'] text-[11px] font-bold uppercase leading-4 tracking-[0.5px] text-[#45556C] sm:px-2.5 sm:py-3 sm:text-[12px] xl:px-3 xl:py-3.5 xl:text-[13px]">
                       Amount
                     </th>
-                    <th className="px-2 py-2.5 font-['Inter'] text-[11px] font-bold uppercase leading-4 tracking-[0.5px] text-[#45556C] sm:px-2.5 sm:py-3 sm:text-[12px] xl:px-3 xl:py-3.5 xl:text-[13px]">
+                    <th className="sticky top-0 z-20 bg-[#F8FAFC] px-2 py-2.5 font-['Inter'] text-[11px] font-bold uppercase leading-4 tracking-[0.5px] text-[#45556C] sm:px-2.5 sm:py-3 sm:text-[12px] xl:px-3 xl:py-3.5 xl:text-[13px]">
                       Manager
                     </th>
-                    <th className="px-2.5 py-2.5 font-['Inter'] text-[11px] font-bold uppercase leading-4 tracking-[0.5px] text-[#45556C] sm:px-3 sm:py-3 sm:text-[12px] xl:px-4 xl:py-3.5 xl:text-[13px]">
+                    <th className="sticky top-0 z-20 bg-[#F8FAFC] px-2.5 py-2.5 font-['Inter'] text-[11px] font-bold uppercase leading-4 tracking-[0.5px] text-[#45556C] sm:px-3 sm:py-3 sm:text-[12px] xl:px-4 xl:py-3.5 xl:text-[13px]">
                       Details
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#F1F5F9]">
-                  {filteredActivities.map((activity) => {
+                  {loading && (
+                    <tr>
+                      <td colSpan={10} className="px-4 py-12 text-center font-['Inter'] text-[14px] text-[#62748E]">
+                        Loading activity log...
+                      </td>
+                    </tr>
+                  )}
+                  {!loading &&
+                    activities.map((activity) => {
                     const typeDisplay = getActivityTypeDisplay(activity.activityType);
                     const TypeIcon = typeDisplay.icon;
                     return (
@@ -547,14 +534,33 @@ export default function ActivityContent() {
                       </tr>
                     );
                   })}
+                  {!loading && !error && activities.length === 0 && (
+                    <tr>
+                      <td colSpan={10} className="px-4 py-16 text-center font-['Inter'] text-[14px] text-[#90A1B9]">
+                        No activities match your filters.
+                      </td>
+                    </tr>
+                  )}
+                  {!loading && error && (
+                    <tr>
+                      <td colSpan={10} className="px-4 py-16 text-center font-['Inter'] text-[14px] text-red-600">
+                        {error}
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
-            {filteredActivities.length === 0 && (
-              <div className="py-16 text-center">
-                <p className="text-[14px] text-[#90A1B9]">No activities match your filters.</p>
+            <div className="flex flex-col gap-2 border-t border-[#E2E8F0] bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="font-['Inter'] text-[13px] text-[#62748E]">
+                Showing <span className="font-bold text-[#1D293D]">{activities.length}</span> items
               </div>
-            )}
+              <div className="font-['Inter'] text-[13px] text-[#62748E]">
+                Date range:{" "}
+                <span className="font-bold text-[#1D293D]">{fromDate}</span> –{" "}
+                <span className="font-bold text-[#1D293D]">{toDate}</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>

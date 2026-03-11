@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
 import NewOrderDetailsModal from "@/components/menu/NewOrderDetailsModal";
 import ProcessPaymentModal from "@/components/menu/ProcessPaymentModal";
@@ -18,6 +18,7 @@ import { Loader2 } from "lucide-react";
 
 type ProcessingPayment = {
   orderId: number;
+  orderNo: string;
   customerName: string;
   total: number;
 };
@@ -35,6 +36,10 @@ export default function OrdersContent() {
     filteredOrders,
     isLoading,
   } = useOrdersFilters();
+
+  const clearPaymentIfCancelled = useCallback((orderNo: string) => {
+    setProcessingPayment((prev) => (prev?.orderNo === orderNo ? null : prev));
+  }, []);
 
   const {
     authModal,
@@ -56,7 +61,7 @@ export default function OrdersContent() {
     openEditInfoFromView,
     openCancelFromView,
     isUpdatingOrder,
-  } = useOrderModals();
+  } = useOrderModals({ onOrderCancelled: clearPaymentIfCancelled });
 
   const { data: viewOrderDetails } = useGetOrderById(viewOrder?.id);
   const activeViewOrder = viewOrderDetails ? mapOrderToRow(viewOrderDetails) : viewOrder;
@@ -70,6 +75,7 @@ export default function OrdersContent() {
   }) => {
     setProcessingPayment({
       orderId: Number(order.id),
+      orderNo: order.orderNo,
       customerName: order.customerName,
       total: order.totalAmount,
     });

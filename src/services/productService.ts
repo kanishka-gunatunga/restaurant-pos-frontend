@@ -1,11 +1,13 @@
 import axiosInstance from "@/lib/api/axiosInstance";
 import { Product, CreateProductPayload, UpdateProductPayload } from "@/types/product";
 
-export const getAllProducts = async (params: {
-  categoryId?: number;
-  subCategoryId?: number;
-  status?: string;
-} = {}): Promise<Product[]> => {
+export const getAllProducts = async (
+  params: {
+    categoryId?: number;
+    subCategoryId?: number;
+    status?: string;
+  } = {}
+): Promise<Product[]> => {
   const res = await axiosInstance.get("/products", { params });
   return res.data;
 };
@@ -22,16 +24,20 @@ export const getProductById = async (id: number): Promise<Product> => {
   return res.data;
 };
 
-export const createProduct = async (data: CreateProductPayload, imageFile?: File): Promise<Product> => {
+export const createProduct = async (
+  data: CreateProductPayload,
+  imageFile?: File
+): Promise<Product> => {
   const formData = new FormData();
-  
+
   formData.append("name", data.name);
   formData.append("code", data.code);
   if (data.shortDescription) formData.append("shortDescription", data.shortDescription);
   if (data.description) formData.append("description", data.description);
   if (data.sku) formData.append("sku", data.sku);
   if (data.categoryId !== undefined) formData.append("categoryId", data.categoryId.toString());
-  if (data.subCategoryId !== undefined) formData.append("subCategoryId", data.subCategoryId.toString());
+  if (data.subCategoryId !== undefined)
+    formData.append("subCategoryId", data.subCategoryId.toString());
 
   if (data.branches) formData.append("branches", JSON.stringify(data.branches));
   if (data.variations) formData.append("variations", JSON.stringify(data.variations));
@@ -55,16 +61,21 @@ export const createProduct = async (data: CreateProductPayload, imageFile?: File
   }
 };
 
-export const updateProduct = async (id: number, data: UpdateProductPayload, imageFile?: File): Promise<any> => {
+export const updateProduct = async (
+  id: number,
+  data: UpdateProductPayload,
+  imageFile?: File
+): Promise<any> => {
   const formData = new FormData();
-  
+
   if (data.name) formData.append("name", data.name);
   if (data.code) formData.append("code", data.code);
   if (data.shortDescription) formData.append("shortDescription", data.shortDescription);
   if (data.description) formData.append("description", data.description);
   if (data.sku) formData.append("sku", data.sku);
   if (data.categoryId !== undefined) formData.append("categoryId", data.categoryId.toString());
-  if (data.subCategoryId !== undefined) formData.append("subCategoryId", data.subCategoryId.toString());
+  if (data.subCategoryId !== undefined)
+    formData.append("subCategoryId", data.subCategoryId.toString());
   if (data.image) formData.append("image", data.image);
 
   if (data.branches) formData.append("branches", JSON.stringify(data.branches));
@@ -93,7 +104,10 @@ export const deactivateProduct = async (id: number): Promise<any> => {
   return res.data;
 };
 
-export const getProductsByCategory = async (categoryId: number, status?: string): Promise<Product[]> => {
+export const getProductsByCategory = async (
+  categoryId: number,
+  status?: string
+): Promise<Product[]> => {
   const res = await axiosInstance.get(`/products/category/${categoryId}`, {
     params: { status },
   });

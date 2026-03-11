@@ -53,18 +53,32 @@ export default function DrawerContent() {
   const [previousSessions, setPreviousSessions] = useState<PreviousSessionSummary[]>([]);
 
   useEffect(() => {
-    sessionService.getSessionHistory().then((list) => {
-      setPreviousSessions(list.map(sessionService.mapHistoryItemToSummary));
-    }).catch(() => {});
+    sessionService
+      .getSessionHistory()
+      .then((list) => {
+        if (!list || list.length === 0) {
+          setPreviousSessions([]);
+          return;
+        }
+        // Sort by closedAt/endTime descending and keep only the most recent closed session
+        const sorted = [...list].sort((a, b) => {
+          const aTimeRaw = (a.closedAt ?? a.endTime) ?? "";
+          const bTimeRaw = (b.closedAt ?? b.endTime) ?? "";
+          const aTime = aTimeRaw ? new Date(aTimeRaw).getTime() : 0;
+          const bTime = bTimeRaw ? new Date(bTimeRaw).getTime() : 0;
+          return bTime - aTime;
+        });
+        const latest = sorted[0] ? [sessionService.mapHistoryItemToSummary(sorted[0])] : [];
+        setPreviousSessions(latest);
+      })
+      .catch(() => {});
   }, []);
 
-  const cashOutHistory: CashOutEntry[] = [
-    { dateTime: "2/27/2026 • 04:06 PM", by: "Dowson", amount: 100000 },
-  ];
+  const cashOutHistory: CashOutEntry[] = [];
 
-  const expectedBalance = 29230;
-  const cashSales = 125230;
-  const cashOuts = 100000;
+  const expectedBalance = sessionData?.initialAmount ?? 0;
+  const cashSales = 0;
+  const cashOuts = 0;
 
   const handleStartDrawer = async (openingAmount: number, managerPasscode: string) => {
     await sessionService.startSession({ startBalance: openingAmount, passcode: managerPasscode });
@@ -93,14 +107,14 @@ export default function DrawerContent() {
     await sessionService.cashAction({ type: "remove", amount, description: reason, passcode });
   };
 
-  const handleCloseSession = async (_actualBalance: number, passcode: string) => {
-    await sessionService.closeSession({ passcode });
+  const handleCloseSession = async (actualBalance: number, passcode: string) => {
+    await sessionService.closeSession({ passcode, actualBalance, closingAmount: actualBalance });
     setHasActiveSession(false);
     setSessionData(null);
   };
 
-  const handleCloseTheDrawer = async (_amount: number, passcode: string) => {
-    await sessionService.closeSession({ passcode });
+  const handleCloseTheDrawer = async (amount: number, passcode: string) => {
+    await sessionService.closeSession({ passcode, actualBalance: amount, closingAmount: amount });
     setHasDrawerStarted(false);
     setHasActiveSession(false);
     setSessionData(null);

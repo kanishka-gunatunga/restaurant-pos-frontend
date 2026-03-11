@@ -11,7 +11,12 @@ function mapOrderTypeToApi(orderType: OrderDetailsData["orderType"]) {
   return "delivery";
 }
 
-export function useOrderModals() {
+type UseOrderModalsOptions = {
+  onOrderCancelled?: (orderNo: string) => void;
+};
+
+export function useOrderModals(options?: UseOrderModalsOptions) {
+  const { onOrderCancelled } = options ?? {};
   const [authModal, setAuthModal] = useState<{ isOpen: boolean; orderNo: string | null }>({
     isOpen: false,
     orderNo: null,
@@ -54,15 +59,17 @@ export function useOrderModals() {
 
   const handleVerify = useCallback(async (passcode: string) => {
     if (!authModal.orderNo) return;
+    const cancelledOrderNo = authModal.orderNo;
     await updateStatusMutation.mutateAsync({
-      id: authModal.orderNo,
+      id: cancelledOrderNo,
       data: {
         status: "cancel",
         passcode,
       },
     });
     setAuthModal({ isOpen: false, orderNo: null });
-  }, [authModal.orderNo, updateStatusMutation]);
+    onOrderCancelled?.(cancelledOrderNo);
+  }, [authModal.orderNo, updateStatusMutation, onOrderCancelled]);
 
   const handleCloseAuthModal = useCallback(() => {
     setAuthModal({ isOpen: false, orderNo: null });

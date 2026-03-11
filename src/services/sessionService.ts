@@ -11,20 +11,15 @@ export interface CashActionPayload {
 
 export interface CloseSessionPayload {
   passcode: string;
-  /** Closing/actual balance when closing the session. Backend may require this; send when user enters it (e.g. close-and-logout flow). */
   closingAmount?: number;
   actualBalance?: number;
 }
 
-/** Add or remove cash from the current drawer session (float increase / bank deposit). */
+/** Add or remove cash from the current drawer session. */
 export async function cashAction(payload: CashActionPayload): Promise<void> {
   await axiosInstance.post("/sessions/cash-action", payload);
 }
 
-/**
- * Adjust session float to match a new "initial" amount (e.g. correction).
- * Uses cash-action under the hood: add if new > current, remove if new < current.
- */
 export async function adjustInitialAmount(params: {
   currentAmount: number;
   newAmount: number;
@@ -42,7 +37,6 @@ export async function adjustInitialAmount(params: {
   }
 }
 
-/** Close the current drawer session. Requires passcode. Optionally send closingAmount/actualBalance if the backend expects it. */
 export async function closeSession(payload: CloseSessionPayload): Promise<void> {
   const body: Record<string, unknown> = { passcode: payload.passcode };
   if (payload.closingAmount != null) body.closingAmount = payload.closingAmount;
@@ -52,7 +46,7 @@ export async function closeSession(payload: CloseSessionPayload): Promise<void> 
 
 /**
  * Backend GET /sessions/active returns:
- * { id, userId, branchId, startBalance ("100.00"), currentBalance, status, startTime (ISO), endTime, closedBy, createdAt, updatedAt, transactions }
+ * { id, userId, branchId, startBalance, currentBalance, status, startTime (ISO), endTime, closedBy, createdAt, updatedAt, transactions }
  */
 export interface CurrentSession {
   id?: string | number;
@@ -75,11 +69,6 @@ function parseBalance(value: unknown): number {
   return 0;
 }
 
-/**
- * Get the active drawer session. GET /api/sessions/active.
- * Backend: 200 + session object, or 404 + { message } when no session.
- * Maps backend startTime → startedAt, parses startBalance string to number.
- */
 export async function getCurrentSession(): Promise<CurrentSession | null> {
   try {
     const res = await axiosInstance.get<CurrentSession | { data?: CurrentSession; session?: CurrentSession }>("/sessions/active");
@@ -106,7 +95,6 @@ export async function getCurrentSession(): Promise<CurrentSession | null> {
   }
 }
 
-/** Parsed active session for UI: opening amount as number, startedAt string for display. */
 export function parseActiveSessionForUI(session: CurrentSession): { initialAmount: number; startedAt: string } {
   const amount = parseBalance(session.startBalance);
   const startTime =
@@ -127,77 +115,274 @@ export function parseActiveSessionForUI(session: CurrentSession): { initialAmoun
   return { initialAmount: amount, startedAt };
 }
 
+export interface ActiveSessionDetail {
+  initialAmount: number;
+  startedAt: string;
+  currentBalance: number;
+  cashSalesAmount: number;
+  cashSalesCount: number;
+  cashOutsAmount: number;
+  cashOutsCount: number;
+}
+
+function sumTransactionsToCashTotals(transactions: unknown): {
+  cashSalesAmount: number;
+  cashSalesCount: number;
+  cashOutsAmount: number;
+  cashOutsCount: number;
+} {
+  const out = { cashSalesAmount: 0, cashSalesCount: 0, cashOutsAmount: 0, cashOutsCount: 0 };
+  if (!Array.isArray(transactions)) return out;
+  const saleTypes = new Set(["sale", "cash_sale", "cash_sales", "order", "payment", "cash"]);
+  const outTypes = new Set(["cash_out", "cash_outs", "remove", "withdrawal", "withdraw"]);
+  for (const t of transactions) {
+    if (!t || typeof t !== "object") continue;
+    const row = t as Record<string, unknown>;
+    const type = String(row.type ?? row.transactionType ?? row.action ?? row.kind ?? "").toLowerCase().replace(/-/g, "_");
+    const desc = String(row.description ?? row.reason ?? row.source ?? "").toLowerCase();
+    const amount = parseBalance(row.amount ?? row.value ?? row.total);
+    if (amount <= 0) continue;
+    const isSale =
+      saleTypes.has(type) ||
+      type.includes("sale") ||
+      type.includes("order") ||
+      (type === "add" && (desc.includes("sale") || desc.includes("order") || desc.includes("payment")));
+    const isOut =
+      outTypes.has(type) ||
+      type.includes("out") ||
+      type.includes("remove") ||
+      type.includes("withdraw");
+    if (isSale) {
+      out.cashSalesAmount += amount;
+      out.cashSalesCount += 1;
+    } else if (isOut) {
+      out.cashOutsAmount += amount;
+      out.cashOutsCount += 1;
+    }
+  }
+  return out;
+}
+
+export function parseActiveSessionDetail(session: CurrentSession | null): ActiveSessionDetail | null {
+  if (!session || typeof session !== "object") return null;
+  const raw = session as Record<string, unknown>;
+  const base = parseActiveSessionForUI(session);
+  const currentBalance = parseBalance(session.currentBalance ?? raw.current_balance);
+  const cashSales = raw.cashSales ?? raw.cash_sales;
+  let cashSalesAmount =
+    typeof cashSales === "object" && cashSales != null && "amount" in cashSales
+      ? parseBalance((cashSales as { amount?: unknown }).amount)
+      : parseBalance(raw.cashSalesAmount ?? raw.cash_sales_amount ?? raw.totalCashSales);
+  let cashSalesCount =
+    typeof cashSales === "object" && cashSales != null && "count" in cashSales
+      ? Number((cashSales as { count?: unknown }).count) || 0
+      : Number(raw.cashSalesCount ?? raw.cash_sales_count ?? raw.cashSalesOrders) || 0;
+  const cashOuts = raw.cashOuts ?? raw.cash_outs;
+  let cashOutsAmount =
+    typeof cashOuts === "object" && cashOuts != null && "amount" in cashOuts
+      ? parseBalance((cashOuts as { amount?: unknown }).amount)
+      : parseBalance(raw.cashOutsAmount ?? raw.cash_outs_amount ?? raw.totalCashOuts);
+  let cashOutsCount =
+    typeof cashOuts === "object" && cashOuts != null && "count" in cashOuts
+      ? Number((cashOuts as { count?: unknown }).count) || 0
+      : Number(raw.cashOutsCount ?? raw.cash_outs_count) || 0;
+  const txList = raw.transactions ?? raw.Transactions;
+  if (cashSalesAmount === 0 && cashOutsAmount === 0 && Array.isArray(txList) && txList.length > 0) {
+    const fromTx = sumTransactionsToCashTotals(txList);
+    cashSalesAmount = fromTx.cashSalesAmount;
+    cashSalesCount = fromTx.cashSalesCount;
+    cashOutsAmount = fromTx.cashOutsAmount;
+    cashOutsCount = fromTx.cashOutsCount;
+  }
+  return {
+    initialAmount: base.initialAmount,
+    startedAt: base.startedAt,
+    currentBalance,
+    cashSalesAmount,
+    cashSalesCount,
+    cashOutsAmount,
+    cashOutsCount,
+  };
+}
+
+export async function getActiveSessionDetail(): Promise<ActiveSessionDetail | null> {
+  const session = await getCurrentSession();
+  return parseActiveSessionDetail(session);
+}
+
 export interface StartSessionPayload {
   startBalance: number;
   passcode?: string;
 }
 
-/** Start a new drawer session. POST /api/sessions/start. */
 export async function startSession(payload: StartSessionPayload): Promise<void> {
   await axiosInstance.post("/sessions/start", payload);
 }
 
-/**
- * Backend GET /sessions/history returns array of sessions with:
- * endTime (not closedAt), currentBalance (not closingAmount), closedBy (user id), closedByUser: { id, username?, role, employeeId? }
- * Frontend uses: closedAt (= endTime), closingAmount (= currentBalance), closedBy (display name from closedByUser).
- */
+export type SessionUserInfo = {
+  id?: number;
+  employeeId?: string;
+  name?: string;
+  role?: string;
+};
+
+export function sessionUserDisplayName(u: SessionUserInfo | null | undefined): string {
+  if (!u) return "—";
+  if (u.employeeId && String(u.employeeId).trim()) return String(u.employeeId).trim();
+  if (u.name && String(u.name).trim()) return String(u.name).trim();
+  if (u.role && String(u.role).trim()) return String(u.role).trim();
+  if (u.id != null) return `User ${u.id}`;
+  return "—";
+}
+
 export interface SessionHistoryItem {
-  id?: string | number;
-  status?: string;
-  endTime?: string | null;
-  closedAt?: string | null;
+  id?: number;
+  userId?: number;
+  startBalance?: number | string;
   currentBalance?: number | string;
   closingAmount?: number | string;
-  closedBy?: number | string;
-  closedByUser?: { id?: number; username?: string; role?: string; employeeId?: string; name?: string };
   startTime?: string;
-  startBalance?: number | string;
+  endTime?: string | null;
+  closedAt?: string;
+  actualBalance?: number | string;
+  closedBy?: string | number;
+  User?: SessionUserInfo;
+  user?: SessionUserInfo;
+  closedByUser?: SessionUserInfo;
   [key: string]: unknown;
 }
 
-/** Get session history. GET /api/sessions/history. Filters to status === 'closed', maps endTime→closedAt, currentBalance→closingAmount, closedByUser→display name. */
+export function mapHistoryItemToSummary(item: SessionHistoryItem): {
+  closedAt: string;
+  closedBy: string;
+  closingAmount: number;
+} {
+  const raw = item as Record<string, unknown>;
+  const closedByUser = (item.closedByUser ?? raw.ClosedByUser ?? raw.closed_by_user) as SessionUserInfo | undefined;
+  const closedBy =
+    sessionUserDisplayName(closedByUser) !== "—"
+      ? sessionUserDisplayName(closedByUser)
+      : item.closedBy != null
+        ? `User ${item.closedBy}`
+        : "—";
+  const closedAt = String(item.closedAt ?? item.endTime ?? raw.end_time ?? "");
+  const closingAmount = parseBalance(item.closingAmount ?? item.currentBalance ?? raw.current_balance);
+  return { closedAt, closedBy, closingAmount };
+}
+
+function parseSessionHistoryResponse(
+  raw: SessionHistoryItem[] | { data?: SessionHistoryItem[]; sessions?: SessionHistoryItem[] } | unknown
+): SessionHistoryItem[] {
+  let arr: SessionHistoryItem[] = [];
+  if (Array.isArray(raw)) arr = raw;
+  else if (raw && typeof raw === "object") {
+    const data = (raw as { data?: SessionHistoryItem[] }).data ?? (raw as { sessions?: SessionHistoryItem[] }).sessions;
+    arr = Array.isArray(data) ? data : [];
+  }
+  return arr.map((s) => {
+    const any = s as Record<string, unknown>;
+    const closedByUser = (s.closedByUser ?? any.ClosedByUser ?? any.closed_by_user) as SessionUserInfo | undefined;
+    const closedByDisplay =
+      sessionUserDisplayName(closedByUser) !== "—"
+        ? sessionUserDisplayName(closedByUser)
+        : s.closedBy != null
+          ? `User ${s.closedBy}`
+          : "—";
+    return {
+      ...s,
+      closedAt: s.closedAt ?? s.endTime ?? (any.end_time as string) ?? "",
+      closingAmount: s.closingAmount ?? s.currentBalance ?? (any.current_balance as number | string),
+      closedBy: closedByDisplay,
+      startTime: s.startTime ?? (any.start_time as string),
+      startBalance: s.startBalance ?? (any.start_balance as number | string),
+      currentBalance: s.currentBalance ?? (any.current_balance as number | string),
+    } as SessionHistoryItem;
+  });
+}
+
 export async function getSessionHistory(): Promise<SessionHistoryItem[]> {
   try {
     const res = await axiosInstance.get<SessionHistoryItem[] | { data?: SessionHistoryItem[]; sessions?: SessionHistoryItem[] }>("/sessions/history");
-    const raw = res.data;
-    let arr: SessionHistoryItem[] = [];
-    if (Array.isArray(raw)) arr = raw;
-    else if (raw && typeof raw === "object") {
-      const data = (raw as { data?: SessionHistoryItem[] }).data ?? (raw as { sessions?: SessionHistoryItem[] }).sessions;
-      arr = Array.isArray(data) ? data : [];
-    }
-    return arr.filter((s) => s.status === "closed").map((s) => ({
-      ...s,
-      closedAt: s.closedAt ?? s.endTime ?? "",
-      closingAmount: s.closingAmount ?? s.currentBalance,
-      closedBy: s.closedByUser
-        ? (s.closedByUser.name ?? s.closedByUser.employeeId ?? s.closedByUser.username ?? s.closedByUser.role ?? `User ${s.closedByUser.id ?? s.closedBy ?? ""}`)
-        : (s.closedBy != null ? `User ${s.closedBy}` : "—"),
-    }));
-  } catch {
+    return parseSessionHistoryResponse(res.data);
+  } catch (err) {
+    console.error("Failed to load session history", err);
     return [];
   }
 }
 
-/** Map history item to PreviousSessionSummary for UI. */
-export function mapHistoryItemToSummary(item: SessionHistoryItem): { closedAt: string; closedBy: string; closingAmount: number } {
-  const closedAtRaw = item.closedAt ?? item.endTime;
-  const closedAt =
-    closedAtRaw != null && closedAtRaw !== ""
-      ? new Date(closedAtRaw).toLocaleString("en-US", {
-          month: "numeric",
-          day: "numeric",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: true,
-        }).replace(",", " • ")
-      : "";
-  const closedBy =
-    item.closedByUser != null
-      ? (item.closedByUser.name ?? item.closedByUser.employeeId ?? item.closedByUser.username ?? item.closedByUser.role ?? `User ${item.closedByUser.id ?? ""}`)
-      : (item.closedBy != null ? `User ${item.closedBy}` : "—");
-  const closingAmount = parseBalance(item.closingAmount ?? item.currentBalance);
-  return { closedAt, closedBy, closingAmount };
+export interface AllHistorySession {
+  id: number;
+  cashierId?: number;
+  cashierName: string;
+  date: string;
+  startTime: string;
+  endTime: string | null;
+  initial: number;
+  cashSales?: { amount: number; count: number };
+  cashOuts?: { amount: number; count: number };
+  expected: number;
+  actual: number;
+  difference: number;
+  discrepancy?: "balanced" | "overage" | "shortage";
+  closedBy: string;
+}
+
+export function normalizeAllHistorySession(raw: Record<string, unknown>): AllHistorySession {
+  const cashSales = raw.cashSales as { amount?: number; count?: number } | undefined;
+  const cashOuts = raw.cashOuts as { amount?: number; count?: number } | undefined;
+  return {
+    id: Number(raw.id),
+    cashierId: raw.cashierId != null ? Number(raw.cashierId) : undefined,
+    cashierName: String(raw.cashierName ?? "").trim() || "—",
+    date: String(raw.date ?? ""),
+    startTime: String(raw.startTime ?? ""),
+    endTime: raw.endTime != null ? String(raw.endTime) : null,
+    initial: Number(raw.initial) || 0,
+    cashSales: {
+      amount: Number(cashSales?.amount) || 0,
+      count: Number(cashSales?.count) || 0,
+    },
+    cashOuts: {
+      amount: Number(cashOuts?.amount) || 0,
+      count: Number(cashOuts?.count) || 0,
+    },
+    expected: Number(raw.expected) || 0,
+    actual: Number(raw.actual) || 0,
+    difference: Number(raw.difference) || 0,
+    discrepancy: raw.discrepancy as AllHistorySession["discrepancy"],
+    closedBy: String(raw.closedBy ?? "").trim() || "—",
+  };
+}
+
+export const ALL_HISTORY_CAP = 500;
+const DEFAULT_ALL_HISTORY_CAP = ALL_HISTORY_CAP;
+
+export async function getAllSessionHistory(params?: {
+  cashierId?: number;
+  discrepancy?: string;
+  fromDate?: string;
+  toDate?: string;
+  cap?: number;
+}): Promise<AllHistorySession[]> {
+  try {
+    const { cap = DEFAULT_ALL_HISTORY_CAP, ...queryParams } = params ?? {};
+    const res = await axiosInstance.get<
+      AllHistorySession[] | { data?: AllHistorySession[]; sessions?: AllHistorySession[] }
+    >("/sessions/all-history", { params: queryParams });
+    let arr: unknown[] = [];
+    const raw = res.data;
+    if (Array.isArray(raw)) arr = raw;
+    else if (raw && typeof raw === "object") {
+      const data = (raw as { data?: unknown[] }).data ?? (raw as { sessions?: unknown[] }).sessions;
+      arr = Array.isArray(data) ? data : [];
+    }
+    const normalized = arr
+      .filter((s): s is Record<string, unknown> => s != null && typeof s === "object")
+      .map((s) => normalizeAllHistorySession(s));
+    if (normalized.length <= cap) return normalized;
+    return normalized.slice(0, cap);
+  } catch (err) {
+    console.error("Failed to load all session history", err);
+    throw err;
+  }
 }

@@ -104,14 +104,17 @@ export default function AddProductContent() {
         setImagePreview(productData.image);
       }
 
-      const branchIds = productData.branches?.map(b => b.branchId.toString()) || [];
+      const branchIds = productData.branches?.map((b) => b.branchId.toString()) || [];
       setSelectedBranches(branchIds);
 
       // Reconstruct variant groups if possible
       // For now, let's at least populate the configs
       if (productData.variations && productData.variations.length > 0) {
         const variation = productData.variations[0];
-        const configs: Record<string, { branchId: string; variants: Record<string, BranchVariantConfig> }> = {};
+        const configs: Record<
+          string,
+          { branchId: string; variants: Record<string, BranchVariantConfig> }
+        > = {};
 
         // Attempt to reconstruct groups from variation options if they are not just "Standard"
         const options = variation.options || [];
@@ -122,23 +125,25 @@ export default function AddProductContent() {
             // Very basic reconstruction: one group with all options
             // This is better than nothing, but multi-dim is still hard without metadata
             // For now, let's just use the option names as they are
-            setVariantGroups([{
-              id: "vg-reconstructed",
-              name: "Options",
-              options: options.map(o => o.name)
-            }]);
+            setVariantGroups([
+              {
+                id: "vg-reconstructed",
+                name: "Options",
+                options: options.map((o) => o.name),
+              },
+            ]);
           }
 
-          branchIds.forEach(bId => {
+          branchIds.forEach((bId) => {
             const bIdNum = parseInt(bId);
             const branchVariantConfig: Record<string, BranchVariantConfig> = {};
 
-            options.forEach(opt => {
-              const priceData = opt.prices?.find(p => p.branchId === bIdNum);
+            options.forEach((opt) => {
+              const priceData = opt.prices?.find((p) => p.branchId === bIdNum);
               branchVariantConfig[opt.name] = {
                 price: priceData?.price?.toString() || "",
                 quantity: priceData?.quantity?.toString() || "",
-                addonGroups: variation.variationModifications?.map(m => m.modificationId) || [], // This is a bit simplified
+                addonGroups: variation.variationModifications?.map((m) => m.modificationId) || [], // This is a bit simplified
                 expireDate: priceData?.expireDate || "",
                 batchNo: priceData?.batchNo || "",
               };
@@ -184,10 +189,7 @@ export default function AddProductContent() {
   };
 
   const handleAddVariantGroup = () => {
-    setVariantGroups([
-      ...variantGroups,
-      { id: `vg-${Date.now()}`, name: "", options: [""] },
-    ]);
+    setVariantGroups([...variantGroups, { id: `vg-${Date.now()}`, name: "", options: [""] }]);
   };
 
   const handleRemoveVariantGroup = (groupId: string) => {
@@ -199,25 +201,19 @@ export default function AddProductContent() {
     field: "name" | "options",
     value: string | string[]
   ) => {
-    setVariantGroups(
-      variantGroups.map((g) => (g.id === groupId ? { ...g, [field]: value } : g))
-    );
+    setVariantGroups(variantGroups.map((g) => (g.id === groupId ? { ...g, [field]: value } : g)));
   };
 
   const handleAddVariantOption = (groupId: string) => {
     setVariantGroups(
-      variantGroups.map((g) =>
-        g.id === groupId ? { ...g, options: [...g.options, ""] } : g
-      )
+      variantGroups.map((g) => (g.id === groupId ? { ...g, options: [...g.options, ""] } : g))
     );
   };
 
   const handleRemoveVariantOption = (groupId: string, index: number) => {
     setVariantGroups(
       variantGroups.map((g) =>
-        g.id === groupId
-          ? { ...g, options: g.options.filter((_, i) => i !== index) }
-          : g
+        g.id === groupId ? { ...g, options: g.options.filter((_, i) => i !== index) } : g
       )
     );
   };
@@ -274,11 +270,7 @@ export default function AddProductContent() {
     });
   };
 
-  const handleToggleAddonGroup = (
-    branchId: string,
-    combination: string,
-    addonGroupId: number
-  ) => {
+  const handleToggleAddonGroup = (branchId: string, combination: string, addonGroupId: number) => {
     const config = branchConfigs[branchId]?.variants[combination];
     const current = config?.addonGroups ?? [];
     const newGroups = current.includes(addonGroupId)
@@ -292,11 +284,11 @@ export default function AddProductContent() {
 
     for (const branchId of selectedBranches) {
       const config = branchConfigs[branchId];
-      const hasValid = Object.values(config?.variants ?? {}).some(
-        (v) => v.price && v.quantity
-      );
+      const hasValid = Object.values(config?.variants ?? {}).some((v) => v.price && v.quantity);
       if (!hasValid) {
-        alert(`Please complete configuration for branch: ${allBranches?.find(b => b.id.toString() === branchId)?.name}`);
+        alert(
+          `Please complete configuration for branch: ${allBranches?.find((b) => b.id.toString() === branchId)?.name}`
+        );
         return;
       }
     }
@@ -310,14 +302,14 @@ export default function AddProductContent() {
         sku: productCode,
         categoryId: selectedCategory || undefined,
         subCategoryId: selectedSubCategory || undefined,
-        branches: selectedBranches.map(id => parseInt(id)),
+        branches: selectedBranches.map((id) => parseInt(id)),
         modifications: [],
         variations: [
           {
             name: variantGroups.length > 0 ? "Variants" : "Standard",
-            options: variantCombinations.map(combo => ({
+            options: variantCombinations.map((combo) => ({
               name: combo.combination,
-              prices: selectedBranches.map(branchId => {
+              prices: selectedBranches.map((branchId) => {
                 const variantData = branchConfigs[branchId]?.variants[combo.combination];
                 return {
                   branchId: parseInt(branchId),
@@ -327,25 +319,27 @@ export default function AddProductContent() {
                   batchNo: variantData?.batchNo,
                   expireDate: variantData?.expireDate || null,
                 };
-              })
+              }),
             })),
             modifications: variantCombinations[0]
-              ? branchConfigs[selectedBranches[0]]?.variants[variantCombinations[0].combination]?.addonGroups.map(id => ({ modificationId: id }))
-              : []
-          }
-        ]
+              ? branchConfigs[selectedBranches[0]]?.variants[
+                  variantCombinations[0].combination
+                ]?.addonGroups.map((id) => ({ modificationId: id }))
+              : [],
+          },
+        ],
       };
 
       if (isEditing && productId) {
         await updateProductMutation.mutateAsync({
           id: parseInt(productId),
           data: payload as any,
-          imageFile: imageFile || undefined
+          imageFile: imageFile || undefined,
         });
       } else {
         await createProductMutation.mutateAsync({
           data: payload as any,
-          imageFile: imageFile || undefined
+          imageFile: imageFile || undefined,
         });
       }
 
@@ -409,8 +403,9 @@ export default function AddProductContent() {
           {/* Progress Bar */}
           <div className="mb-8 flex items-center gap-3">
             <div
-              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-['Inter'] text-sm font-bold transition-all ${currentStep >= 1 ? "text-white shadow-lg" : "bg-[#E2E8F0] text-[#90A1B9]"
-                }`}
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-['Inter'] text-sm font-bold transition-all ${
+                currentStep >= 1 ? "text-white shadow-lg" : "bg-[#E2E8F0] text-[#90A1B9]"
+              }`}
               style={{ backgroundColor: currentStep >= 1 ? PRIMARY : undefined }}
             >
               {currentStep > 1 ? <Check className="h-5 w-5" /> : "1"}
@@ -425,8 +420,9 @@ export default function AddProductContent() {
               />
             </div>
             <div
-              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-['Inter'] text-sm font-bold transition-all ${currentStep >= 2 ? "text-white shadow-lg" : "bg-[#E2E8F0] text-[#90A1B9]"
-                }`}
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-['Inter'] text-sm font-bold transition-all ${
+                currentStep >= 2 ? "text-white shadow-lg" : "bg-[#E2E8F0] text-[#90A1B9]"
+              }`}
               style={{ backgroundColor: currentStep >= 2 ? PRIMARY : undefined }}
             >
               2
@@ -512,11 +508,7 @@ export default function AddProductContent() {
                       className="flex min-w-0 flex-1 items-center gap-3 rounded-xl border-2 border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3 font-['Inter'] text-sm text-left transition-colors hover:border-[#CAD5E2] focus:border-[#EA580C] focus:outline-none focus:ring-2 focus:ring-[#EA580C]/20"
                     >
                       <span
-                        className={
-                          imageFile
-                            ? "min-w-0 truncate text-[#1D293D]"
-                            : "text-[#90A1B9]"
-                        }
+                        className={imageFile ? "min-w-0 truncate text-[#1D293D]" : "text-[#90A1B9]"}
                       >
                         {imageFile ? imageFile.name : "Attach Image here"}
                       </span>
@@ -560,14 +552,9 @@ export default function AddProductContent() {
                       }}
                       className="flex w-full items-center justify-between rounded-xl border-2 border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3 text-left font-['Inter'] text-sm focus:border-[#EA580C] focus:outline-none focus:ring-2 focus:ring-[#EA580C]/20"
                     >
-                      <span
-                        className={
-                          selectedCategory ? "text-[#1D293D]" : "text-[#90A1B9]"
-                        }
-                      >
+                      <span className={selectedCategory ? "text-[#1D293D]" : "text-[#90A1B9]"}>
                         {selectedCategory
-                          ? categories?.find((c) => c.id === selectedCategory)
-                            ?.name
+                          ? categories?.find((c) => c.id === selectedCategory)?.name
                           : "Select category..."}
                       </span>
                       <ChevronDown className="h-5 w-5 text-[#90A1B9]" />
@@ -605,13 +592,11 @@ export default function AddProductContent() {
                       disabled={!selectedCategory}
                       className="flex w-full items-center justify-between rounded-xl border-2 border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3 text-left font-['Inter'] text-sm focus:border-[#EA580C] focus:outline-none focus:ring-2 focus:ring-[#EA580C]/20 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      <span
-                        className={
-                          selectedSubCategory ? "text-[#1D293D]" : "text-[#90A1B9]"
-                        }
-                      >
+                      <span className={selectedSubCategory ? "text-[#1D293D]" : "text-[#90A1B9]"}>
                         {selectedSubCategory
-                          ? selectedCategoryData?.subcategories?.find(s => s.id === selectedSubCategory)?.name
+                          ? selectedCategoryData?.subcategories?.find(
+                              (s) => s.id === selectedSubCategory
+                            )?.name
                           : "Select sub category..."}
                       </span>
                       <ChevronDown className="h-5 w-5 text-[#90A1B9]" />
@@ -728,9 +713,7 @@ export default function AddProductContent() {
                               {group.options.length > 1 && (
                                 <button
                                   type="button"
-                                  onClick={() =>
-                                    handleRemoveVariantOption(group.id, idx)
-                                  }
+                                  onClick={() => handleRemoveVariantOption(group.id, idx)}
                                   className="rounded-xl p-2 text-[#90A1B9] transition-colors hover:bg-red-50 hover:text-red-500"
                                 >
                                   <X className="h-4 w-4" />
@@ -788,16 +771,18 @@ export default function AddProductContent() {
                         key={branch.id}
                         type="button"
                         onClick={() => handleToggleBranch(branch.id.toString())}
-                        className={`flex items-center gap-3 rounded-xl border-2 p-4 text-left transition-all ${selectedBranches.includes(branch.id.toString())
-                          ? "border-[#EA580C] bg-[#EA580C]/5"
-                          : "border-[#E2E8F0] hover:border-[#CAD5E2]"
-                          }`}
+                        className={`flex items-center gap-3 rounded-xl border-2 p-4 text-left transition-all ${
+                          selectedBranches.includes(branch.id.toString())
+                            ? "border-[#EA580C] bg-[#EA580C]/5"
+                            : "border-[#E2E8F0] hover:border-[#CAD5E2]"
+                        }`}
                       >
                         <div
-                          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border-2 ${selectedBranches.includes(branch.id.toString())
-                            ? "border-[#EA580C] bg-[#EA580C]"
-                            : "border-[#E2E8F0]"
-                            }`}
+                          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border-2 ${
+                            selectedBranches.includes(branch.id.toString())
+                              ? "border-[#EA580C] bg-[#EA580C]"
+                              : "border-[#E2E8F0]"
+                          }`}
                         >
                           {selectedBranches.includes(branch.id.toString()) && (
                             <Check className="h-4 w-4 text-white" />
@@ -830,7 +815,8 @@ export default function AddProductContent() {
 
                         <div className="space-y-4">
                           {variantCombinations.map((combo) => {
-                            const rawVariantData = branchConfigs[branchId]?.variants[combo.combination];
+                            const rawVariantData =
+                              branchConfigs[branchId]?.variants[combo.combination];
                             const variantData: BranchVariantConfig = {
                               price: rawVariantData?.price ?? "",
                               quantity: rawVariantData?.quantity ?? "",
@@ -943,10 +929,11 @@ export default function AddProductContent() {
                                               g.id
                                             )
                                           }
-                                          className={`rounded-lg px-3 py-1.5 font-['Inter'] text-xs font-bold transition-all ${variantData.addonGroups.includes(g.id)
-                                            ? "bg-[#EA580C] text-white"
-                                            : "bg-[#F1F5F9] text-[#45556C] hover:bg-[#E2E8F0]"
-                                            }`}
+                                          className={`rounded-lg px-3 py-1.5 font-['Inter'] text-xs font-bold transition-all ${
+                                            variantData.addonGroups.includes(g.id)
+                                              ? "bg-[#EA580C] text-white"
+                                              : "bg-[#F1F5F9] text-[#45556C] hover:bg-[#E2E8F0]"
+                                          }`}
                                         >
                                           {g.title}
                                         </button>

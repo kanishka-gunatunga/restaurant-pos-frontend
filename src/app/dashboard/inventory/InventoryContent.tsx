@@ -97,7 +97,7 @@ export default function InventoryContent() {
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white">
       <DashboardPageHeader />
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-        <div className="mx-auto max-w-7xl space-y-6">
+        <div className="space-y-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h1 className="font-['Inter'] text-[24px] font-bold leading-8 text-[#1D293D]">
@@ -145,7 +145,7 @@ export default function InventoryContent() {
             </div>
 
             {activeTab === "products" && (
-              <div className="flex items-center justify-between border-b border-[#E2E8F0] px-4 py-3">
+              <div className="flex items-center justify-between  px-10 py-3">
                 <h2 className="font-['Inter'] text-[16px] font-bold leading-6 text-[#314158]">Products</h2>
                 <Link
                   href={ROUTES.DASHBOARD_INVENTORY_ADD_PRODUCT}
@@ -158,7 +158,7 @@ export default function InventoryContent() {
               </div>
             )}
 
-            <div className="p-4">
+            <div className="py-4 px-10">
               {activeTab === "categories" && (
                 <CategoriesTab
                   onAddCategory={openAddCategory}
