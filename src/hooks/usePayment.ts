@@ -14,7 +14,7 @@ export const useGetAllPaymentDetails = () => {
   return useQuery({
     queryKey: PAYMENT_KEYS.lists(),
     queryFn: paymentService.getAllPaymentDetails,
-    staleTime: 1 * 60 * 1000,
+    // staleTime: 1 * 60 * 1000,
   });
 };
 
@@ -68,6 +68,6 @@ export const useGetPaymentStats = () => {
   return useQuery({
     queryKey: [...PAYMENT_KEYS.all, "stats"],
     queryFn: paymentService.getPaymentStats,
-    staleTime: 1 * 60 * 1000,
+    // staleTime: 1 * 60 * 1000,
   });
 };

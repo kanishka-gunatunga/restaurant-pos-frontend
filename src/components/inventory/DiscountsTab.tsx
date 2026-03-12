@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Tag, Pencil, Loader2 } from "lucide-react";
+import { Plus, Tag, Pencil, Loader2, MapPin } from "lucide-react";
 import { useGetAllDiscounts, useActivateDiscount, useDeactivateDiscount } from "@/hooks/useDiscount";
-import { Discount } from "@/types/product";
+import { useGetAllBranches } from "@/hooks/useBranch";
+import { Discount, DiscountItem } from "@/types/product";
 import AddDiscountModal from "./AddDiscountModal";
 
 function DiscountCard({ offer, onEdit }: { offer: Discount; onEdit: (offer: Discount) => void }) {
+  const { data: branches } = useGetAllBranches("active");
   const activateMutation = useActivateDiscount();
   const deactivateMutation = useDeactivateDiscount();
 
@@ -28,6 +30,14 @@ function DiscountCard({ offer, onEdit }: { offer: Discount; onEdit: (offer: Disc
 
   const variantCount = offer.items?.length || 0;
 
+  // Group items by branch
+  const groupedItems = offer.items?.reduce((acc: Record<string, DiscountItem[]>, item) => {
+    const key = item.branchId ? item.branchId.toString() : "all";
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(item);
+    return acc;
+  }, {}) || {};
+
   return (
     <div className={`rounded-2xl border border-[#F1F5F9] bg-[#F8FAFC] p-6 shadow-sm transition-opacity ${!isActive ? "opacity-60" : ""}`}>
       <div className="flex items-start justify-between gap-4">
@@ -43,7 +53,7 @@ function DiscountCard({ offer, onEdit }: { offer: Discount; onEdit: (offer: Disc
               {isActive ? "Active" : "Inactive"}
             </span>
           </div>
-          <p className="mt-5 font-['Inter'] text-xs font-normal leading-4 text-[#62748E]">
+          <p className="mt-2 font-['Inter'] text-xs font-normal leading-4 text-[#62748E]">
             {productCount} product(s) • {variantCount} variant(s) with discounts
           </p>
         </div>
@@ -77,23 +87,46 @@ function DiscountCard({ offer, onEdit }: { offer: Discount; onEdit: (offer: Disc
           </button>
         </div>
       </div>
-      <div className="mt-3 grid grid-cols-2 gap-3">
-        {offer.items?.map((item, idx) => (
-          <div
-            key={idx}
-            className="rounded-[14px] border border-[#E2E8F0] bg-white px-4 py-4"
-          >
-            <p className="font-['Inter'] text-xs leading-4">
-              <span className="font-bold text-[#314158]">{item.product?.name || "Product"}</span>
-              {item.variationOption?.name && (
-                <span className="font-normal text-[#90A1B9]">{` • ${item.variationOption.name}`}</span>
-              )}
-            </p>
-            <p className="mt-1 font-['Inter'] text-xs font-bold leading-4 text-[#EA580C]">
-              {item.discountType === "percentage" ? `${item.discountValue}% OFF` : `Rs.${item.discountValue} OFF`}
-            </p>
-          </div>
-        ))}
+
+      <div className="mt-6 space-y-6">
+        {Object.entries(groupedItems).map(([branchKey, items]) => {
+          const branchId = branchKey === "all" ? null : parseInt(branchKey);
+          const branch = branchId ? branches?.find(b => b.id === branchId) : null;
+          
+          return (
+            <div key={branchKey} className="space-y-3">
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-[#EA580C]" />
+                <p className="font-['Inter'] text-sm font-bold text-[#45556C]">
+                  {branch ? branch.name : "All Branches"}
+                </p>
+                <div className="h-px flex-1 bg-[#E2E8F0]"></div>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {items.map((item, idx) => (
+                  <div
+                    key={idx}
+                    className="flex flex-col gap-1 rounded-[14px] border border-[#E2E8F0] bg-white px-4 py-3 shadow-sm hover:border-[#EA580C]/30 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="font-['Inter'] text-sm font-bold text-[#1D293D] leading-tight">
+                        {item.product?.name || "Product"}
+                        {item.variationOption?.name && (
+                          <span className="block text-[11px] font-normal text-[#90A1B9] mt-0.5">
+                            {item.variationOption.name}
+                          </span>
+                        )}
+                      </p>
+                      <span className="rounded-lg bg-[#EA580C]/10 px-2 py-1 font-['Inter'] text-[10px] font-bold text-[#EA580C] whitespace-nowrap">
+                        {item.discountType === "percentage" ? `${item.discountValue}% OFF` : `Rs.${item.discountValue} OFF`}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

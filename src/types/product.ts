@@ -70,7 +70,9 @@ export interface Discount {
   id: number;
   name: string;
   expiryDate?: string | null;
+  isForAllBranches: boolean;
   status: ProductStatus;
+  branches?: { branchId: number }[];
   items?: DiscountItem[];
   createdAt?: string;
   updatedAt?: string;
@@ -81,6 +83,7 @@ export interface DiscountItem {
   discountId: number;
   productId?: number | null;
   variationOptionId?: number | null;
+  branchId?: number | null;
   discountType: "percentage" | "fixed";
   discountValue: string | number;
   product?: Partial<Product>;
@@ -163,21 +166,18 @@ export interface UpdateModificationPayload {
 export interface CreateDiscountPayload {
   name: string;
   expiryDate?: string;
+  isForAllBranches: boolean;
+  branches?: number[];
   items: {
     productId?: number;
     variationOptionId?: number;
     discountType: "percentage" | "fixed";
-    discountValue: number;
+    discountValue?: number;
+    branchDiscounts?: {
+      branchId: number;
+      discountValue: number;
+    }[];
   }[];
 }
 
-export interface UpdateDiscountPayload {
-  name?: string;
-  expiryDate?: string;
-  items?: {
-    productId?: number;
-    variationOptionId?: number;
-    discountType: "percentage" | "fixed";
-    discountValue: number;
-  }[];
-}
+export interface UpdateDiscountPayload extends Partial<CreateDiscountPayload> {}
