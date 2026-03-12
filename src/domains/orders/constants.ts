@@ -9,12 +9,16 @@ export const STATUS_STYLES: Record<OrderStatus, { bg: string; border: string; te
   cancel: { bg: "#FFE6EB", border: "#FFB3C1", text: "#EC003F" },
 };
 
+export const DEFAULT_STATUS_STYLE = { bg: "#F1F5F9", border: "#CAD5E2", text: "#45556C" };
+
 export const PAYMENT_STATUS_STYLES: Record<PaymentStatus, { bg: string; border: string; text: string }> = {
   pending: { bg: "#FFF4E6", border: "#FFE0B3", text: "#E17100" },
   paid: { bg: "#E6F7F0", border: "#B3E6D1", text: "#009966" },
   refund: { bg: "#FFE6EB", border: "#FFB3C1", text: "#EC003F" },
   partial_refund: { bg: "#FFE6EB", border: "#FFB3C1", text: "#EC003F" },
 };
+
+export const DEFAULT_PAYMENT_STATUS_STYLE = { bg: "#F1F5F9", border: "#CAD5E2", text: "#45556C" };
 
 export const ORDER_STATUS_OPTIONS: (OrderStatus | "All")[] = [
   "All",
@@ -31,5 +35,5 @@ export const PAYMENT_STATUS_OPTIONS: (PaymentStatus | "All")[] = [
   "pending",
   "paid",
   "partial_refund",
-    "refund",
+  "refund",
 ];

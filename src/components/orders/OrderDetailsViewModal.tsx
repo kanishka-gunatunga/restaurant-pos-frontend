@@ -4,7 +4,7 @@ import { useId } from "react";
 import { X, Clock, Package, User, Phone, UtensilsCrossed, DollarSign, CreditCard } from "lucide-react";
 import type { OrderDetailsView } from "@/domains/orders/types";
 
-import { STATUS_STYLES } from "@/domains/orders/constants";
+import { STATUS_STYLES, DEFAULT_STATUS_STYLE } from "@/domains/orders/constants";
 
 const formatRs = (n: number) =>
   `Rs.${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -63,9 +63,9 @@ export default function OrderDetailsViewModal({ order, onClose, onEdit, onEditIn
               <span
                 className="inline-flex rounded-[14px] border-2 px-3 py-1 font-['Inter'] text-xs font-bold uppercase leading-4"
                 style={{
-                  backgroundColor: STATUS_STYLES[order.status].bg,
-                  borderColor: STATUS_STYLES[order.status].border,
-                  color: STATUS_STYLES[order.status].text,
+                  backgroundColor: (STATUS_STYLES[order.status] || DEFAULT_STATUS_STYLE).bg,
+                  borderColor: (STATUS_STYLES[order.status] || DEFAULT_STATUS_STYLE).border,
+                  color: (STATUS_STYLES[order.status] || DEFAULT_STATUS_STYLE).text,
                 }}
               >
                 {order.status}
