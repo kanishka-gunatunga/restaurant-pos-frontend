@@ -38,7 +38,6 @@ export default function ProcessPaymentModal({ payment, onClose }: ProcessPayment
             setStep("SUCCESS");
         } catch (error) {
             console.error("Payment failed:", error);
-            // Handle error (could add an error state/toast here)
         }
     };
 

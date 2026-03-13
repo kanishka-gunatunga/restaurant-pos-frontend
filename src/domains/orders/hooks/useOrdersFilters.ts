@@ -11,7 +11,6 @@ export function useOrdersFilters() {
   const isSearching = !!search.trim();
   const isFiltering = orderStatusFilter !== "All" || paymentStatusFilter !== "All";
 
-  // Hook selection logic
   const { data: allOrders, isLoading: isLoadingAll } = useGetAllOrders();
   
   const { data: searchResults, isLoading: isLoadingSearch } = useSearchOrders({

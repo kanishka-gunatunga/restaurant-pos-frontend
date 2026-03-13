@@ -11,7 +11,7 @@ import { useGetAllBranches } from "@/hooks/useBranch";
 type AddProductModalProps = {
   open: boolean;
   overlayVisible: boolean;
-  branchId: string; // Added branchId
+  branchId: string;
   branchName: string;
   product: Product | null;
   onClose: () => void;

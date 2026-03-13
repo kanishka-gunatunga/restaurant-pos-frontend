@@ -35,10 +35,7 @@ export function formatTime(dateStr: string | null | undefined): string {
   }
 }
 
-/**
- * Formats a number or numeric string as currency (LKR).
- * Defaults to "Rs.0.00" if input is invalid.
- */
+
 export function formatCurrency(amount: number | string | null | undefined): string {
   const numericAmount = typeof amount === "string" ? parseFloat(amount) : amount;
   
