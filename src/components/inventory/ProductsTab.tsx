@@ -72,64 +72,75 @@ export default function ProductsTab({ branchId, searchQuery, onEditProduct }: Pr
               </tr>
             </thead>
             <tbody>
-              {products?.map((product) => {
-                const variationOption = product.variations?.[0]?.options?.[0];
-                const branchPrice = variationOption?.prices?.find(p => p.branchId.toString() === branchId);
+              {products && products.length > 0 ? (
+                products.map((product) => {
+                  const variationOption = product.variations?.[0]?.options?.[0];
+                  // const branchPrice = variationOption?.prices?.find(p => p.branchId.toString() === branchId);
 
-                return (
-                  <tr key={product.id} className={`border-b border-[#F1F5F9] transition-opacity hover:bg-[#F8FAFC]/50 ${product.status === 'inactive' ? 'opacity-60 bg-[#F8FAFC]' : ''}`}>
-                    <td className="p-4">
-                      <p className="font-['Inter'] text-base font-bold leading-6 text-[#1D293D]">
-                        {product.name}
-                      </p>
-                    </td>
-                    <td className="p-4">
-                      <p className="font-['Inter'] text-sm font-medium text-[#45556C]">
-                        {product.category?.name || "-"}
-                      </p>
-                    </td>
-                    <td className="p-4">
-                      <p className="font-['Inter'] text-sm font-medium text-[#45556C]">
-                        {product.subCategory?.name || "-"}
-                      </p>
-                    </td>
-                    <td className="p-4">
-                      <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-[#E2E8F0]">
-                        {product.image ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={product.image} alt="" className="h-full w-full object-cover" />
-                        ) : (
-                          <Package className="absolute inset-0 m-auto h-6 w-6 text-[#90A1B9]" />
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-4 max-w-xs">
-                      <p className="font-['Inter'] text-sm text-[#62748E] line-clamp-2">
-                        {product.description || "-"}
-                      </p>
-                    </td>
-                    <td className="p-4 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          type="button"
-                          onClick={() => onEditProduct(product)}
-                          className="rounded-lg p-2 text-[#90A1B9] hover:bg-[#F1F5F9] hover:text-[#45556C]"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleToggleStatus(product)}
-                          className="rounded-lg p-2 text-[#90A1B9] hover:bg-red-50 hover:text-red-500"
-                          title={product.status === "inactive" ? "Activate" : "Deactivate"}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+                  return (
+                    <tr key={product.id} className={`border-b border-[#F1F5F9] transition-opacity hover:bg-[#F8FAFC]/50 ${product.status === 'inactive' ? 'opacity-60 bg-[#F8FAFC]' : ''}`}>
+                      <td className="p-4">
+                        <p className="font-['Inter'] text-base font-bold leading-6 text-[#1D293D]">
+                          {product.name}
+                        </p>
+                      </td>
+                      <td className="p-4">
+                        <p className="font-['Inter'] text-sm font-medium text-[#45556C]">
+                          {product.category?.name || "-"}
+                        </p>
+                      </td>
+                      <td className="p-4">
+                        <p className="font-['Inter'] text-sm font-medium text-[#45556C]">
+                          {product.subCategory?.name || "-"}
+                        </p>
+                      </td>
+                      <td className="p-4">
+                        <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-[#E2E8F0]">
+                          {product.image ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={product.image} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            <Package className="absolute inset-0 m-auto h-6 w-6 text-[#90A1B9]" />
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-4 max-w-xs">
+                        <p className="font-['Inter'] text-sm text-[#62748E] line-clamp-2">
+                          {product.description || "-"}
+                        </p>
+                      </td>
+                      <td className="p-4 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => onEditProduct(product)}
+                            className="rounded-lg p-2 text-[#90A1B9] hover:bg-[#F1F5F9] hover:text-[#45556C]"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleStatus(product)}
+                            className="rounded-lg p-2 text-[#90A1B9] hover:bg-red-50 hover:text-red-500"
+                            title={product.status === "inactive" ? "Activate" : "Deactivate"}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={6} className="p-10 text-center font-['Inter'] text-sm text-[#90A1B9]">
+                    <div className="flex flex-col items-center gap-2">
+                      <Package className="h-10 w-10 opacity-20" />
+                      No results available
+                    </div>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
