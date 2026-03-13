@@ -76,7 +76,7 @@ export function mapOrderToRow(apiOrder: ApiOrder): OrderRow {
 
   return {
     id: String(apiOrder.id),
-    orderNo: String(apiOrder.id), // Using ID as Order No if not separate
+    orderNo: String(apiOrder.id),
     date: formatDate(apiOrder.createdAt),
     time: formatTime(apiOrder.createdAt),
     customerName: apiOrder.customer?.name || "Guest",
@@ -92,8 +92,8 @@ export function mapOrderToRow(apiOrder: ApiOrder): OrderRow {
     zipCode: apiOrder.zipcode,
     deliveryInstructions: apiOrder.deliveryInstructions,
     items: apiOrder.items?.map(mapOrderItemToDetail),
-    subtotal: Number(apiOrder.totalAmount) - Number(apiOrder.tax || 0) + Number(apiOrder.orderDiscount || 0),
-    discount: Number(apiOrder.orderDiscount),
+    subtotal: Number(apiOrder.totalAmount) - Number(apiOrder.tax || 0) + Number(apiOrder.orderDiscount || 0) + (apiOrder.items?.reduce((sum, item) => sum + (Number(item.productDiscount || 0) * item.quantity), 0) || 0),
+    discount: Number(apiOrder.orderDiscount || 0) + (apiOrder.items?.reduce((sum, item) => sum + (Number(item.productDiscount || 0) * item.quantity), 0) || 0),
   };
 }
 
