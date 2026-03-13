@@ -40,7 +40,7 @@ export default function UsersContent() {
 
   const parsing = (() => {
     const term = debouncedSearchTerm.toLowerCase().trim();
-    if (!term) return { name: "", role: "", status: "active" };
+    if (!term) return { name: "", role: "", status: "all" };
 
     const parts = term.split(/\s+/);
     let role = "";
@@ -64,7 +64,7 @@ export default function UsersContent() {
     return {
       name: nameParts.join(" "),
       role,
-      status: status || "active"
+      status: status || "all"
     };
   })();
 
