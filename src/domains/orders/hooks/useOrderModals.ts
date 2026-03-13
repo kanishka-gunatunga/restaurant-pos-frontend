@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import type { OrderRow, OrderDetailsView } from "../types";
 import { EditOrderLineItem } from "@/components/orders/EditOrderModal";
 import { useUpdateOrderStatus, useUpdateOrder } from "@/hooks/useOrder";
+import { useUpdateCustomer } from "@/hooks/useCustomer";
 import { useUpdatePaymentStatus, useGetPaymentsByOrder } from "@/hooks/usePayment";
 import type { OrderDetailsData } from "@/contexts/OrderContext";
 
@@ -34,6 +35,7 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
     paymentStatus: order.paymentStatus,
     customerName: order.customerName,
     phone: order.phone,
+    customerId: order.customerId,
     totalAmount: order.totalAmount,
     orderType: order.orderType,
     tableNumber: order.tableNumber,
@@ -48,6 +50,7 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
 
   const updateStatusMutation = useUpdateOrderStatus();
   const updateOrderMutation = useUpdateOrder();
+  const updateCustomerMutation = useUpdateCustomer();
   const updatePaymentStatusMutation = useUpdatePaymentStatus();
 
   // We'll fetch payments for the current edit order to handle refunds
@@ -170,13 +173,23 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
           },
           {
             onSuccess: () => {
+              // Update the customer record as well if we have a customerId
+              if (editOrderInfoModal.customerId) {
+                updateCustomerMutation.mutate({
+                  id: editOrderInfoModal.customerId,
+                  data: {
+                    name: data.customerName,
+                    mobile: data.phone,
+                  },
+                });
+              }
               setEditOrderInfoModal(null);
             },
           }
         );
       }
     },
-    [editOrderInfoModal, updateOrderMutation]
+    [editOrderInfoModal, updateOrderMutation, updateCustomerMutation]
   );
 
   const openCancelFromView = useCallback((orderNo: string) => {
