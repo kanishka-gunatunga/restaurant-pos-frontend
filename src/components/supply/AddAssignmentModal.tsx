@@ -10,7 +10,74 @@ interface AddAssignmentModalProps {
   initialAssignment?: MockAssignment | null;
 }
 
-type MaterialRow = { id: string; name: string; qty: number; available: string };
+type MaterialRow = { id: string; name: string; qty: number; available: string; expiry: string };
+
+type MaterialStockOption = {
+  id: string;
+  name: string;
+  available: string;
+  expiryLabel: string;
+  expiryDate: Date;
+};
+
+const MOCK_MATERIAL_STOCKS: MaterialStockOption[] = [
+  {
+    id: "beef-patties-250",
+    name: "Beef Patties",
+    available: "250 pieces",
+    expiryLabel: "3/15/2026",
+    expiryDate: new Date("2026-03-15"),
+  },
+  {
+    id: "cheddar-500",
+    name: "Cheddar Cheese",
+    available: "500 slices",
+    expiryLabel: "3/22/2026",
+    expiryDate: new Date("2026-03-22"),
+  },
+  {
+    id: "mozzarella-43",
+    name: "Mozzarella Cheese",
+    available: "43 kg",
+    expiryLabel: "3/3/2026",
+    expiryDate: new Date("2026-03-03"),
+  },
+  {
+    id: "mozzarella-45",
+    name: "Mozzarella Cheese",
+    available: "45 kg",
+    expiryLabel: "3/15/2026",
+    expiryDate: new Date("2026-03-15"),
+  },
+  {
+    id: "lettuce-10",
+    name: "Lettuce",
+    available: "10 kg",
+    expiryLabel: "3/10/2026",
+    expiryDate: new Date("2026-03-10"),
+  },
+  {
+    id: "onion-60",
+    name: "Onion",
+    available: "60 kg",
+    expiryLabel: "3/15/2026",
+    expiryDate: new Date("2026-03-15"),
+  },
+  {
+    id: "wheat-buns-300",
+    name: "Wheat Buns",
+    available: "300 pieces",
+    expiryLabel: "4/20/2026",
+    expiryDate: new Date("2026-04-20"),
+  },
+  {
+    id: "tomatoes-7",
+    name: "Tomatoes",
+    available: "7 kg",
+    expiryLabel: "3/15/2026",
+    expiryDate: new Date("2026-03-15"),
+  },
+];
 
 function parseMaterialQty(qty: string): number {
   const match = qty.match(/\d+(\.\d+)?/);
@@ -39,32 +106,45 @@ export default function AddAssignmentModal({
   onClose,
   initialAssignment,
 }: AddAssignmentModalProps) {
+  const sortedMaterialOptions = MOCK_MATERIAL_STOCKS.slice().sort(
+    (a, b) => a.expiryDate.getTime() - b.expiryDate.getTime()
+  );
+  const nearestExpiryTime =
+    sortedMaterialOptions.length > 0 ? sortedMaterialOptions[0].expiryDate.getTime() : null;
+
   const [materials, setMaterials] = useState<MaterialRow[]>(() =>
     initialAssignment
-      ? initialAssignment.materialsUsed.map((m, index) => ({
-          id: `${m.name}-${index}`,
-          name: m.name,
-          qty: parseMaterialQty(m.qty),
-          available: m.qty,
-        }))
+      ? initialAssignment.materialsUsed.map((m, index) => {
+          const stock = sortedMaterialOptions.find((opt) => opt.name === m.name) ?? null;
+          return {
+            id: `${m.name}-${index}`,
+            name: m.name,
+            qty: parseMaterialQty(m.qty),
+            available: stock?.available ?? m.qty,
+            expiry: stock?.expiryLabel ?? "",
+          };
+        })
       : []
   );
   const [materialQty, setMaterialQty] = useState(0);
-  const [selectedMaterial, setSelectedMaterial] = useState("");
+  const [selectedMaterialId, setSelectedMaterialId] = useState("");
 
   const isEditing = !!initialAssignment;
 
   if (!isOpen) return null;
 
   const handleAddMaterial = () => {
-    if (!selectedMaterial || materialQty <= 0) return;
+    if (!selectedMaterialId || materialQty <= 0) return;
+    const stock = sortedMaterialOptions.find((opt) => opt.id === selectedMaterialId);
+    if (!stock) return;
     setMaterials((prev) => [
       ...prev,
       {
-        id: `${selectedMaterial}-${Date.now()}`,
-        name: selectedMaterial,
+        id: `${stock.id}-${Date.now()}`,
+        name: stock.name,
         qty: materialQty,
-        available: selectedMaterial === "Beef Patties" ? "250 pieces" : "100 units",
+        available: stock.available,
+        expiry: stock.expiryLabel,
       },
     ]);
   };
@@ -80,7 +160,7 @@ export default function AddAssignmentModal({
       onClick={onClose}
     >
       <div
-        className="relative flex max-h-[85vh] w-full max-w-[640px] flex-col overflow-hidden rounded-[32px] bg-white shadow-2xl"
+        className="relative flex max-h-[85vh] w-full max-w-[720px] flex-col overflow-hidden rounded-[32px] bg-white shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="shrink-0 px-8 pt-7 pb-4">
@@ -198,13 +278,25 @@ export default function AddAssignmentModal({
 
             <div className="flex h-[70px] items-center gap-2 rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFC] p-[17px]">
               <select
-                value={selectedMaterial}
-                onChange={(e) => setSelectedMaterial(e.target.value)}
+                value={selectedMaterialId}
+                onChange={(e) => setSelectedMaterialId(e.target.value)}
                 className="h-9 flex-1 cursor-pointer appearance-none rounded-[10px] border border-[#E2E8F0] bg-white pl-3.5 pr-10 font-['Inter'] text-sm text-[#0F172A] focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C] [background-image:url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%20fill%3D%22none%22%3E%3Cpath%20d%3D%22M3%204.5L6%207.5L9%204.5%22%20stroke%3D%22%2390A1B9%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] [background-position:right_1rem_center] [background-repeat:no-repeat] [background-size:12px]"
               >
                 <option value="">Select material</option>
-                <option value="Beef Patties">Beef Patties</option>
-                <option value="Mozzarella Cheese">Mozzarella Cheese</option>
+                {sortedMaterialOptions.map((opt) => {
+                  const isNearest =
+                    nearestExpiryTime != null &&
+                    opt.expiryDate.getTime() === nearestExpiryTime;
+                  return (
+                    <option
+                      key={opt.id}
+                      value={opt.id}
+                      className={isNearest ? "text-[#DC2626] font-medium" : ""}
+                    >
+                      {opt.name} (Available: {opt.available}) (Expire: {opt.expiryLabel})
+                    </option>
+                  );
+                })}
               </select>
               <input
                 type="number"
@@ -216,7 +308,7 @@ export default function AddAssignmentModal({
               <button
                 type="button"
                 onClick={handleAddMaterial}
-                className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-[#EA580C] font-['Inter'] text-sm font-bold text-white hover:bg-[#DC4C04]"
+                className="flex h-9 min-w-[40px] items-center justify-center rounded-[10px] bg-[#EA580C] px-2 font-['Inter'] text-sm font-bold text-white hover:bg-[#DC4C04]"
                 aria-label="Add material"
               >
                 ✓
@@ -291,7 +383,9 @@ export default function AddAssignmentModal({
                         <button
                           type="button"
                           onClick={() => {
-                            setSelectedMaterial(m.name);
+                            setSelectedMaterialId(
+                              sortedMaterialOptions.find((opt) => opt.name === m.name)?.id ?? ""
+                            );
                             setMaterialQty(m.qty);
                             setMaterials((prev) => prev.filter((row) => row.id !== m.id));
                           }}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, signOut, useSession } from "next-auth/react";
 import Image from "next/image";
 import { User, Lock, ArrowRight } from "lucide-react";
@@ -31,6 +31,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
 export default function LoginForm() {
   const router = useRouter();
   const { status: sessionStatus } = useSession();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const [employeeId, setEmployeeId] = useState("");
   const [password, setPassword] = useState("");
@@ -38,15 +39,17 @@ export default function LoginForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loginSuccess, setLoginSuccess] = useState(false);
 
-  // Redirect when we have a valid mapped user
-  useEffect(() => {
-    if (user) {
-      if (user.role === "kitchen") router.replace(ROUTES.KITCHEN);
-      else if (user.role === "cashier") router.replace(ROUTES.DASHBOARD_MENU);
-      else router.replace(ROUTES.DASHBOARD);
+  const fromLogout = searchParams.get("from") === "logout";
 
-    }
-  }, [user, router]);
+  // Redirect only when authenticated AND we have a valid mapped user.
+  // If we just came from an explicit logout, wait until a new login succeeds.
+  useEffect(() => {
+    if (fromLogout && !loginSuccess) return;
+    if (sessionStatus !== "authenticated" || !user) return;
+    if (user.role === "kitchen") router.replace(ROUTES.KITCHEN);
+    else if (user.role === "cashier") router.replace(ROUTES.DASHBOARD_MENU);
+    else router.replace(ROUTES.DASHBOARD);
+  }, [sessionStatus, user, router, fromLogout, loginSuccess]);
 
   // Signed in but role not supported or missing (e.g. backend returned role "employee" – we only allow cashier/manager/admin)
   useEffect(() => {

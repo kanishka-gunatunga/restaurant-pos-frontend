@@ -66,7 +66,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [token, status]);
 
   const logout = useCallback(() => {
-    signOut({ callbackUrl: ROUTES.HOME });
+    // Add a query flag so the login page knows this navigation came from a logout
+    signOut({ callbackUrl: `${ROUTES.HOME}?from=logout` });
   }, []);
 
   const login = useCallback((_role: UserRole, _name?: string) => {

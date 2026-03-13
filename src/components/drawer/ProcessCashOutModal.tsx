@@ -18,7 +18,7 @@ interface ProcessCashOutModalProps {
 export default function ProcessCashOutModal({
   isOpen,
   onClose,
-  defaultAmount = 4000,
+  defaultAmount,
   onVerify,
 }: ProcessCashOutModalProps) {
   const [amount, setAmount] = useState(defaultAmount ? defaultAmount.toFixed(2) : "");
@@ -95,7 +95,7 @@ export default function ProcessCashOutModal({
             inputMode="decimal"
             value={amount}
             onChange={(e) => handleAmountChange(e.target.value)}
-            placeholder="Rs.4000.00"
+            placeholder="Enter amount (e.g. 4000.00)"
             className="h-12 w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 font-['Consolas'] text-base text-[#45556C] placeholder:text-[#90A1B9] outline-none transition-all focus:border-[#EA580C] focus:ring-2 focus:ring-[#EA580C]/10"
           />
         </div>

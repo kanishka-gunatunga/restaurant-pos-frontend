@@ -27,17 +27,32 @@ export default function AddMaterialModal({ isOpen, onClose, initialMaterial }: A
       ? initialMaterial.allBranches
         ? ["All Branches"]
         : initialMaterial.branches.split(" ").filter(Boolean)
-      : ["Downtown", "Uptown"]
+      : ["Downtown"]
   );
+  const [branchMinStock, setBranchMinStock] = useState<Record<string, string>>({});
 
   const isEditing = !!initialMaterial;
 
   if (!isOpen) return null;
 
   const toggleBranch = (branch: string) => {
-    setSelectedBranches((prev) =>
-      prev.includes(branch) ? prev.filter((b) => b !== branch) : [...prev, branch]
-    );
+    setSelectedBranches((prev) => {
+      if (branch === "All Branches") {
+        // Toggle all-branches: if turning on, clear others; if turning off, clear selection.
+        return prev.includes("All Branches") ? [] : ["All Branches"];
+      }
+
+      // For specific branches, ensure "All Branches" is not selected.
+      const withoutAll = prev.filter((b) => b !== "All Branches");
+      if (withoutAll.includes(branch)) {
+        return withoutAll.filter((b) => b !== branch);
+      }
+      return [...withoutAll, branch];
+    });
+  };
+
+  const handleMinStockChange = (branch: string, value: string) => {
+    setBranchMinStock((prev) => ({ ...prev, [branch]: value }));
   };
 
   return (
@@ -46,35 +61,38 @@ export default function AddMaterialModal({ isOpen, onClose, initialMaterial }: A
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-[640px] overflow-hidden rounded-[32px] bg-white px-8 pb-8 pt-7 shadow-2xl"
+        className="relative flex max-h-[85vh] w-full max-w-[640px] flex-col overflow-hidden rounded-[32px] bg-white shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute right-6 top-6 flex h-8 w-8 items-center justify-center rounded-full text-[#90A1B9] transition-colors hover:bg-[#F8FAFC]"
-          aria-label="Close"
-        >
-          <X className="h-5 w-5" />
-        </button>
+        <div className="shrink-0 px-8 pt-7 pb-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute right-6 top-6 flex h-8 w-8 items-center justify-center rounded-full text-[#90A1B9] transition-colors hover:bg-[#F8FAFC]"
+            aria-label="Close"
+          >
+            <X className="h-5 w-5" />
+          </button>
 
-        <div className="mb-6">
-          <h2 className="font-['Inter'] text-[20px] font-bold leading-7 text-[#1D293D]">
-            {isEditing ? "Edit Material" : "Add New Material"}
-          </h2>
-          <p className="mt-1 font-['Inter'] text-sm leading-5 text-[#90A1B9]">
-            {isEditing ? "Update material details" : "Define a new material to use across branches"}
-          </p>
+          <div className="mb-2">
+            <h2 className="font-['Inter'] text-[20px] font-bold leading-7 text-[#1D293D]">
+              {isEditing ? "Edit Material" : "Add New Material"}
+            </h2>
+            <p className="mt-1 font-['Inter'] text-sm leading-5 text-[#90A1B9]">
+              {isEditing ? "Update material details" : "Define a new material to use across branches"}
+            </p>
+          </div>
         </div>
 
         <form
-          className="space-y-6"
+          className="flex min-h-0 flex-1 flex-col overflow-hidden"
           onSubmit={(e) => {
             e.preventDefault();
             onClose();
           }}
         >
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="scrollbar-subtle min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain px-8 py-2">
+            <div className="grid gap-4 sm:grid-cols-2">
             {/* Material name */}
             <div className="space-y-1.5">
               <label className="font-['Inter'] text-xs font-semibold uppercase tracking-[0.04em] text-[#90A1B9]">
@@ -124,73 +142,88 @@ export default function AddMaterialModal({ isOpen, onClose, initialMaterial }: A
               </select>
             </div>
 
-            {/* Min stock level */}
-            <div className="space-y-1.5">
-              <label className="font-['Inter'] text-xs font-semibold uppercase tracking-[0.04em] text-[#90A1B9]">
-                MIN STOCK LEVEL<span className="text-[#EC003F]"> *</span>
-              </label>
-              <input
-                type="number"
-                min={0}
-                placeholder="0"
-                defaultValue={initialMaterial ? parseMinStockLevel(initialMaterial.minStockLevel) : undefined}
-                className="mt-1 h-10 w-full rounded-[10px] border border-[#E2E8F0] bg-[#F8FAFC] px-3.5 font-['Inter'] text-sm text-[#0F172A] placeholder:text-[#94A3B8] focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C]"
-                required
-              />
-            </div>
+            
           </div>
 
           {/* Branch selection */}
-          <div className="space-y-2">
+          <div className="space-y-2 w-full">
             <label className="font-['Inter'] text-xs font-semibold uppercase tracking-[0.04em] text-[#314158]">
-              SELECT BRANCHES<span className="text-[#EC003F]"> *</span>
+              Select Branches & Set Min Stock<span className="text-[#EC003F]"> *</span>
             </label>
-            <div className="mt-1 w-full max-w-[462px] rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFC] p-4">
-              <div className="flex flex-col gap-4">
+            <div className="mt-1 w-full rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFC] p-4">
+              <div className="flex flex-col gap-4 w-full">
                 {BRANCH_OPTIONS.map((branch) => {
                   const checked = selectedBranches.includes(branch);
                   return (
-                    <label
+                    <div
                       key={branch}
-                      className="flex cursor-pointer items-center gap-3 font-['Inter'] text-sm font-medium leading-[14px] text-[#0A0A0A]"
+                      className={`block w-full border px-4 py-3 ${
+                        branch === "All Branches"
+                          ? "rounded-[10px] border-x-transparent border-t-transparent border-b-[#E2E8F0] gap-3"
+                          : "rounded-[12px] border-transparent"
+                      } ${
+                        checked && branch !== "All Branches"
+                          ? "border-[#EA580C33] bg-[#FFFFFF]"
+                          : branch !== "All Branches"
+                            ? "bg-transparent"
+                            : ""
+                      }`}
                     >
-                      <span className="relative inline-flex h-4 w-4 shrink-0 items-center justify-center">
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => toggleBranch(branch)}
-                          className="peer absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                        />
-                        <span
-                          className={`absolute inset-0 rounded-[4px] border p-[1px] shadow-[0px_1px_2px_0px_#0000000D] transition-colors ${
-                            checked
-                              ? "border-[#EA580C] bg-[#EA580C]"
-                              : "border-[#E2E8F0] bg-white"
-                          }`}
-                        />
-                        <svg
-                          className={`pointer-events-none relative h-2.5 w-2.5 text-white transition-opacity ${
-                            checked ? "opacity-100" : "opacity-0"
-                          }`}
-                          viewBox="0 0 12 12"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <path d="M2 6l3 3 5-6" />
-                        </svg>
-                      </span>
-                      <span>{branch}</span>
-                    </label>
+                      <label className="flex cursor-pointer items-center gap-3 font-['Inter'] text-sm font-medium leading-[14px] text-[#0A0A0A]">
+                        <span className="relative inline-flex h-4 w-4 shrink-0 items-center justify-center">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleBranch(branch)}
+                            className="peer absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                          />
+                          <span
+                            className={`absolute inset-0 rounded-[4px] border p-[1px] shadow-[0px_1px_2px_0px_#0000000D] transition-colors ${
+                              checked
+                                ? "border-[#EA580C] bg-[#EA580C]"
+                                : "border-[#E2E8F0] bg-white"
+                            }`}
+                          />
+                          <svg
+                            className={`pointer-events-none relative h-2.5 w-2.5 text-white transition-opacity ${
+                              checked ? "opacity-100" : "opacity-0"
+                            }`}
+                            viewBox="0 0 12 12"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M2 6l3 3 5-6" />
+                          </svg>
+                        </span>
+                        <span>{branch}</span>
+                      </label>
+
+                      {branch !== "All Branches" && checked && (
+                        <div className="mt-1  bg-[#ffffff] px-3 py-3">
+                          <label className="font-['Inter'] text-[11px] font-semibold uppercase tracking-[0.08em] text-[#90A1B9]">
+                            Min Stock Level
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="5kg"
+                            value={branchMinStock[branch] ?? ""}
+                            onChange={(e) => handleMinStockChange(branch, e.target.value)}
+                            className="mt-1 h-9 w-full rounded-[10px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 font-['Inter'] text-sm text-[#0F172A] placeholder:text-[#94A3B8] focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C]"
+                          />
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </div>
             </div>
           </div>
+          </div>
 
-          <div className="mt-6 flex w-full gap-3">
+          <div className="mt-4 flex w-full gap-3 border-t border-[#E2E8F0] bg-white px-8 py-4">
             <button
               type="button"
               onClick={onClose}
