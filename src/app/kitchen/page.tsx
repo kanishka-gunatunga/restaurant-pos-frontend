@@ -19,6 +19,7 @@ import {
   CircleX,
   LogOut
 } from "lucide-react";
+import { toast } from "sonner";
 import { useGetOrdersExcludeStatus, useUpdateOrderItemStatus, useUpdateOrderStatus } from "@/hooks/useOrder";
 import { useMemo } from "react";
 import ManagerAuthorizationModal from "@/components/orders/ManagerAuthorizationModal";
@@ -77,7 +78,7 @@ const mapBackendOrderToOrder = (backendOrder: any): Order => {
   let mappedStatus: OrderStatus = "Pending";
   const bStatus = (backendOrder.status || '').toLowerCase();
   if (bStatus === 'preparing') mappedStatus = "Preparing";
-  else if (bStatus === 'ready' || bStatus === 'completed') mappedStatus = "Ready";
+  else if (bStatus === 'ready') mappedStatus = "Ready";
   else if (bStatus === 'hold') mappedStatus = "Hold";
 
   return {
@@ -201,7 +202,17 @@ export default function KitchenPage() {
       }
       return;
     }
-    updateOrderStatus.mutate({ id, data: { status: status as any } });
+    updateOrderStatus.mutate(
+      { id, data: { status: status as any } },
+      {
+        onSuccess: () => {
+          toast.success(`Order ${status === "complete" ? "served" : status} successfully`);
+        },
+        onError: (err: any) => {
+          toast.error(err?.response?.data?.message || "Failed to update order status");
+        },
+      }
+    );
   };
 
   const handleVerifyCancel = (passcode: string) => {
@@ -507,7 +518,7 @@ function OrderCard({
         {order.status === "Ready" && (
           <>
             <button
-              onClick={() => onUpdateStatus(order.id, "delivered")}
+              onClick={() => onUpdateStatus(order.id, "complete")}
               className={`w-full py-3 rounded-xl font-bold text-white shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-2 ${theme.button}`}
             >
               <CircleCheck className="w-4 h-4" /> Mark as Served
