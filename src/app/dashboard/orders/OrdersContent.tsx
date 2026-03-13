@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
 import NewOrderDetailsModal from "@/components/menu/NewOrderDetailsModal";
-import ProcessPaymentModal from "@/components/menu/ProcessPaymentModal";
+import ProcessPaymentModal from "@/components/payments/ProcessPaymentModal";
 import EditOrderModal from "@/components/orders/EditOrderModal";
 import OrderDetailsViewModal from "@/components/orders/OrderDetailsViewModal";
 import ManagerAuthorizationModal from "@/components/orders/ManagerAuthorizationModal";
@@ -18,8 +18,9 @@ import { Loader2 } from "lucide-react";
 
 type ProcessingPayment = {
   orderId: number;
-  orderNo: string;
+  orderNo: string | number;
   customerName: string;
+  customerMobile: string;
   total: number;
 };
 
@@ -77,6 +78,7 @@ export default function OrdersContent() {
       orderId: Number(order.id),
       orderNo: order.orderNo,
       customerName: order.customerName,
+      customerMobile: order.phone,
       total: order.totalAmount,
     });
   };
@@ -133,6 +135,17 @@ export default function OrdersContent() {
           }}
           onSubmit={handleEditOrderSubmit}
           onClose={closeEditModal}
+          onPayNow={(totalAmount) => {
+            if (editOrderModal) {
+              setProcessingPayment({
+                orderId: Number(editOrderModal.id),
+                orderNo: editOrderModal.orderNo,
+                customerName: editOrderModal.customerName,
+                customerMobile: editOrderModal.phone,
+                total: totalAmount,
+              });
+            }
+          }}
         />
       )}
 
@@ -176,11 +189,17 @@ export default function OrdersContent() {
 
       {processingPayment && (
         <ProcessPaymentModal
-          customerName={processingPayment.customerName}
-          total={processingPayment.total}
-          orderId={processingPayment.orderId}
+          payment={{
+            id: processingPayment.orderId,
+            orderNo: Number(processingPayment.orderNo),
+            customerName: processingPayment.customerName,
+            customerMobile: processingPayment.customerMobile,
+            dateTime: new Date().toISOString(),
+            method: null,
+            paymentStatus: "pending",
+            amount: processingPayment.total,
+          }}
           onClose={() => setProcessingPayment(null)}
-          onComplete={() => setProcessingPayment(null)}
         />
       )}
 
