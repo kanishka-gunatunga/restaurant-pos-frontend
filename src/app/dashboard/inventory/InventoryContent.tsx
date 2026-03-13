@@ -114,7 +114,7 @@ export default function InventoryContent() {
                   type="search"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by Product Name, Category..."
+                  placeholder="Search by Product Name..."
                   className="w-full rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFC] py-2.5 pl-10 pr-4 font-['Inter'] text-sm text-[#1D293D] placeholder:text-[#90A1B9] focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C]"
                 />
               </div>
