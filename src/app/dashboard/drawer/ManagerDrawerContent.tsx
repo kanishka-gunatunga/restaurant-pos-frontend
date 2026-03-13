@@ -298,6 +298,15 @@ export default function ManagerDrawerContent() {
 
   const cashOutHistory: CashOutEntry[] = filteredRows
     .filter((row) => row.cashOuts > 0)
+    // Only include today's cash outs
+    .filter((row) => {
+      if (!row.closedAtRaw) return false;
+      const d = new Date(row.closedAtRaw);
+      const todayOnly = new Date();
+      todayOnly.setHours(0, 0, 0, 0);
+      d.setHours(0, 0, 0, 0);
+      return d.getTime() === todayOnly.getTime();
+    })
     .slice(0, 5)
     .map((row) => ({
       dateTime: row.endTime ? `${row.date} • ${row.endTime}` : row.date,
@@ -377,7 +386,9 @@ export default function ManagerDrawerContent() {
   const handleCashOut = async (amount: number, reason: string, passcode: string) => {
     // Cash out from drawer: backend models this as cash-action remove.
     await sessionService.cashAction({ type: "remove", amount, description: reason, passcode });
+    // Refresh live session detail and history so summary cards/table reflect latest cash out
     fetchActiveSessionDetail().catch(() => {});
+    fetchSessionHistory().catch(() => {});
   };
 
   const handleCloseSession = async (actualBalance: number, passcode: string) => {
@@ -1256,7 +1267,6 @@ export default function ManagerDrawerContent() {
       <ProcessCashOutModal
         isOpen={isCashOutModalOpen}
         onClose={() => setIsCashOutModalOpen(false)}
-        defaultAmount={4000}
         onVerify={handleCashOut}
       />
       <CloseDrawerSessionModal

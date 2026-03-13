@@ -51,6 +51,7 @@ export default function DrawerContent() {
   const [isCloseSessionModalOpen, setIsCloseSessionModalOpen] = useState(false);
   const [isCloseDrawerModalOpen, setIsCloseDrawerModalOpen] = useState(false);
   const [previousSessions, setPreviousSessions] = useState<PreviousSessionSummary[]>([]);
+  const [activeSessionDetail, setActiveSessionDetail] = useState<sessionService.ActiveSessionDetail | null>(null);
 
   useEffect(() => {
     sessionService
@@ -74,11 +75,46 @@ export default function DrawerContent() {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    if (!hasActiveSession) {
+      queueMicrotask(() => setActiveSessionDetail(null));
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchActive = async () => {
+      try {
+        const detail = await sessionService.getActiveSessionDetail();
+        if (!cancelled) {
+          setActiveSessionDetail(detail);
+        }
+      } catch {
+        if (!cancelled) {
+          setActiveSessionDetail(null);
+        }
+      }
+    };
+
+    fetchActive();
+
+    const handleFocus = () => {
+      fetchActive().catch(() => {});
+    };
+
+    window.addEventListener("focus", handleFocus);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [hasActiveSession]);
+
   const cashOutHistory: CashOutEntry[] = [];
 
-  const expectedBalance = sessionData?.initialAmount ?? 0;
-  const cashSales = 0;
-  const cashOuts = 0;
+  const expectedBalance =
+    activeSessionDetail?.currentBalance ?? sessionData?.initialAmount ?? 0;
+  const cashSales = activeSessionDetail?.cashSalesAmount ?? 0;
+  const cashOuts = activeSessionDetail?.cashOutsAmount ?? 0;
 
   const handleStartDrawer = async (openingAmount: number, managerPasscode: string) => {
     await sessionService.startSession({ startBalance: openingAmount, passcode: managerPasscode });
@@ -105,6 +141,12 @@ export default function DrawerContent() {
 
   const handleCashOut = async (amount: number, reason: string, passcode: string) => {
     await sessionService.cashAction({ type: "remove", amount, description: reason, passcode });
+    try {
+      const detail = await sessionService.getActiveSessionDetail();
+      setActiveSessionDetail(detail);
+    } catch {
+      setActiveSessionDetail(null);
+    }
   };
 
   const handleCloseSession = async (actualBalance: number, passcode: string) => {
@@ -556,7 +598,6 @@ export default function DrawerContent() {
       <ProcessCashOutModal
         isOpen={isCashOutModalOpen}
         onClose={() => setIsCashOutModalOpen(false)}
-        defaultAmount={4000}
         onVerify={handleCashOut}
       />
 
