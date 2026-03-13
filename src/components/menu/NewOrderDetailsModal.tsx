@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { User, Phone, Home, MapPin, Navigation } from "lucide-react";
 import { X } from "lucide-react";
 import type { OrderDetailsData, OrderType } from "@/contexts/OrderContext";
+import { useGetCustomerByMobile } from "@/hooks/useCustomer";
 
 type Props = {
   onSubmit: (data: OrderDetailsData) => void;
@@ -162,6 +163,13 @@ export default function NewOrderDetailsModal({
     initialData?.deliveryInstructions ?? ""
   );
   const [toast, setToast] = useState<string | null>(null);
+  const { data: customerData } = useGetCustomerByMobile(phone.length >= 10 ? phone : "");
+
+  useEffect(() => {
+    if (customerData?.name) {
+      setCustomerName(customerData.name);
+    }
+  }, [customerData]);
 
   const showToast = (msg: string) => {
     setToast(msg);
