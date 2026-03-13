@@ -138,7 +138,7 @@ function AddItemCard({
       {/* Left: image */}
       <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-[10px] bg-[#F1F5F9]">
         <Image
-          src={getProdImage(item.id)}
+          src={item.image ? item.image : getProdImage(String(item.productId))}
           alt={item.name}
           fill
           className="object-cover"
