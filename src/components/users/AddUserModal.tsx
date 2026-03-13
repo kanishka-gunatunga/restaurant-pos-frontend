@@ -25,6 +25,7 @@ export default function AddUserModal({ onClose, onAdd, initialData }: AddUserMod
     branchId: initialData?.branchId ?? 0,
     passcode: "", // Will be fetched via hook if editing
   });
+  const [error, setError] = useState<string | null>(null);
 
   const isPrivileged = formData.role === "admin" || formData.role === "manager";
 
@@ -51,6 +52,27 @@ export default function AddUserModal({ onClose, onAdd, initialData }: AddUserMod
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+
+    // Basic required fields
+    if (!formData.name.trim()) return setError("Full name is required.");
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email || "")) return setError("Invalid email address.");
+
+    // Password is required for new users
+    if (!initialData && (!formData.password || formData.password.length < 6)) {
+      return setError("Password must be at least 6 characters.");
+    }
+
+    if (!formData.employeeId.trim()) return setError("Employee ID is required.");
+
+    // Passcode validation for privileged roles
+    if (isPrivileged) {
+      if (!formData.passcode) return setError("Passcode is required for Admin/Manager.");
+      if (!/^\d{4}$/.test(formData.passcode)) return setError("Passcode must be exactly 4 digits.");
+    }
+
     onAdd(formData);
   };
 
@@ -84,6 +106,12 @@ export default function AddUserModal({ onClose, onAdd, initialData }: AddUserMod
         <h2 className="mb-8 text-[20px] font-bold text-[#1D293D]">
           {initialData ? "Edit User" : "Create New User"}
         </h2>
+
+        {error && (
+          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[14px] text-red-700">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
