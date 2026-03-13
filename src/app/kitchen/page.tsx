@@ -17,10 +17,14 @@ import {
   Truck,
   Box,
   CircleX,
-  LogOut
+  LogOut,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useGetOrdersExcludeStatus, useUpdateOrderItemStatus, useUpdateOrderStatus } from "@/hooks/useOrder";
+import {
+  useGetOrdersExcludeStatus,
+  useUpdateOrderItemStatus,
+  useUpdateOrderStatus,
+} from "@/hooks/useOrder";
 import { useMemo } from "react";
 import ManagerAuthorizationModal from "@/components/orders/ManagerAuthorizationModal";
 import { useAuth } from "@/contexts/AuthContext";
@@ -57,7 +61,6 @@ interface Order {
   orderNote?: string;
 }
 
-
 const mapBackendOrderToOrder = (backendOrder: any): Order => {
   const createdAt = new Date(backendOrder.createdAt || new Date());
   const now = new Date();
@@ -66,7 +69,12 @@ const mapBackendOrderToOrder = (backendOrder: any): Order => {
 
   let type: OrderType = "Take Away";
   const backendType = (backendOrder.orderType || backendOrder.type || "").toLowerCase();
-  if (backendType === "dine in" || backendType === "dine-in" || backendType === "dine_in" || backendType === "dining") {
+  if (
+    backendType === "dine in" ||
+    backendType === "dine-in" ||
+    backendType === "dine_in" ||
+    backendType === "dining"
+  ) {
     type = "Dine In";
   } else if (backendType === "delivery") {
     type = "Delivery";
@@ -74,24 +82,29 @@ const mapBackendOrderToOrder = (backendOrder: any): Order => {
     type = "Take Away";
   }
 
-
   let mappedStatus: OrderStatus = "Pending";
-  const bStatus = (backendOrder.status || '').toLowerCase();
-  if (bStatus === 'preparing') mappedStatus = "Preparing";
-  else if (bStatus === 'ready') mappedStatus = "Ready";
-  else if (bStatus === 'hold') mappedStatus = "Hold";
+  const bStatus = (backendOrder.status || "").toLowerCase();
+  if (bStatus === "preparing") mappedStatus = "Preparing";
+  else if (bStatus === "ready" || bStatus === "completed") mappedStatus = "Ready";
+  else if (bStatus === "hold") mappedStatus = "Hold";
 
   return {
     id: backendOrder.id?.toString() || Math.random().toString(),
-    orderNumber: backendOrder.orderNumber || `#${backendOrder.id ? String(backendOrder.id).padStart(4, '0') : Math.floor(Math.random() * 10000)}`,
+    orderNumber:
+      backendOrder.orderNumber ||
+      `#${backendOrder.id ? String(backendOrder.id).padStart(4, "0") : Math.floor(Math.random() * 10000)}`,
     status: mappedStatus,
     time: createdAt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
     minutesAgo: minutesAgo,
     customerName: backendOrder.customer?.name || "Walk-in Customer",
     type: type,
-    table: backendOrder.tableNumber || (backendOrder.tableId ? `Table ${backendOrder.tableNumber || backendOrder.tableId}` : undefined),
+    table:
+      backendOrder.tableNumber ||
+      (backendOrder.tableId
+        ? `Table ${backendOrder.tableNumber || backendOrder.tableId}`
+        : undefined),
     items: (backendOrder.items || []).map((item: any) => {
-      const addonMap: Record<string, { id: string, quantity: number }> = {};
+      const addonMap: Record<string, { id: string; quantity: number }> = {};
       (item.modifications || []).forEach((mod: any) => {
         const title = mod.modification?.title;
         const modId = mod.modification?.id?.toString() || mod.id?.toString();
@@ -107,7 +120,7 @@ const mapBackendOrderToOrder = (backendOrder: any): Order => {
       const addons: Addon[] = Object.entries(addonMap).map(([name, data]) => ({
         id: data.id,
         name,
-        quantity: data.quantity
+        quantity: data.quantity,
       }));
 
       return {
@@ -116,15 +129,13 @@ const mapBackendOrderToOrder = (backendOrder: any): Order => {
         name: item.product?.name || item.name || "Unknown Item",
         size: item.variation?.name || item.size,
         addons: addons.length > 0 ? addons : undefined,
-        completed: item.status === 'complete' || false,
+        completed: item.status === "complete" || false,
       };
     }),
     kitchenNote: backendOrder.kitchenNote || "",
     orderNote: backendOrder.orderNote || backendOrder.notes || "",
   };
 };
-
-
 
 export default function KitchenPage() {
   const { data: backendOrders, isLoading: isQueryLoading } = useGetOrdersExcludeStatus("cancel");
@@ -135,20 +146,20 @@ export default function KitchenPage() {
   const [filter, setFilter] = useState<OrderStatus | "All Orders">("All Orders");
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [authOrder, setAuthOrder] = useState<{ id: string | number; orderNumber: string } | null>(null);
+  const [authOrder, setAuthOrder] = useState<{ id: string | number; orderNumber: string } | null>(
+    null
+  );
 
   const orders = useMemo(() => {
     if (!backendOrders || !Array.isArray(backendOrders)) {
       return [];
     }
 
-    return backendOrders
-      .map(mapBackendOrderToOrder)
-      .sort((a, b) => {
-        if (a.status === "Ready" && b.status !== "Ready") return 1;
-        if (a.status !== "Ready" && b.status === "Ready") return -1;
-        return b.minutesAgo - a.minutesAgo;
-      });
+    return backendOrders.map(mapBackendOrderToOrder).sort((a, b) => {
+      if (a.status === "Ready" && b.status !== "Ready") return 1;
+      if (a.status !== "Ready" && b.status === "Ready") return -1;
+      return b.minutesAgo - a.minutesAgo;
+    });
   }, [backendOrders]);
 
   const isLoading = isQueryLoading;
@@ -160,13 +171,14 @@ export default function KitchenPage() {
 
   const counts = {
     "All Orders": orders.length,
-    "Pending": orders.filter(o => o.status === "Pending").length,
-    "Preparing": orders.filter(o => o.status === "Preparing").length,
-    "Ready": orders.filter(o => o.status === "Ready").length,
-    "Hold": orders.filter(o => o.status === "Hold").length,
+    Pending: orders.filter((o) => o.status === "Pending").length,
+    Preparing: orders.filter((o) => o.status === "Preparing").length,
+    Ready: orders.filter((o) => o.status === "Ready").length,
+    Hold: orders.filter((o) => o.status === "Hold").length,
   };
 
-  const filteredOrders = filter === "All Orders" ? orders : orders.filter(o => o.status === filter);
+  const filteredOrders =
+    filter === "All Orders" ? orders : orders.filter((o) => o.status === filter);
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
@@ -177,10 +189,10 @@ export default function KitchenPage() {
   };
 
   const toggleItemCompletion = (orderId: string, itemId: string) => {
-    const order = orders.find(o => o.id === orderId);
+    const order = orders.find((o) => o.id === orderId);
     if (!order || order.status !== "Preparing") return;
 
-    const item = order.items.find(i => i.id === itemId);
+    const item = order.items.find((i) => i.id === itemId);
     if (!item) return;
 
     const newStatus = item.completed ? "pending" : "complete";
@@ -190,9 +202,9 @@ export default function KitchenPage() {
 
   const handleUpdateStatus = (id: string | number, status: string) => {
     if (status === "cancel") {
-      const order = orders.find(o => o.id === String(id));
+      const order = orders.find((o) => o.id === String(id));
       if (order) {
-        const hasStarted = order.items.some(i => i.completed);
+        const hasStarted = order.items.some((i) => i.completed);
         if (hasStarted) {
           alert("Cannot cancel an order that has already been started.");
           return;
@@ -217,9 +229,9 @@ export default function KitchenPage() {
 
   const handleVerifyCancel = (passcode: string) => {
     if (authOrder) {
-      updateOrderStatus.mutate({ 
-        id: authOrder.id, 
-        data: { status: "cancel" as any, passcode } 
+      updateOrderStatus.mutate({
+        id: authOrder.id,
+        data: { status: "cancel" as any, passcode },
       });
       setIsAuthModalOpen(false);
       setAuthOrder(null);
@@ -231,7 +243,6 @@ export default function KitchenPage() {
       {/* Header */}
       <header className="flex flex-col p-6 bg-white border-b border-[#E2E8F0] shrink-0">
         <div className="flex justify-between items-center bg-white shrink-0">
-
           <div className="flex items-center gap-3">
             <div
               className="flex h-12 w-12 items-center justify-center rounded-[16px] bg-primary"
@@ -256,17 +267,17 @@ export default function KitchenPage() {
           </div>
         </div>
 
-
         <div className="flex justify-between items-end mt-4 shrink-0 gap-4">
           <div className="flex gap-3 overflow-x-auto no-scrollbar">
-            {(["All Orders", "Pending", "Preparing", "Ready", "Hold"] as const).map(f => (
+            {(["All Orders", "Pending", "Preparing", "Ready", "Hold"] as const).map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
-                className={`flex items-center gap-2 cursor-pointer px-4 py-2 rounded-[14px] text-[16px] font-bold transition-colors whitespace-nowrap ${filter === f
-                  ? "bg-[#1D293D] text-white drop-shadow-[#0000001A]"
-                  : "bg-[#F1F5F9] text-[#45556C] border border-[#F1F5F9] hover:bg-gray-50"
-                  }`}
+                className={`flex items-center gap-2 cursor-pointer px-4 py-2 rounded-[14px] text-[16px] font-bold transition-colors whitespace-nowrap ${
+                  filter === f
+                    ? "bg-[#1D293D] text-white drop-shadow-[#0000001A]"
+                    : "bg-[#F1F5F9] text-[#45556C] border border-[#F1F5F9] hover:bg-gray-50"
+                }`}
               >
                 {f === "All Orders" && <Package className="w-4 h-4" />}
                 {f === "Pending" && <CircleAlert className="w-4 h-4" />}
@@ -274,8 +285,11 @@ export default function KitchenPage() {
                 {f === "Ready" && <CircleCheck className="w-4 h-4" />}
                 {f === "Hold" && <Pause className="w-4 h-4 fill-current stroke-none" />}
                 {f}
-                <span className={`px-2 py-0.5 rounded-full text-xs ${filter === f ? "bg-[#314158] text-white" : "bg-[#E2E8F0] text-[#314158]"
-                  }`}>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-xs ${
+                    filter === f ? "bg-[#314158] text-white" : "bg-[#E2E8F0] text-[#314158]"
+                  }`}
+                >
                   {counts[f]}
                 </span>
               </button>
@@ -294,7 +308,6 @@ export default function KitchenPage() {
         </div>
       </header>
 
-
       <div className="flex-1 overflow-y-auto p-6 pt-6">
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
@@ -304,11 +317,14 @@ export default function KitchenPage() {
           <div className="flex flex-col items-center justify-center h-full text-[#62748E]">
             <Package className="w-16 h-16 mb-4 text-[#CBD5E1]" />
             <h3 className="text-xl font-bold text-[#1D293D]">No orders found</h3>
-            <p className="mt-2 text-sm">There are no {filter !== "All Orders" ? filter.toLowerCase() : ""} orders at the moment.</p>
+            <p className="mt-2 text-sm">
+              There are no {filter !== "All Orders" ? filter.toLowerCase() : ""} orders at the
+              moment.
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
-            {filteredOrders.map(order => (
+            {filteredOrders.map((order) => (
               <OrderCard
                 key={order.id}
                 order={order}
@@ -338,7 +354,7 @@ export default function KitchenPage() {
 function OrderCard({
   order,
   onToggleItem,
-  onUpdateStatus
+  onUpdateStatus,
 }: {
   order: Order;
   onToggleItem: (orderId: string, itemId: string) => void;
@@ -346,51 +362,109 @@ function OrderCard({
 }) {
   const getTheme = (status: OrderStatus) => {
     switch (status) {
-      case "Pending": return { border: "border-[#FFD230]", bg: "bg-[#FEF3C6]", badge: "text-[#BB4D00] bg-[#FFFFFF33] border-[#FFD230]", button: "bg-[#2B7FFF] hover:bg-[#2563EB]" };
-      case "Preparing": return { border: "border-[#8EC5FF]", bg: "bg-[#DBEAFE]", badge: "text-[#1447E6] bg-[#FFFFFF33] border-[#8EC5FF]", button: "bg-[#00BC7D] hover:bg-[#00BC7D]" };
-      case "Ready": return { border: "border-[#5EE9B5]", bg: "bg-[#D0FAE5]", badge: "text-[#007A55] bg-[#FFFFFF33] border-[#5EE9B5]", button: "bg-[#AD46FF] hover:bg-[#9333EA]" };
-      case "Hold": return { border: "border-[#FFA1AD]", bg: "bg-[#FFE4E6]", badge: "text-[#C70036] bg-[#FFFFFF33] border-[#FFA1AD]", button: "bg-[#2B7FFF] hover:bg-[#2563EB]" };
+      case "Pending":
+        return {
+          border: "border-[#FFD230]",
+          bg: "bg-[#FEF3C6]",
+          badge: "text-[#BB4D00] bg-[#FFFFFF33] border-[#FFD230]",
+          button: "bg-[#2B7FFF] hover:bg-[#2563EB]",
+        };
+      case "Preparing":
+        return {
+          border: "border-[#8EC5FF]",
+          bg: "bg-[#DBEAFE]",
+          badge: "text-[#1447E6] bg-[#FFFFFF33] border-[#8EC5FF]",
+          button: "bg-[#00BC7D] hover:bg-[#00BC7D]",
+        };
+      case "Ready":
+        return {
+          border: "border-[#5EE9B5]",
+          bg: "bg-[#D0FAE5]",
+          badge: "text-[#007A55] bg-[#FFFFFF33] border-[#5EE9B5]",
+          button: "bg-[#AD46FF] hover:bg-[#9333EA]",
+        };
+      case "Hold":
+        return {
+          border: "border-[#FFA1AD]",
+          bg: "bg-[#FFE4E6]",
+          badge: "text-[#C70036] bg-[#FFFFFF33] border-[#FFA1AD]",
+          button: "bg-[#2B7FFF] hover:bg-[#2563EB]",
+        };
     }
   };
 
   const theme = getTheme(order.status);
-  const completedItems = order.items.filter(i => i.completed).length;
+  const completedItems = order.items.filter((i) => i.completed).length;
   const allItemsCompleted = completedItems === order.items.length;
 
   return (
-    <div className={`h-full border-2 rounded-2xl flex flex-col bg-white overflow-hidden shadow-sm whitespace-normal ${theme.border}`}>
+    <div
+      className={`h-full border-2 rounded-2xl flex flex-col bg-white overflow-hidden shadow-sm whitespace-normal ${theme.border}`}
+    >
       {/* Header */}
-      <div className={`p-4 border-b shrink-0 ${theme.bg} ${theme.border.replace("border-", "border-b-")}`}>
+      <div
+        className={`p-4 border-b shrink-0 ${theme.bg} ${theme.border.replace("border-", "border-b-")}`}
+      >
         <div className="flex justify-between items-start mb-2">
           <div>
-            <h2 className={`text-[30px] font-[900] ${order.status === "Pending" ? "text-[#D97706]" : order.status === "Preparing" ? "text-[#2563EB]" : order.status === "Hold" ? "text-[#E11D48]" : "text-[#059669]"}`}>
+            <h2
+              className={`text-[30px] font-[900] ${order.status === "Pending" ? "text-[#D97706]" : order.status === "Preparing" ? "text-[#2563EB]" : order.status === "Hold" ? "text-[#E11D48]" : "text-[#059669]"}`}
+            >
               {order.orderNumber}
             </h2>
-            <div className={`flex items-center ${order.status === "Pending" ? "text-[#D97706]" : order.status === "Preparing" ? "text-[#2563EB]" : order.status === "Hold" ? "text-[#E11D48]" : "text-[#059669]"} gap-1 text-sm font-bold`}>
+            <div
+              className={`flex items-center ${order.status === "Pending" ? "text-[#D97706]" : order.status === "Preparing" ? "text-[#2563EB]" : order.status === "Hold" ? "text-[#E11D48]" : "text-[#059669]"} gap-1 text-sm font-bold`}
+            >
               <Clock className="w-3.5 h-3.5" />
               {order.time} • {order.minutesAgo}m ago
             </div>
           </div>
-          <div className={`px-3 py-3 rounded-[14px] text-xs font-bold border-2 ${theme.badge} uppercase tracking-wide`}>
+          <div
+            className={`px-3 py-3 rounded-[14px] text-xs font-bold border-2 ${theme.badge} uppercase tracking-wide`}
+          >
             {order.status}
           </div>
         </div>
 
         <div className="flex justify-between items-end mt-4">
           <div>
-            <div className={`font-bold text-[18px] ${order.status === "Pending" ? "text-[#D97706]" : order.status === "Preparing" ? "text-[#2563EB]" : order.status === "Hold" ? "text-[#E11D48]" : "text-[#059669]"}`}>{order.customerName}</div>
-            <div className={`flex items-center gap-1 mt-1 text-xs font-bold px-2 py-0.5 rounded border border-transparent w-fit ${order.type === "Dine In" ? "bg-[#F3E8FF] text-[#8200DB]" :
-              order.type === "Take Away" ? "bg-[#DBEAFE] text-[#1447E6]" :
-                order.type === "Delivery" ? "bg-[#FFEDD4] text-[#CA3500]" : ""
-              }`}>
-              {order.type === "Dine In" ? <UtensilsCrossed className="w-4 h-4" /> : order.type === "Take Away" ? <ShoppingBag className="w-4 h-4" /> : <Truck className="w-4 h-4" />}
-              {order.type}{order.table ? ` • ${order.table}` : ""}
+            <div
+              className={`font-bold text-[18px] ${order.status === "Pending" ? "text-[#D97706]" : order.status === "Preparing" ? "text-[#2563EB]" : order.status === "Hold" ? "text-[#E11D48]" : "text-[#059669]"}`}
+            >
+              {order.customerName}
+            </div>
+            <div
+              className={`flex items-center gap-1 mt-1 text-xs font-bold px-2 py-0.5 rounded border border-transparent w-fit ${
+                order.type === "Dine In"
+                  ? "bg-[#F3E8FF] text-[#8200DB]"
+                  : order.type === "Take Away"
+                    ? "bg-[#DBEAFE] text-[#1447E6]"
+                    : order.type === "Delivery"
+                      ? "bg-[#FFEDD4] text-[#CA3500]"
+                      : ""
+              }`}
+            >
+              {order.type === "Dine In" ? (
+                <UtensilsCrossed className="w-4 h-4" />
+              ) : order.type === "Take Away" ? (
+                <ShoppingBag className="w-4 h-4" />
+              ) : (
+                <Truck className="w-4 h-4" />
+              )}
+              {order.type}
+              {order.table ? ` • ${order.table}` : ""}
             </div>
           </div>
           <div className="text-right">
             <div className="text-xs text-gray-400 font-medium uppercase">Items</div>
             <div className="font-bold">
-              <span className={allItemsCompleted ? "text-green-600" : `${order.status === "Pending" ? "text-[#D97706]" : order.status === "Preparing" ? "text-[#2563EB]" : order.status === "Hold" ? "text-[#E11D48]" : "text-[#059669]"} text-xl`}>
+              <span
+                className={
+                  allItemsCompleted
+                    ? "text-green-600"
+                    : `${order.status === "Pending" ? "text-[#D97706]" : order.status === "Preparing" ? "text-[#2563EB]" : order.status === "Hold" ? "text-[#E11D48]" : "text-[#059669]"} text-xl`
+                }
+              >
                 {completedItems}
               </span>
               <span className="text-gray-400"> / {order.items.length}</span>
@@ -401,31 +475,45 @@ function OrderCard({
 
       {/* Items List */}
       <div className="p-4 flex-1 overflow-y-auto space-y-3 bg-white no-scrollbar">
-        {order.items.map(item => (
+        {order.items.map((item) => (
           <div
             key={item.id}
             onClick={() => onToggleItem(order.id, item.id)}
-            className={`p-3 rounded-xl border flex gap-3 transition-all ${order.status === "Preparing" ? "cursor-pointer hover:shadow-md active:scale-[0.98]" : ""} ${item.completed ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}
+            className={`p-3 rounded-xl border flex gap-3 transition-all ${order.status === "Preparing" ? "cursor-pointer hover:shadow-md active:scale-[0.98]" : ""} ${item.completed ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200"}`}
           >
             <div
-              className={`w-6 h-6 rounded-full border flex flex-shrink-0 items-center justify-center transition-all ${item.completed
-                ? 'bg-green-500 border-green-500 text-white'
-                : order.status === "Preparing"
-                  ? 'bg-white border-gray-300'
-                  : 'bg-gray-100 border-gray-200 opacity-50'
-                }`}
+              className={`w-6 h-6 rounded-full border flex flex-shrink-0 items-center justify-center transition-all ${
+                item.completed
+                  ? "bg-green-500 border-green-500 text-white"
+                  : order.status === "Preparing"
+                    ? "bg-white border-gray-300"
+                    : "bg-gray-100 border-gray-200 opacity-50"
+              }`}
             >
               {item.completed && <Check className="w-3.5 h-3.5" strokeWidth={3} />}
             </div>
             <div className="flex-1">
               <div className="flex gap-2 items-start text-gray-900 font-semibold text-sm">
-                <span className={`${item.completed ? "text-green-700 bg-green-100" : "text-[#FF6B00] bg-[#FFF0E5]"} px-1.5 rounded text-xs py-0.5 transition-colors`}>{item.quantity}x</span>
-                <span className={item.completed ? "line-through text-gray-500 transition-colors" : "transition-colors"}>{item.name}</span>
+                <span
+                  className={`${item.completed ? "text-green-700 bg-green-100" : "text-[#FF6B00] bg-[#FFF0E5]"} px-1.5 rounded text-xs py-0.5 transition-colors`}
+                >
+                  {item.quantity}x
+                </span>
+                <span
+                  className={
+                    item.completed
+                      ? "line-through text-gray-500 transition-colors"
+                      : "transition-colors"
+                  }
+                >
+                  {item.name}
+                </span>
               </div>
               {item.size && (
                 <div className="mt-2 flex">
                   <span className="text-xs flex items-center gap-1 font-medium text-blue-600 bg-blue-50 border border-blue-100 rounded px-2 py-0.5">
-                    <Box className="w-3 h-3" />{item.size}
+                    <Box className="w-3 h-3" />
+                    {item.size}
                   </span>
                 </div>
               )}
@@ -433,8 +521,11 @@ function OrderCard({
                 <div className="mt-2">
                   <div className="text-[10px] uppercase font-bold text-gray-400 mb-1">ADD-ONS:</div>
                   <div className="flex flex-wrap gap-2">
-                    {item.addons.map(addon => (
-                      <span key={addon.id || addon.name} className="flex items-center gap-1.5 text-xs font-semibold text-[#B45309] bg-[#FFFBEB] border border-[#FDE68A] rounded-lg pl-1 pr-2 py-1 shadow-sm">
+                    {item.addons.map((addon) => (
+                      <span
+                        key={addon.id || addon.name}
+                        className="flex items-center gap-1.5 text-xs font-semibold text-[#B45309] bg-[#FFFBEB] border border-[#FDE68A] rounded-lg pl-1 pr-2 py-1 shadow-sm"
+                      >
                         <span className="bg-[#FEF3C7] text-[#D97706] px-1.5 py-0.5 rounded-md text-[10px] border border-[#FDE68A]">
                           {addon.quantity}x
                         </span>
@@ -501,8 +592,11 @@ function OrderCard({
             <button
               disabled={!allItemsCompleted}
               onClick={() => onUpdateStatus(order.id, "ready")}
-              className={`w-full py-3 rounded-xl font-bold text-white shadow-sm transition-colors flex items-center justify-center gap-2 ${allItemsCompleted ? `cursor-pointer ${theme.button}` : 'bg-gray-300 text-gray-500 cursor-not-allowed border border-gray-200'
-                }`}
+              className={`w-full py-3 rounded-xl font-bold text-white shadow-sm transition-colors flex items-center justify-center gap-2 ${
+                allItemsCompleted
+                  ? `cursor-pointer ${theme.button}`
+                  : "bg-gray-300 text-gray-500 cursor-not-allowed border border-gray-200"
+              }`}
             >
               <CircleCheck className="w-4 h-4" />
               {allItemsCompleted ? "Mark as Ready" : "Complete All Items"}
@@ -533,7 +627,7 @@ function OrderCard({
             >
               <Play className="w-4 h-4" /> Resume Order
             </button>
-            {!order.items.some(i => i.completed) && (
+            {!order.items.some((i) => i.completed) && (
               <button
                 onClick={() => onUpdateStatus(order.id, "cancel")}
                 className="w-full mt-2 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl cursor-pointer flex justify-center items-center gap-2 transition-colors"

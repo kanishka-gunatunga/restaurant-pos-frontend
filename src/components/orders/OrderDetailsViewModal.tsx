@@ -1,7 +1,16 @@
 "use client";
 
 import { useId } from "react";
-import { X, Clock, Package, User, Phone, UtensilsCrossed, DollarSign, CreditCard } from "lucide-react";
+import {
+  X,
+  Clock,
+  Package,
+  User,
+  Phone,
+  UtensilsCrossed,
+  DollarSign,
+  CreditCard,
+} from "lucide-react";
 import type { OrderDetailsView } from "@/domains/orders/types";
 
 import { STATUS_STYLES, DEFAULT_STATUS_STYLE } from "@/domains/orders/constants";
@@ -18,7 +27,14 @@ type Props = {
   onPayNow?: (order: OrderDetailsView) => void;
 };
 
-export default function OrderDetailsViewModal({ order, onClose, onEdit, onEditInfo, onCancel, onPayNow }: Props) {
+export default function OrderDetailsViewModal({
+  order,
+  onClose,
+  onEdit,
+  onEditInfo,
+  onCancel,
+  onPayNow,
+}: Props) {
   const paymentClipId = useId();
   const cancelIconClipId = useId();
   const subtotal = order.subtotal ?? order.totalAmount;
