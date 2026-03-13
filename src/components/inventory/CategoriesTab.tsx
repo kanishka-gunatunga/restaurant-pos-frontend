@@ -1,6 +1,7 @@
 "use client";
 
 import { Plus, Pencil, Power, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { useGetAllCategories, useActivateCategory, useDeactivateCategory } from "@/hooks/useCategory";
 import { CategoryIcon, SubCategoryIcon } from "./CategoryIcons";
 import { Category } from "@/types/product";
@@ -19,11 +20,14 @@ export default function CategoriesTab({ onAddCategory, onEditCategory }: Categor
     try {
       if (category.status === "active") {
         await deactivateMutation.mutateAsync(category.id);
+        toast.success("Category deactivated successfully");
       } else {
         await activateMutation.mutateAsync(category.id);
+        toast.success("Category activated successfully");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to toggle category status:", err);
+      toast.error(err?.response?.data?.message || "Failed to change category status");
     }
   };
 

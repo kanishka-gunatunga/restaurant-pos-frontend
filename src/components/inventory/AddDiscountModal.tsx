@@ -13,6 +13,7 @@ import {
   Package,
   Loader2,
 } from "lucide-react";
+import { toast } from "sonner";
 import {
   type Discount,
   type Product,
@@ -225,12 +226,15 @@ export default function AddDiscountModal({
     try {
       if (isEditing && editingDiscount) {
         await updateMutation.mutateAsync({ id: editingDiscount.id, payload: payload as UpdateDiscountPayload });
+        toast.success("Discount updated successfully");
       } else {
         await createMutation.mutateAsync(payload);
+        toast.success("Discount created successfully");
       }
       onClose();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to save discount:", err);
+      toast.error(err?.response?.data?.message || "Failed to save discount");
     }
   };
 

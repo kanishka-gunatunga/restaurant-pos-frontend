@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Plus, Tag, Pencil, Loader2, MapPin } from "lucide-react";
+import { toast } from "sonner";
 import { useGetAllDiscounts, useActivateDiscount, useDeactivateDiscount } from "@/hooks/useDiscount";
 import { useGetAllBranches } from "@/hooks/useBranch";
 import { Discount, DiscountItem } from "@/types/product";
@@ -13,10 +14,17 @@ function DiscountCard({ offer, onEdit }: { offer: Discount; onEdit: (offer: Disc
   const deactivateMutation = useDeactivateDiscount();
 
   const handleToggleActive = async () => {
-    if (offer.status === "active") {
-      await deactivateMutation.mutateAsync(offer.id);
-    } else {
-      await activateMutation.mutateAsync(offer.id);
+    try {
+      if (offer.status === "active") {
+        await deactivateMutation.mutateAsync(offer.id);
+        toast.success("Discount deactivated successfully");
+      } else {
+        await activateMutation.mutateAsync(offer.id);
+        toast.success("Discount activated successfully");
+      }
+    } catch (err: any) {
+      console.error("Failed to toggle discount status:", err);
+      toast.error(err?.response?.data?.message || "Failed to change discount status");
     }
   };
 

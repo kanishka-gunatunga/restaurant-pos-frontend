@@ -1,6 +1,7 @@
 "use client";
 
 import { Package, Pencil, Trash2, Calendar, FileText, Loader2, Power, Hash } from "lucide-react";
+import { toast } from "sonner";
 import {
   useGetAllProducts,
   useSearchProducts,
@@ -29,11 +30,14 @@ export default function ProductsTab({ branchId, searchQuery, onEditProduct }: Pr
     try {
       if (product.status === "active") {
         await deactivateMutation.mutateAsync(product.id);
+        toast.success("Product deactivated successfully");
       } else {
         await activateMutation.mutateAsync(product.id);
+        toast.success("Product activated successfully");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to toggle product status:", err);
+      toast.error(err?.response?.data?.message || "Failed to change product status");
     }
   };
 
