@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
 import CustomerHeader from "@/components/customers/CustomerHeader";
 import CustomerTable from "@/components/customers/CustomerTable";
@@ -71,13 +72,16 @@ export default function CustomersContent() {
     try {
       if (selectedCustomer) {
         await updateMutation.mutateAsync({ id: selectedCustomer.id, data });
+        toast.success("Customer updated successfully");
       } else {
         await createMutation.mutateAsync(data);
+        toast.success("Customer registered successfully");
       }
       setIsAddModalOpen(false);
       setSelectedCustomer(null);
     } catch (error) {
       console.error("Failed to save customer:", error);
+      toast.error("Failed to save customer. Please try again.");
       throw error;
     }
   };
@@ -88,18 +92,31 @@ export default function CustomersContent() {
   };
 
   const handleToggleStatus = async (customer: Customer) => {
-    if (customer.status === "active") {
-      await deactivateMutation.mutateAsync(customer.id);
-    } else {
-      await activateMutation.mutateAsync(customer.id);
+    try {
+      if (customer.status === "active") {
+        await deactivateMutation.mutateAsync(customer.id);
+        toast.success("Customer deactivated successfully");
+      } else {
+        await activateMutation.mutateAsync(customer.id);
+        toast.success("Customer activated successfully");
+      }
+    } catch (error) {
+      console.error("Failed to toggle status:", error);
+      toast.error("Failed to update status");
     }
   };
 
   const handleTogglePromotion = async (customer: Customer) => {
-    await promotionMutation.mutateAsync({
-      id: customer.id,
-      enabled: !customer.promotions_enabled,
-    });
+    try {
+      await promotionMutation.mutateAsync({
+        id: customer.id,
+        enabled: !customer.promotions_enabled,
+      });
+      toast.success("Promotion preference updated");
+    } catch (error) {
+      console.error("Failed to update promotion preference:", error);
+      toast.error("Failed to update promotion preference");
+    }
   };
 
   return (
