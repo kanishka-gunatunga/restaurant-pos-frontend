@@ -35,6 +35,18 @@ export default function AddCustomerModal({ onClose, onSave, initialData }: AddCu
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    const phone = formData.mobile;
+    if (!phone.trim()) {
+      setError("Please enter mobile number.");
+      return;
+    }
+
+    if (!/^0{1}7{1}[01245678]{1}[0-9]{7}$/.test(phone.replace(/[-\s]/g, ""))) {
+      setError("Invalid mobile number.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await Promise.resolve(onSave(formData));
