@@ -125,14 +125,16 @@ export default function OrderDetailsViewModal({
                   <span className="font-['Inter'] text-lg font-bold leading-7 text-[#1D293D]">
                     Customer Details
                   </span>
-                  <button
-                    type="button"
-                    onClick={onEditInfo}
-                    disabled={!onEditInfo}
-                    className="font-['Inter'] text-xs font-bold uppercase leading-4 text-[#EA580C] hover:underline"
-                  >
-                    EDIT INFO
-                  </button>
+                  {order.status === "pending" && (
+                    <button
+                      type="button"
+                      onClick={onEditInfo}
+                      disabled={!onEditInfo}
+                      className="font-['Inter'] text-xs font-bold uppercase leading-4 text-[#EA580C] hover:underline"
+                    >
+                      EDIT INFO
+                    </button>
+                  )}
                 </div>
                 <div className="flex flex-col gap-4">
                   <div className="flex items-center gap-4">
@@ -171,14 +173,16 @@ export default function OrderDetailsViewModal({
                     <UtensilsCrossed className="h-4 w-4 text-[#1D293D]" />
                     Order Type
                   </span>
-                  <button
-                    type="button"
-                    onClick={onEditInfo}
-                    disabled={!onEditInfo}
-                    className="font-['Inter'] text-xs font-bold uppercase leading-4 text-[#EA580C] hover:underline"
-                  >
-                    EDIT INFO
-                  </button>
+                  {order.status === "pending" && (
+                    <button
+                      type="button"
+                      onClick={onEditInfo}
+                      disabled={!onEditInfo}
+                      className="font-['Inter'] text-xs font-bold uppercase leading-4 text-[#EA580C] hover:underline"
+                    >
+                      EDIT INFO
+                    </button>
+                  )}
                 </div>
                 <div className="flex justify-between items-center gap-2 rounded-[14px] border-2 border-[#E9D4FF] bg-[#F3E8FF] px-3 py-2">
                   <div className="flex items-center gap-2">
