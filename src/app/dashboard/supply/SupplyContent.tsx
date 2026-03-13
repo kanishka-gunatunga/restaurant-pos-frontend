@@ -1,0 +1,1277 @@
+"use client";
+
+import { useState, useEffect, useMemo } from "react";
+import {
+  Search,
+  Plus,
+  Filter,
+  ChevronDown,
+  Pencil,
+  Trash2,
+  Check,
+  AlertCircle,
+  XCircle,
+  Download,
+  Upload,
+} from "lucide-react";
+import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
+import { ROUTES } from "@/lib/constants";
+import { BRANCHES } from "@/lib/branchData";
+import { useAuth } from "@/contexts/AuthContext";
+import { useRouter } from "next/navigation";
+import {
+  SUPPLY_TABS,
+  type SupplyTabId,
+  type MockSupplier,
+  type MockMaterial,
+  type MockStock,
+  type MockAssignment,
+} from "@/domains/supply/types";
+import AddSupplierModal from "@/components/supply/AddSupplierModal";
+import AddMaterialModal from "@/components/supply/AddMaterialModal";
+import AddStockModal from "@/components/supply/AddStockModal";
+import ExportStocksModal from "@/components/supply/ExportStocksModal";
+import AddAssignmentModal from "@/components/supply/AddAssignmentModal";
+import ConfirmModal from "@/components/ui/ConfirmModal";
+const MOCK_SUPPLIERS: MockSupplier[] = [
+  {
+    id: "1",
+    name: "Fresh Farms Co.",
+    branch: "Maharagama",
+    contactPerson: "John Smith",
+    email: "john@freshfarms.com",
+    phone: "+94 234-567-8901",
+    status: "active",
+  },
+  {
+    id: "2",
+    name: "Dairy Delight Ltd.",
+    branch: "Maharagama",
+    contactPerson: "Sarah Johnson",
+    email: "sarah@dairydelight.com",
+    phone: "+94 234-567-8902",
+    status: "active",
+  },
+  {
+    id: "3",
+    name: "Quality Meats Inc.",
+    branch: "Nugegoda",
+    contactPerson: "Mike Brown",
+    email: "mike@qualitymeats.com",
+    phone: "+94 234-567-8903",
+    status: "active",
+  },
+  {
+    id: "4",
+    name: "Ocean Fresh Seafood",
+    branch: "Nugegoda",
+    contactPerson: "Lisa Wilson",
+    email: "lisa@oceanfresh.com",
+    phone: "+94 234-567-8904",
+    status: "inactive",
+  },
+];
+
+const MOCK_MATERIALS: MockMaterial[] = [
+  {
+    id: "1",
+    name: "Beef Patties",
+    category: "Meat",
+    unit: "pieces",
+    branches: "Downtown Uptown",
+    allBranches: false,
+    minStockLevel: "100 pieces",
+  },
+  {
+    id: "2",
+    name: "Mozzarella Cheese",
+    category: "Dairy",
+    unit: "kg",
+    branches: "All Branches",
+    allBranches: true,
+    minStockLevel: "50 kg",
+  },
+  {
+    id: "3",
+    name: "Fresh Tomatoes",
+    category: "Vegetables",
+    unit: "kg",
+    branches: "Downtown",
+    allBranches: false,
+    minStockLevel: "30 kg",
+  },
+  {
+    id: "4",
+    name: "Lettuce",
+    category: "Vegetables",
+    unit: "g",
+    branches: "All Branches",
+    allBranches: true,
+    minStockLevel: "2 kg",
+  },
+];
+
+const MOCK_STOCKS: MockStock[] = [
+  {
+    id: "1",
+    materialName: "Beef Patties",
+    category: "Meat",
+    supplier: "Quality Meats Inc.",
+    batchNo: "BTH-2026-001",
+    expiryDate: "3/15/2026",
+    expired: false,
+    quantity: "250 pieces",
+    status: "available",
+  },
+  {
+    id: "2",
+    materialName: "Mozzarella Cheese",
+    category: "Dairy",
+    supplier: "Dairy Delight Ltd.",
+    batchNo: "BTH-2026-002",
+    expiryDate: "3/20/2026",
+    expired: false,
+    quantity: "45 kg",
+    status: "low",
+  },
+  {
+    id: "3",
+    materialName: "Fresh Tomatoes",
+    category: "Vegetables",
+    supplier: "Fresh Farms Co.",
+    batchNo: "BTH-2026-003",
+    expiryDate: "3/8/2026",
+    expired: true,
+    quantity: "0 kg",
+    status: "out",
+  },
+  {
+    id: "4",
+    materialName: "Lettuce",
+    category: "Vegetables",
+    supplier: "Fresh Farms Co.",
+    batchNo: "BTH-2026-004",
+    expiryDate: "3/5/2026",
+    expired: true,
+    quantity: "500g",
+    status: "expired",
+  },
+];
+
+const MOCK_ASSIGNMENTS: MockAssignment[] = [
+  {
+    id: "1",
+    productName: "Margherita Pizza",
+    quantity: "80",
+    batchNo: "PIZZA-2026-042",
+    expiryDate: "3/15/2026",
+    materialsUsed: [
+      { name: "Mozzarella Cheese", qty: "2 kg" },
+      { name: "Fresh Tomatoes", qty: "500 g" },
+      { name: "Lettuce", qty: "100 g" },
+    ],
+  },
+  {
+    id: "2",
+    productName: "Pepperoni Pizza",
+    quantity: "90",
+    batchNo: "PIZZA-2026-043",
+    expiryDate: "3/15/2026",
+    materialsUsed: [
+      { name: "Mozzarella Cheese", qty: "2 kg" },
+      { name: "Pepperoni", qty: "300 g" },
+    ],
+  },
+  {
+    id: "3",
+    productName: "Veggie Pizza",
+    quantity: "85",
+    batchNo: "PIZZA-2026-044",
+    expiryDate: "3/18/2026",
+    materialsUsed: [
+      { name: "Mozzarella Cheese", qty: "1.5 kg" },
+      { name: "Fresh Tomatoes", qty: "400 g" },
+      { name: "Lettuce", qty: "200 g" },
+    ],
+  },
+];
+
+function StatusPill({
+  status,
+  label,
+  icon: Icon,
+  className,
+}: {
+  status?: string;
+  label: string;
+  icon: React.ElementType;
+  className: string;
+}) {
+  return (
+    <span
+      data-status={status}
+      className={`inline-flex h-[22px] items-center justify-center gap-1 rounded-[8px] border px-2 py-0.5 font-['Inter'] text-xs font-medium leading-4 ${className}`}
+    >
+      <Icon className="h-3 w-3 shrink-0" />
+      {label}
+    </span>
+  );
+}
+
+function ActiveStatusIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <g clipPath="url(#clip0_1062_2844)">
+        <path
+          d="M10.9003 4.99975C11.1287 6.1204 10.9659 7.28546 10.4392 8.30065C9.91255 9.31583 9.05375 10.1198 8.00606 10.5784C6.95837 11.037 5.78512 11.1226 4.68196 10.8209C3.57879 10.5192 2.6124 9.84845 1.94394 8.92046C1.27549 7.99247 0.945367 6.86337 1.00864 5.72144C1.07191 4.57952 1.52475 3.4938 2.29163 2.64534C3.05852 1.79688 4.0931 1.23697 5.22284 1.05898C6.35258 0.880989 7.5092 1.09568 8.49981 1.66725"
+          stroke="#008236"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path d="M4.5 5.5L6 7L11 2" stroke="#008236" strokeLinecap="round" strokeLinejoin="round" />
+      </g>
+      <defs>
+        <clipPath id="clip0_1062_2844">
+          <rect width="12" height="12" fill="white" />
+        </clipPath>
+      </defs>
+    </svg>
+  );
+}
+
+function InactiveStatusIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <g clipPath="url(#clip0_1062_2934)">
+        <path
+          d="M6 11C8.76142 11 11 8.76142 11 6C11 3.23858 8.76142 1 6 1C3.23858 1 1 3.23858 1 6C1 8.76142 3.23858 11 6 11Z"
+          stroke="#030213"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path d="M7.5 4.5L4.5 7.5" stroke="#030213" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M4.5 4.5L7.5 7.5" stroke="#030213" strokeLinecap="round" strokeLinejoin="round" />
+      </g>
+      <defs>
+        <clipPath id="clip0_1062_2934">
+          <rect width="12" height="12" fill="white" />
+        </clipPath>
+      </defs>
+    </svg>
+  );
+}
+
+function StockAvailableIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <g clipPath="url(#clip0_stock_available)">
+        <path
+          d="M10.9003 4.99975C11.1287 6.1204 10.9659 7.28546 10.4392 8.30065C9.91255 9.31583 9.05375 10.1198 8.00606 10.5784C6.95837 11.037 5.78512 11.1226 4.68196 10.8209C3.57879 10.5192 2.6124 9.84845 1.94394 8.92046C1.27549 7.99247 0.945367 6.86337 1.00864 5.72144C1.07191 4.57952 1.52475 3.4938 2.29163 2.64534C3.05852 1.79688 4.0931 1.23697 5.22284 1.05898C6.35258 0.880989 7.5092 1.09568 8.49981 1.66725"
+          stroke="#008236"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path d="M4.5 5.5L6 7L11 2" stroke="#008236" strokeLinecap="round" strokeLinejoin="round" />
+      </g>
+      <defs>
+        <clipPath id="clip0_stock_available">
+          <rect width="12" height="12" fill="white" />
+        </clipPath>
+      </defs>
+    </svg>
+  );
+}
+
+function StockLowIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <g clipPath="url(#clip0_stock_low)">
+        <path
+          d="M6 11C8.76142 11 11 8.76142 11 6C11 3.23858 8.76142 1 6 1C3.23858 1 1 3.23858 1 6C1 8.76142 3.23858 11 6 11Z"
+          stroke="#CA3500"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path d="M6 4V6" stroke="#CA3500" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M6 8H6.005" stroke="#CA3500" strokeLinecap="round" strokeLinejoin="round" />
+      </g>
+      <defs>
+        <clipPath id="clip0_stock_low">
+          <rect width="12" height="12" fill="white" />
+        </clipPath>
+      </defs>
+    </svg>
+  );
+}
+
+function StockOutIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <g clipPath="url(#clip0_stock_out)">
+        <path
+          d="M6 11C8.76142 11 11 8.76142 11 6C11 3.23858 8.76142 1 6 1C3.23858 1 1 3.23858 1 6C1 8.76142 3.23858 11 6 11Z"
+          stroke="white"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path d="M7.5 4.5L4.5 7.5" stroke="white" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M4.5 4.5L7.5 7.5" stroke="white" strokeLinecap="round" strokeLinejoin="round" />
+      </g>
+      <defs>
+        <clipPath id="clip0_stock_out">
+          <rect width="12" height="12" fill="white" />
+        </clipPath>
+      </defs>
+    </svg>
+  );
+}
+
+export default function SupplyContent() {
+  const router = useRouter();
+  const { isCashier } = useAuth();
+  const [activeTab, setActiveTab] = useState<SupplyTabId>("suppliers");
+  const [selectedSupplierBranch, setSelectedSupplierBranch] = useState<string>("all");
+  const [searchSuppliers, setSearchSuppliers] = useState("");
+  const [searchMaterials, setSearchMaterials] = useState("");
+  const [selectedMaterialCategory, setSelectedMaterialCategory] = useState<string>("all");
+  const [selectedMaterialBranch, setSelectedMaterialBranch] = useState<string>("all");
+  const [searchStocks, setSearchStocks] = useState("");
+  const [selectedStockBranch, setSelectedStockBranch] = useState<string>("Maharagama");
+  const [selectedStockCategory, setSelectedStockCategory] = useState<string>("all");
+  const [selectedStockStatus, setSelectedStockStatus] = useState<string>("all");
+  const [searchAssignments, setSearchAssignments] = useState("");
+  const [selectedAssignmentBranch, setSelectedAssignmentBranch] = useState<string>("Maharagama");
+  const [suppliers, setSuppliers] = useState<MockSupplier[]>(MOCK_SUPPLIERS);
+  const [supplierToDelete, setSupplierToDelete] = useState<MockSupplier | null>(null);
+  const [isAddSupplierOpen, setIsAddSupplierOpen] = useState(false);
+  const [editingSupplier, setEditingSupplier] = useState<MockSupplier | null>(null);
+  const [materials, setMaterials] = useState<MockMaterial[]>(MOCK_MATERIALS);
+  const [materialToDelete, setMaterialToDelete] = useState<MockMaterial | null>(null);
+  const [editingMaterial, setEditingMaterial] = useState<MockMaterial | null>(null);
+  const [isAddMaterialOpen, setIsAddMaterialOpen] = useState(false);
+  const [stocks, setStocks] = useState<MockStock[]>(MOCK_STOCKS);
+  const [stockToDelete, setStockToDelete] = useState<MockStock | null>(null);
+  const [editingStock, setEditingStock] = useState<MockStock | null>(null);
+  const [isAddStockOpen, setIsAddStockOpen] = useState(false);
+  const [isExportStocksOpen, setIsExportStocksOpen] = useState(false);
+  const [assignments, setAssignments] = useState<MockAssignment[]>(MOCK_ASSIGNMENTS);
+  const [assignmentToDelete, setAssignmentToDelete] = useState<MockAssignment | null>(null);
+  const [editingAssignment, setEditingAssignment] = useState<MockAssignment | null>(null);
+  const [isAddAssignmentOpen, setIsAddAssignmentOpen] = useState(false);
+
+  const materialCategories = useMemo(
+    () => Array.from(new Set(materials.map((m) => m.category))),
+    [materials]
+  );
+  const materialBranches = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          materials
+            .filter((m) => !m.allBranches)
+            .flatMap((m) => m.branches.split(" "))
+            .filter(Boolean)
+        )
+      ),
+    [materials]
+  );
+  const stockCategories = useMemo(
+    () => Array.from(new Set(stocks.map((s) => s.category))),
+    [stocks]
+  );
+  const stockStatuses = useMemo(
+    () => Array.from(new Set(stocks.map((s) => s.status))),
+    [stocks]
+  );
+
+  useEffect(() => {
+    if (isCashier) router.replace(ROUTES.DASHBOARD_MENU);
+  }, [isCashier, router]);
+
+  if (isCashier) return null;
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white">
+      <DashboardPageHeader />
+      <div className="flex-1 overflow-y-auto ">
+        <div className="space-y-6 ">
+          <div className="px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 lg:pt-6">
+            <h1 className="font-['Inter'] text-[24px] font-bold leading-8 text-[#1D293D]">
+              Supply Management
+            </h1>
+            <p className="mt-1 font-['Inter'] text-[14px] leading-5 text-[#62748E]">
+              Manage suppliers, materials, and product assignments
+            </p>
+          </div>
+
+          <div className="w-full overflow-hidden ">
+            <div className="rounded-t-[20px] border-b border-[#E2E8F0] px-4 sm:px-6 lg:px-8 pb-5 pt-2">
+              <div className="flex flex-wrap gap-2">
+                {SUPPLY_TABS.map(({ id, label, icon: Icon }) => {
+                  const isActive = activeTab === id;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => setActiveTab(id)}
+                      className={`flex h-11 items-center justify-center gap-2 rounded-[10px] px-4 text-center font-['Inter'] text-base font-medium leading-6 transition-opacity duration-300 ease-out ${
+                        isActive
+                          ? "bg-[#EA580C] text-white shadow-[0px_1px_2px_-1px_#0000001A,0px_1px_3px_0px_#0000001A]"
+                          : "bg-[#F1F5F9] text-[#45556C] hover:opacity-90"
+                      }`}
+                    >
+                      <Icon
+                        className={`h-4 w-4 shrink-0 ${isActive ? "text-white" : "text-[#45556C]"}`}
+                      />
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Suppliers tab */}
+            {activeTab === "suppliers" && (
+              <div className="p-4 sm:p-6 ">
+                <div className="border border-[#E2E8F0] rounded-[14px] p-6 bg-white shadow-[0px_1px_2px_-1px_#0000001A,0px_1px_3px_0px_#0000001A]">
+                  <div className="mb-4 flex flex-col gap-4 ">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="relative w-full sm:max-w-md">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#90A1B9]" />
+                        <input
+                          type="search"
+                          value={searchSuppliers}
+                          onChange={(e) => setSearchSuppliers(e.target.value)}
+                          placeholder="Search suppliers..."
+                          className="w-full rounded-[14px] border border-[#E2E8F0] bg-white py-2.5 pl-10 pr-4 font-['Inter'] text-sm text-[#1D293D] placeholder:text-[#90A1B9] focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C]"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsAddSupplierOpen(true)}
+                        className="flex shrink-0 items-center gap-2 self-start rounded-[14px] bg-[#EA580C] px-4 py-2.5 font-['Inter'] text-sm font-bold text-white shadow-[0px_1px_2px_-1px_#0000001A,0px_1px_3px_0px_#0000001A] transition-opacity hover:opacity-90"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Add Supplier
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="flex h-4 w-4 shrink-0 items-center justify-center"
+                          aria-hidden
+                        >
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 16 16"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="text-[#90A1B9]"
+                          >
+                            <path
+                              d="M6.66659 13.3333C6.66653 13.4572 6.701 13.5787 6.76612 13.6841C6.83124 13.7895 6.92443 13.8746 7.03526 13.93L8.36859 14.5967C8.47025 14.6475 8.58322 14.6714 8.69675 14.6663C8.81029 14.6612 8.92062 14.6271 9.01728 14.5673C9.11393 14.5075 9.1937 14.424 9.249 14.3247C9.30431 14.2254 9.33331 14.1137 9.33326 14V9.33333C9.33341 9.00292 9.45623 8.68433 9.67792 8.43933L14.4933 3.11333C14.5796 3.01771 14.6363 2.89912 14.6567 2.77192C14.677 2.64472 14.66 2.51435 14.6079 2.39658C14.5557 2.27881 14.4705 2.17868 14.3626 2.1083C14.2547 2.03792 14.1287 2.0003 13.9999 2H1.99992C1.87099 2.00005 1.74484 2.03748 1.63676 2.10776C1.52867 2.17804 1.44328 2.27815 1.39093 2.39598C1.33858 2.5138 1.32151 2.64427 1.34181 2.77159C1.3621 2.89892 1.41887 3.01762 1.50526 3.11333L6.32192 8.43933C6.54361 8.68433 6.66644 9.00292 6.66659 9.33333V13.3333Z"
+                              stroke="currentColor"
+                              strokeWidth="1.33333"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </span>
+                        <select
+                          value={selectedSupplierBranch}
+                          onChange={(e) => setSelectedSupplierBranch(e.target.value)}
+                          className="flex h-9 w-[256px] cursor-pointer appearance-none items-center rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFC] pl-4 pr-10 font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A] focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C] [background-image:url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%20fill%3D%22none%22%3E%3Cpath%20d%3D%22M3%204.5L6%207.5L9%204.5%22%20stroke%3D%22%2390A1B9%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] [background-position:right_0.75rem_center] [background-repeat:no-repeat] [background-size:12px]"
+                        >
+                          <option value="all">All Branches</option>
+                          {BRANCHES.map((b) => (
+                            <option key={b.id} value={b.id}>
+                              {b.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="max-h-[420px] overflow-auto bg-white sm:max-h-[480px] min-[1000px]:max-h-[540px] xl:max-h-[620px]">
+                    <table className="w-full min-w-[800px] text-left">
+                      <thead>
+                        <tr className="sticky top-0 z-10 border-b border-[#E2E8F0] bg-[#F8FAFC]">
+                          <th className="px-4 py-3 font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A]">
+                            Supplier Name
+                          </th>
+                          <th className="px-4 py-3 font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A]">
+                            Branch
+                          </th>
+                          <th className="px-4 py-3 font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A]">
+                            Contact Person
+                          </th>
+                          <th className="px-4 py-3 font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A]">
+                            Email
+                          </th>
+                          <th className="px-4 py-3 font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A]">
+                            Phone
+                          </th>
+                          <th className="px-4 py-3 font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A]">
+                            Status
+                          </th>
+                          <th className="px-4 py-3 text-right font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A]">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white">
+                        {suppliers
+                          .filter(
+                            (s) =>
+                              !searchSuppliers ||
+                              s.name.toLowerCase().includes(searchSuppliers.toLowerCase())
+                          )
+                          .map((row) => (
+                          <tr
+                            key={row.id}
+                            className="border-b border-[#F1F5F9] transition-colors last:border-b-0 hover:bg-[#F8FAFC]"
+                          >
+                            <td className="px-4 py-3 font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A]">
+                              {row.name}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="inline-flex h-[22px] w-[93px] items-center justify-center gap-1 rounded-[8px] border border-[#0000001A] bg-[#F8FAFC] px-2 py-0.5 font-['Inter'] text-xs font-medium leading-4 text-[#0A0A0A]">
+                                {row.branch}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 font-['Inter'] text-sm font-normal leading-5 text-[#0A0A0A]">
+                              {row.contactPerson}
+                            </td>
+                            <td className="px-4 py-3">
+                              <a
+                                href={`mailto:${row.email}`}
+                                className="font-['Inter'] text-sm font-normal leading-5 text-[#45556C] hover:underline"
+                              >
+                                {row.email}
+                              </a>
+                            </td>
+                            <td className="px-4 py-3 font-['Inter'] text-sm font-normal leading-5 text-[#45556C]">
+                              {row.phone}
+                            </td>
+                            <td className="px-4 py-3">
+                              {row.status === "active" ? (
+                                <StatusPill
+                                  label="Active"
+                                  icon={ActiveStatusIcon}
+                                  className="border-[#B9F8CF] bg-[#DCFCE7] text-[#008236]"
+                                />
+                              ) : (
+                                <StatusPill
+                                  label="Inactive"
+                                  icon={InactiveStatusIcon}
+                                  className="border-[#00000011] bg-[#ECEEF2] text-[#030213]"
+                                />
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  type="button"
+                                  className="rounded-lg p-2 text-[#45556C] hover:bg-[#F1F5F9]"
+                                  aria-label="Edit"
+                                  onClick={() => {
+                                    setEditingSupplier(row);
+                                    setIsAddSupplierOpen(true);
+                                  }}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="rounded-lg p-2 text-[#B91C1C] hover:bg-[#FEE2E2]"
+                                  aria-label="Delete"
+                                  onClick={() => setSupplierToDelete(row)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Materials tab */}
+            {activeTab === "materials" && (
+              <div className="p-4 sm:p-6">
+                <div className="rounded-[14px] border border-[#E2E8F0] bg-white p-6 shadow-[0px_1px_2px_-1px_#0000001A,0px_1px_3px_0px_#0000001A]">
+                  <div className="mb-4 flex flex-col gap-4">
+                    {/* Row 1: search + action */}
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="relative w-full sm:max-w-md">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#90A1B9]" />
+                        <input
+                          type="search"
+                          value={searchMaterials}
+                          onChange={(e) => setSearchMaterials(e.target.value)}
+                          placeholder="Search materials..."
+                          className="w-full rounded-[14px] border border-[#E2E8F0] bg-white py-2.5 pl-10 pr-4 font-['Inter'] text-sm text-[#1D293D] placeholder:text-[#90A1B9] focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C]"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsAddMaterialOpen(true)}
+                        className="flex shrink-0 items-center gap-2 self-start rounded-[14px] bg-[#EA580C] px-4 py-2.5 font-['Inter'] text-sm font-bold text-white shadow-[0px_1px_2px_-1px_#0000001A,0px_1px_3px_0px_#0000001A] transition-opacity hover:opacity-90"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Add Material
+                      </button>
+                    </div>
+
+                    {/* Row 2: filters */}
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Filter className="h-5 w-5 text-[#90A1B9]" />
+                      <div className="flex items-center gap-2 rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2.5">
+                        <div className="relative">
+                          <select
+                            value={selectedMaterialCategory}
+                            onChange={(e) => setSelectedMaterialCategory(e.target.value)}
+                            className="h-6 cursor-pointer appearance-none bg-[#F8FAFC] pr-6 font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A] focus:outline-none"
+                          >
+                            <option value="all">All Categories</option>
+                            {materialCategories.map((cat) => (
+                              <option key={cat} value={cat}>
+                                {cat}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown className="pointer-events-none absolute right-0 top-1/2 h-4 w-4 -translate-y-1/2 text-[#90A1B9]" />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2.5">
+                        <div className="relative">
+                          <select
+                            value={selectedMaterialBranch}
+                            onChange={(e) => setSelectedMaterialBranch(e.target.value)}
+                            className="h-6 cursor-pointer appearance-none bg-[#F8FAFC] pr-6 font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A] focus:outline-none"
+                          >
+                            <option value="all">All Branches</option>
+                            {materialBranches.map((b) => (
+                              <option key={b} value={b}>
+                                {b}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown className="pointer-events-none absolute right-0 top-1/2 h-4 w-4 -translate-y-1/2 text-[#90A1B9]" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="max-h-[420px] overflow-auto  sm:max-h-[480px] min-[1000px]:max-h-[540px] xl:max-h-[620px] mt-8">
+                    <table className="w-full min-w-[700px] border-collapse text-left">
+                      <thead>
+                        <tr className="sticky top-0 z-10 border-b border-[#E2E8F0] bg-[#F8FAFC]">
+                          <th className="px-4 py-3 font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A]">
+                            Material Name
+                          </th>
+                          <th className="px-4 py-3 font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A]">
+                            Category
+                          </th>
+                          <th className="px-4 py-3 font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A]">
+                            Unit
+                          </th>
+                          <th className="px-4 py-3 font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A]">
+                            Branches
+                          </th>
+                          <th className="px-4 py-3 font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A]">
+                            Min Stock Level
+                          </th>
+                          <th className="px-4 py-3 text-right font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A]">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#F1F5F9]">
+                        {materials
+                          .filter((m) => {
+                            const matchesSearch =
+                              !searchMaterials ||
+                              m.name.toLowerCase().includes(searchMaterials.toLowerCase());
+                            const matchesCategory =
+                              selectedMaterialCategory === "all" ||
+                              m.category === selectedMaterialCategory;
+                            const branchTokens = m.branches.split(" ").filter(Boolean);
+                            const matchesBranch =
+                              selectedMaterialBranch === "all" ||
+                              m.allBranches ||
+                              branchTokens.includes(selectedMaterialBranch);
+                            return matchesSearch && matchesCategory && matchesBranch;
+                          })
+                          .map((row) => (
+                          <tr key={row.id} className="hover:bg-[#F8FAFC] transition-colors">
+                            <td className="px-4 py-3 font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A]">
+                              {row.name}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="inline-flex h-[22px] items-center justify-center rounded-[8px] border border-[#0000001A] bg-[#F8FAFC] px-2 py-0.5 font-['Inter'] text-xs font-medium leading-4 text-[#0A0A0A]">
+                                {row.category}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 font-['Inter'] text-sm font-normal leading-5 text-[#0A0A0A]">
+                              {row.unit}
+                            </td>
+                            <td className="px-4 py-3">
+                              {row.allBranches ? (
+                                <span className="inline-flex h-[22px] w-[90px] items-center justify-center rounded-[8px] border border-[#EA580C] bg-[#EA580C] px-2 py-0.5 font-['Inter'] text-xs font-medium leading-4 text-white">
+                                  All Branches
+                                </span>
+                              ) : (
+                                <div className="flex flex-wrap items-center gap-2">
+                                  {row.branches
+                                    .split(" ")
+                                    .filter(Boolean)
+                                    .map((b) => (
+                                      <span
+                                        key={`${row.id}-${b}`}
+                                        className="inline-flex h-[22px] w-[80px] items-center justify-center gap-1 rounded-[8px] border border-[#0000001A] bg-[#F8FAFC] px-2 py-0.5 font-['Inter'] text-xs font-medium leading-4 text-[#0A0A0A]"
+                                      >
+                                        {b}
+                                      </span>
+                                    ))}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 font-['Inter'] text-sm font-normal leading-5 text-[#0A0A0A]">
+                              {row.minStockLevel}
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  type="button"
+                                  className="rounded-lg p-2 text-[#90A1B9] hover:bg-[#F1F5F9] hover:text-[#45556C]"
+                                  aria-label="Edit"
+                                  onClick={() => {
+                                    setEditingMaterial(row);
+                                    setIsAddMaterialOpen(true);
+                                  }}
+                                >
+                                  <Pencil className="h-4 w-4 text-[#0A0A0A]" />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="rounded-lg p-2 text-[#90A1B9] hover:bg-[#FEE2E2] hover:text-[#B91C1C]"
+                                  aria-label="Delete"
+                                  onClick={() => setMaterialToDelete(row)}
+                                >
+                                  <Trash2 className="h-4 w-4 text-[#FB2C36]" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Stock Management tab */}
+            {activeTab === "stock" && (
+              <div className="p-4 sm:p-6">
+                <div className="bg-white border-t border-[#E2E8F0] shadow-[0px_1px_2px_-1px_#0000001A,0px_1px_3px_0px_#0000001A] rounded-[14px] p-6">
+                  <div className="mb-4 flex flex-col gap-4">
+                    {/* Row 1: branch select */}
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        <label className="font-['Inter'] text-sm font-medium text-[#45556C]">
+                          Select Branch:
+                        </label>
+                        <select
+                          value={selectedStockBranch}
+                          onChange={(e) => setSelectedStockBranch(e.target.value)}
+                          className="h-9 min-w-[160px] cursor-pointer appearance-none rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFC] pl-4 pr-8 font-['Inter'] text-sm font-medium leading-5 text-[#1D293D] focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary bg-[url('data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%2212%22%20height=%2212%22%20viewBox=%220%200%2012%2012%22%20fill=%22none%22%3E%3Cpath%20d=%22M3%204.5L6%207.5L9%204.5%22%20stroke=%22%2390A1B9%22%20stroke-width=%221.5%22%20stroke-linecap=%22round%22%20stroke-linejoin=%22round%22/%3E%3C/svg%3E')] bg-no-repeat bg-[length:12px] bg-[right_0.75rem_center]"
+                        >
+                          <option value="Maharagama">Maharagama</option>
+                          <option value="Nugegoda">Nugegoda</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Row 2: search + actions */}
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="relative min-w-[180px] flex-1 sm:max-w-xs">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#90A1B9]" />
+                        <input
+                          type="search"
+                          value={searchStocks}
+                          onChange={(e) => setSearchStocks(e.target.value)}
+                          placeholder="Search stocks..."
+                          className="h-9 w-full rounded-[8px] border border-[#E2E8F0] bg-[#F8FAFC] py-1 pl-10 pr-3 font-['Inter'] text-sm text-[#1D293D] placeholder:text-[#90A1B9] focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary sm:max-w-[448px]"
+                        />
+                      </div>
+                      <div className="flex shrink-0 flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          className="flex items-center gap-2 rounded-[14px] border border-[#E2E8F0] bg-white px-4 py-2.5 font-['Inter'] text-sm font-semibold text-[#0A0A0A] hover:bg-[#F8FAFC]"
+                        >
+                          <Download className="h-4 w-4" />
+                          Import from Excel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIsExportStocksOpen(true)}
+                          className="flex items-center gap-2 rounded-[14px] border border-[#E2E8F0] bg-white px-4 py-2.5 font-['Inter'] text-sm font-semibold text-[#0A0A0A] hover:bg-[#F8FAFC]"
+                        >
+                          <Upload className="h-4 w-4" />
+                          Export to Excel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIsAddStockOpen(true)}
+                          className="flex items-center gap-2 rounded-[14px] bg-primary px-4 py-2.5 font-['Inter'] text-sm font-bold text-white shadow-[var(--shadow-primary)] transition-opacity hover:bg-primary-hover"
+                        >
+                          <Plus className="h-4 w-4" />
+                          Add Stock
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Row 3: filters */}
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Filter className="h-4 w-4 text-[#90A1B9]" />
+                      <div className="flex items-center gap-2 rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2.5">
+                        <div className="relative">
+                          <select
+                            value={selectedStockCategory}
+                            onChange={(e) => setSelectedStockCategory(e.target.value)}
+                            className="h-6 cursor-pointer appearance-none bg-[#F8FAFC] pr-6 font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A] focus:outline-none"
+                          >
+                            <option value="all">All Categories</option>
+                            {stockCategories.map((cat) => (
+                              <option key={cat} value={cat}>
+                                {cat}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown className="pointer-events-none absolute right-0 top-1/2 h-4 w-4 -translate-y-1/2 text-[#90A1B9]" />
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2.5">
+                        <div className="relative">
+                          <select
+                            value={selectedStockStatus}
+                            onChange={(e) => setSelectedStockStatus(e.target.value)}
+                            className="h-6 cursor-pointer appearance-none bg-[#F8FAFC] pr-6 font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A] focus:outline-none"
+                          >
+                            <option value="all">All Status</option>
+                            {stockStatuses.map((st) => (
+                              <option key={st} value={st}>
+                                {st}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown className="pointer-events-none absolute right-0 top-1/2 h-4 w-4 -translate-y-1/2 text-[#90A1B9]" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="max-h-[420px] overflow-auto bg-white sm:max-h-[480px] min-[1000px]:max-h-[540px] xl:max-h-[620px]">
+                    <table className="w-full min-w-[800px]  text-left">
+                      <thead>
+                        <tr className="sticky top-0 z-10 border-b border-[#E2E8F0] bg-[#F8FAFC]">
+                          <th className="px-4 py-3 font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A]">
+                            Material Name
+                          </th>
+                          <th className="px-4 py-3 font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A]">
+                            Category
+                          </th>
+                          <th className="px-4 py-3 font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A]">
+                            Supplier
+                          </th>
+                          <th className="px-4 py-3 font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A]">
+                            Batch No.
+                          </th>
+                          <th className="px-4 py-3 font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A]">
+                            Expiry Date
+                          </th>
+                          <th className="px-4 py-3 font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A]">
+                            Quantity
+                          </th>
+                          <th className="px-4 py-3 font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A]">
+                            Status
+                          </th>
+                          <th className="px-4 py-3 text-right font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A]">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#F1F5F9]">
+                        {stocks
+                          .filter((s) => {
+                            const matchesSearch =
+                              !searchStocks ||
+                              s.materialName.toLowerCase().includes(searchStocks.toLowerCase());
+                            const matchesCategory =
+                              selectedStockCategory === "all" || s.category === selectedStockCategory;
+                            const matchesStatus =
+                              selectedStockStatus === "all" || s.status === selectedStockStatus;
+                            return matchesSearch && matchesCategory && matchesStatus;
+                          })
+                          .map((row) => (
+                          <tr key={row.id} className="hover:bg-[#F8FAFC] transition-colors">
+                            <td className="px-4 py-3 font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A]">
+                              {row.materialName}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="inline-flex h-[22px] items-center justify-center rounded-[8px] border border-[#0000001A] bg-[#F8FAFC] px-2 py-0.5 font-['Inter'] text-xs font-medium leading-4 text-[#0A0A0A]">
+                                {row.category}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 font-['Inter'] text-sm font-normal leading-5 text-[#0A0A0A]">
+                              {row.supplier}
+                            </td>
+                            <td className="px-4 py-3 font-['Inter'] text-sm font-mono leading-5 text-[#0A0A0A]">
+                              {row.batchNo}
+                            </td>
+                            <td className="px-4 py-3 font-['Inter'] text-sm font-normal leading-5 text-[#0A0A0A]">
+                              {row.expiryDate}
+                              {row.expired && (
+                                <span className="ml-1 font-['Inter'] text-sm font-medium leading-5 text-[#E7000B]">
+                                  (Expired)
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 font-['Inter'] text-sm leading-5 text-[#0A0A0A]">
+                              <span
+                                className={
+                                  row.status === "low"
+                                    ? "font-medium text-[#F54900]"
+                                    : "font-normal text-[#0A0A0A]"
+                                }
+                              >
+                                {row.quantity}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              {row.status === "available" && (
+                                <span className="inline-flex h-[22px] items-center justify-center gap-1 rounded-[8px] border border-[#B9F8CF] bg-[#DCFCE7] px-2 py-0.5 font-['Inter'] text-xs font-medium leading-4 text-[#008236]">
+                                  <StockAvailableIcon />
+                                  Available
+                                </span>
+                              )}
+                              {row.status === "low" && (
+                                <span className="inline-flex h-[22px] items-center justify-center gap-1 rounded-[8px] border border-[#FFD6A8] bg-[#FFF7ED] px-2 py-0.5 font-['Inter'] text-xs font-medium leading-4 text-[#CA3500]">
+                                  <StockLowIcon />
+                                  Low Stock
+                                </span>
+                              )}
+                              {(row.status === "out" || row.status === "expired") && (
+                                <span className="inline-flex h-[22px] items-center justify-center gap-1 rounded-[8px] border  bg-[#D4183D] px-2 py-0.5 font-['Inter'] text-xs font-medium leading-4 text-white">
+                                  <StockOutIcon />
+                                  {row.status === "out" ? "Out of Stock" : "Expired"}
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  type="button"
+                                  className="rounded-lg p-2 text-[#90A1B9] hover:bg-[#F1F5F9] hover:text-[#45556C]"
+                                  aria-label="Edit"
+                                  onClick={() => {
+                                    setEditingStock(row);
+                                    setIsAddStockOpen(true);
+                                  }}
+                                >
+                                  <Pencil className="h-4 w-4 text-[#0A0A0A]" />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="rounded-lg p-2 text-[#90A1B9] hover:bg-[#FEE2E2] hover:text-[#B91C1C]"
+                                  aria-label="Delete"
+                                  onClick={() => setStockToDelete(row)}
+                                >
+                                  <Trash2 className="h-4 w-4 text-[#FB2C36]" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Product Assignments tab */}
+            {activeTab === "assignments" && (
+              <div className="p-4 sm:p-6">
+                <div className="bg-white border-t border-[#E2E8F0] shadow-[0px_1px_2px_-1px_#0000001A,0px_1px_3px_0px_#0000001A] rounded-[14px] p-6">
+                  <div className="mb-4 flex flex-col gap-4">
+                    {/* Row 1: branch select */}
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        <label className="font-['Inter'] text-sm font-medium text-[#45556C]">
+                          Select Branch:
+                        </label>
+                        <select
+                          value={selectedAssignmentBranch}
+                          onChange={(e) => setSelectedAssignmentBranch(e.target.value)}
+                          className="h-9 min-w-[160px] cursor-pointer appearance-none rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFC] pl-4 pr-8 font-['Inter'] text-sm font-medium leading-5 text-[#1D293D] focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary bg-[url('data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%2212%22%20height=%2212%22%20viewBox=%220%200%2012%2012%22%20fill=%22none%22%3E%3Cpath%20d=%22M3%204.5L6%207.5L9%204.5%22%20stroke=%22%2390A1B9%22%20stroke-width=%221.5%22%20stroke-linecap=%22round%22%20stroke-linejoin=%22round%22/%3E%3C/svg%3E')] bg-no-repeat bg-[length:12px] bg-[right_0.75rem_center]"
+                        >
+                          <option value="Maharagama">Maharagama</option>
+                          <option value="Nugegoda">Nugegoda</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Row 2: search + action */}
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="relative min-w-[200px] flex-1 sm:max-w-xs">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#90A1B9]" />
+                        <input
+                          type="search"
+                          value={searchAssignments}
+                          onChange={(e) => setSearchAssignments(e.target.value)}
+                          placeholder="Search assignments..."
+                          className="h-9 w-full rounded-[8px] border border-[#E2E8F0] bg-[#F8FAFC] py-1 pl-10 pr-3 font-['Inter'] text-sm text-[#1D293D] placeholder:text-[#90A1B9] focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary sm:max-w-[448px]"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsAddAssignmentOpen(true)}
+                        className="flex shrink-0 items-center gap-2 rounded-[14px] bg-primary px-4 py-2.5 font-['Inter'] text-sm font-bold text-white shadow-[var(--shadow-primary)] transition-opacity hover:bg-primary-hover"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Add Assignment
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="max-h-[420px] overflow-auto bg-white sm:max-h-[480px] min-[1000px]:max-h-[540px] xl:max-h-[620px]">
+                    <table className="w-full min-w-[700px] text-left">
+                      <thead>
+                        <tr className="sticky top-0 z-10 border-b border-[#E2E8F0] bg-[#F8FAFC]">
+                          <th className="px-4 py-3 font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A]">
+                            Product Name
+                          </th>
+                          <th className="px-4 py-3 font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A]">
+                            Quantity
+                          </th>
+                          <th className="px-4 py-3 font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A]">
+                            Batch No.
+                          </th>
+                          <th className="px-4 py-3 font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A]">
+                            Expiry Date
+                          </th>
+                          <th className="px-4 py-3 font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A]">
+                            Materials Used
+                          </th>
+                          <th className="px-4 py-3 text-right font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A]">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#F1F5F9]">
+                        {assignments
+                          .filter(
+                            (a) =>
+                              !searchAssignments ||
+                              a.productName.toLowerCase().includes(searchAssignments.toLowerCase())
+                          )
+                          .map((row) => (
+                          <tr key={row.id} className="hover:bg-[#F8FAFC] transition-colors">
+                            <td className="px-4 py-3 font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A]">
+                              {row.productName}
+                            </td>
+                            <td className="px-4 py-3 font-['Inter'] text-sm font-normal leading-5 text-[#0A0A0A]">
+                              {row.quantity}
+                            </td>
+                            <td className="px-4 py-3 font-['Inter'] text-sm font-mono leading-5 text-[#0A0A0A]">
+                              {row.batchNo}
+                            </td>
+                            <td className="px-4 py-3 font-['Inter'] text-sm font-normal leading-5 text-[#0A0A0A]">
+                              {row.expiryDate}
+                            </td>
+                            <td className="px-4 py-3">
+                              <ul className="list-none space-y-0.5 font-['Inter'] text-sm font-normal leading-5 text-[#45556C]">
+                                {row.materialsUsed.map((m, i) => (
+                                  <li key={i}>
+                                    • {m.name}: {m.qty}
+                                  </li>
+                                ))}
+                              </ul>
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  type="button"
+                                  className="rounded-lg p-2 text-[#90A1B9] hover:bg-[#F1F5F9] hover:text-[#45556C]"
+                                  aria-label="Edit"
+                                  onClick={() => {
+                                    setEditingAssignment(row);
+                                    setIsAddAssignmentOpen(true);
+                                  }}
+                                >
+                                  <Pencil className="h-4 w-4 text-[#0A0A0A]" />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="rounded-lg p-2 text-[#90A1B9] hover:bg-[#FEE2E2] hover:text-[#B91C1C]"
+                                  aria-label="Delete"
+                                  onClick={() => setAssignmentToDelete(row)}
+                                >
+                                  <Trash2 className="h-4 w-4 text-[#FB2C36]" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <ConfirmModal
+              isOpen={!!supplierToDelete}
+              onClose={() => setSupplierToDelete(null)}
+              onConfirm={() => {
+                if (supplierToDelete) {
+                  setSuppliers((prev) => prev.filter((s) => s.id !== supplierToDelete.id));
+                }
+              }}
+              title="Delete Supplier"
+              message={
+                supplierToDelete
+                  ? `Are you sure you want to delete "${supplierToDelete.name}"? This action cannot be undone.`
+                  : ""
+              }
+              confirmLabel="Delete"
+              cancelLabel="Cancel"
+              variant="danger"
+            />
+            <ConfirmModal
+              isOpen={!!materialToDelete}
+              onClose={() => setMaterialToDelete(null)}
+              onConfirm={() => {
+                if (materialToDelete) {
+                  setMaterials((prev) => prev.filter((m) => m.id !== materialToDelete.id));
+                }
+              }}
+              title="Delete Material"
+              message={
+                materialToDelete
+                  ? `Are you sure you want to delete "${materialToDelete.name}"? This action cannot be undone.`
+                  : ""
+              }
+              confirmLabel="Delete"
+              cancelLabel="Cancel"
+              variant="danger"
+            />
+            <ConfirmModal
+              isOpen={!!stockToDelete}
+              onClose={() => setStockToDelete(null)}
+              onConfirm={() => {
+                if (stockToDelete) {
+                  setStocks((prev) => prev.filter((s) => s.id !== stockToDelete.id));
+                }
+              }}
+              title="Delete Stock"
+              message={
+                stockToDelete
+                  ? `Are you sure you want to delete "${stockToDelete.materialName}" (${stockToDelete.batchNo})? This action cannot be undone.`
+                  : ""
+              }
+              confirmLabel="Delete"
+              cancelLabel="Cancel"
+              variant="danger"
+            />
+            <ConfirmModal
+              isOpen={!!assignmentToDelete}
+              onClose={() => setAssignmentToDelete(null)}
+              onConfirm={() => {
+                if (assignmentToDelete) {
+                  setAssignments((prev) => prev.filter((a) => a.id !== assignmentToDelete.id));
+                }
+              }}
+              title="Delete Assignment"
+              message={
+                assignmentToDelete
+                  ? `Are you sure you want to delete the assignment for "${assignmentToDelete.productName}"? This action cannot be undone.`
+                  : ""
+              }
+              confirmLabel="Delete"
+              cancelLabel="Cancel"
+              variant="danger"
+            />
+            {isAddSupplierOpen && (
+              <AddSupplierModal
+                isOpen={isAddSupplierOpen}
+                onClose={() => {
+                  setIsAddSupplierOpen(false);
+                  setEditingSupplier(null);
+                }}
+                initialSupplier={
+                  editingSupplier
+                    ? {
+                        name: editingSupplier.name,
+                        branch: editingSupplier.branch,
+                        contactPerson: editingSupplier.contactPerson,
+                        email: editingSupplier.email,
+                        phone: editingSupplier.phone,
+                        status: editingSupplier.status === "active" ? "active" : "inactive",
+                      }
+                    : null
+                }
+              />
+            )}
+            {isAddMaterialOpen && (
+              <AddMaterialModal
+                isOpen={isAddMaterialOpen}
+                onClose={() => {
+                  setIsAddMaterialOpen(false);
+                  setEditingMaterial(null);
+                }}
+                initialMaterial={editingMaterial}
+              />
+            )}
+            {isAddStockOpen && (
+              <AddStockModal
+                isOpen={isAddStockOpen}
+                onClose={() => {
+                  setIsAddStockOpen(false);
+                  setEditingStock(null);
+                }}
+                initialStock={editingStock}
+              />
+            )}
+            {isExportStocksOpen && (
+              <ExportStocksModal
+                isOpen={isExportStocksOpen}
+                onClose={() => setIsExportStocksOpen(false)}
+                stocks={stocks}
+              />
+            )}
+            {isAddAssignmentOpen && (
+              <AddAssignmentModal
+                isOpen={isAddAssignmentOpen}
+                onClose={() => {
+                  setIsAddAssignmentOpen(false);
+                  setEditingAssignment(null);
+                }}
+                initialAssignment={editingAssignment}
+              />
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

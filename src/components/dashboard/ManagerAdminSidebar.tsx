@@ -14,6 +14,7 @@ import {
   Package,
   UserCog,
   Activity,
+  Truck,
 } from "lucide-react";
 import OrdersIcon from "@/components/icons/OrdersIcon";
 import BranchesIcon from "@/components/icons/BranchesIcon";
@@ -41,6 +42,7 @@ const navLinks = [
   { href: ROUTES.DASHBOARD_BRANCHES, label: "Branches", icon: BranchesIcon },
   { href: ROUTES.DASHBOARD_INVENTORY, label: "Inventory", icon: Package },
   { href: ROUTES.DASHBOARD_DRAWER, label: "Drawer", icon: DrawerIcon },
+  { href: ROUTES.DASHBOARD_SUPPLY, label: "Supply", icon: Truck },
   { href: ROUTES.DASHBOARD_REPORTS, label: "Report", icon: ReportIcon },
   { href: ROUTES.DASHBOARD_ACTIVITY, label: "Activity", icon: Activity },
 ] as const;
@@ -178,6 +180,7 @@ export default function ManagerAdminSidebar() {
               const isDrawer = label === "Drawer";
               const isBranches = label === "Branches";
               const isInventory = label === "Inventory";
+              const isSupply = label === "Supply";
               const isActive = isDashboard
                 ? pathname === ROUTES.DASHBOARD
                 : isMenu
@@ -190,7 +193,10 @@ export default function ManagerAdminSidebar() {
                       : isInventory
                         ? pathname === ROUTES.DASHBOARD_INVENTORY ||
                           pathname.startsWith(`${ROUTES.DASHBOARD_INVENTORY}/`)
-                        : pathname === href || pathname.startsWith(`${href}/`);
+                        : isSupply
+                          ? pathname === ROUTES.DASHBOARD_SUPPLY ||
+                            pathname.startsWith(`${ROUTES.DASHBOARD_SUPPLY}/`)
+                          : pathname === href || pathname.startsWith(`${href}/`);
               return (
                 <NavLink
                   key={label}
