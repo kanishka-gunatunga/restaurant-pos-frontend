@@ -15,6 +15,7 @@ import {
   Check,
   ChevronDown,
 } from "lucide-react";
+import { toast } from "sonner";
 import { useSearchParams } from "next/navigation";
 import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
 import { ROUTES } from "@/lib/constants";
@@ -336,17 +337,19 @@ export default function AddProductContent() {
           data: payload as any,
           imageFile: imageFile || undefined,
         });
+        toast.success("Product updated successfully");
       } else {
         await createProductMutation.mutateAsync({
           data: payload as any,
           imageFile: imageFile || undefined,
         });
+        toast.success("Product created successfully");
       }
 
       router.push(ROUTES.DASHBOARD_INVENTORY);
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Failed to ${isEditing ? "update" : "create"} product:`, error);
-      alert(`Failed to ${isEditing ? "update" : "create"} product. Please try again.`);
+      toast.error(error?.response?.data?.message || `Failed to ${isEditing ? "update" : "create"} product`);
     }
   };
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Plus, X, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { useCreateCategory, useUpdateCategory } from "@/hooks/useCategory";
 import { Category } from "@/types/product";
 
@@ -59,15 +60,18 @@ export default function AddCategoryModal({
             subcategories: formattedSubs,
           },
         });
+        toast.success("Category updated successfully");
       } else {
         await createMutation.mutateAsync({
           name: categoryName,
           subcategories: subCategories.filter(s => s.trim()),
         });
+        toast.success("Category created successfully");
       }
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to save category:", error);
+      toast.error(error?.response?.data?.message || "Failed to save category");
     }
   };
 
