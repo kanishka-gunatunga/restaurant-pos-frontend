@@ -77,21 +77,40 @@ export default function AddDiscountModal({
   useEffect(() => {
     if (open) {
       if (editingDiscount) {
+        setStep(1);
         setDiscountName(editingDiscount.name);
         setExpiryDate(editingDiscount.expiryDate || "");
         setIsForAllBranches(editingDiscount.isForAllBranches);
         setSelectedBranchIds(editingDiscount.branches?.map(b => b.branchId) || []);
         setSelectedDiscounts(
-          editingDiscount.items?.map((item) => ({
-            productId: item.productId!,
-            variantId: item.variationOptionId!,
-            productName: item.product?.name || "Product",
-            variantName: item.variationOption?.name,
-            basePrice: Number(item.variationOption?.prices?.[0]?.price || item.product?.variations?.[0]?.options?.[0]?.prices?.[0]?.price || 0),
-            type: item.discountType as DiscountType,
-            value: Number(item.discountValue),
-            branchId: item.branchId || undefined,
-          })) || []
+          editingDiscount.items?.map((item) => {
+            const variantId = item.variationOptionId ?? undefined;
+            const branchId = item.branchId ?? undefined;
+            
+            // Try to find the product and variant in main products list to get accurate price
+            const product = products?.find(p => p.id === item.productId);
+            const variant = product?.variations?.[0]?.options?.find(o => o.id === variantId);
+            
+            // Re-calculate base price if possible, otherwise fallback to item data
+            const basePrice = Number(
+              variant?.prices?.[0]?.price || 
+              product?.variations?.[0]?.options?.[0]?.prices?.[0]?.price || 
+              item.variationOption?.prices?.[0]?.price || 
+              item.product?.variations?.[0]?.options?.[0]?.prices?.[0]?.price || 
+              0
+            );
+
+            return {
+              productId: item.productId!,
+              variantId,
+              productName: item.product?.name || product?.name || "Product",
+              variantName: item.variationOption?.name || variant?.name,
+              basePrice,
+              type: item.discountType as DiscountType,
+              value: Number(item.discountValue),
+              branchId,
+            };
+          }) || []
         );
       } else {
         setStep(1);
@@ -104,6 +123,31 @@ export default function AddDiscountModal({
       }
     }
   }, [open, editingDiscount]);
+
+  // Sync prices when products list is loaded
+  useEffect(() => {
+    if (products && products.length > 0 && selectedDiscounts.length > 0) {
+      const hasZeroPrices = selectedDiscounts.some(d => d.basePrice === 0);
+      if (hasZeroPrices) {
+        setSelectedDiscounts(prev => prev.map(item => {
+          if (item.basePrice > 0) return item;
+          
+          const product = products.find(p => p.id === item.productId);
+          const variant = product?.variations?.[0]?.options?.find(o => o.id === item.variantId);
+          const price = Number(
+            variant?.prices?.[0]?.price || 
+            product?.variations?.[0]?.options?.[0]?.prices?.[0]?.price || 
+            0
+          );
+          
+          if (price > 0) {
+            return { ...item, basePrice: price };
+          }
+          return item;
+        }));
+      }
+    }
+  }, [products, selectedDiscounts.length]);
 
   useEffect(() => {
     if (step === 2 && !isForAllBranches && selectedBranchIds.length > 0 && activeBranchId === null) {
@@ -183,7 +227,12 @@ export default function AddDiscountModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     if (!discountName.trim()) return;
+    if (step === 1) {
+      setStep(2);
+      return;
+    }
     if (selectedDiscounts.length === 0) return;
 
     // Group items by unique product/variant combination
@@ -201,6 +250,11 @@ export default function AddDiscountModal({
         
         const configs = selectedDiscounts.filter(s => s.productId === pIdNum && s.variantId === vIdNum);
         const first = configs[0];
+
+        if (!first) {
+          console.warn(`No config found for item ${key}`);
+          return null;
+        }
 
         if (isForAllBranches) {
           return {
@@ -220,7 +274,7 @@ export default function AddDiscountModal({
             }))
           };
         }
-      })
+      }).filter((item): item is NonNullable<typeof item> => item !== null)
     };
 
     try {
@@ -572,8 +626,7 @@ export default function AddDiscountModal({
             </button>
             {step === 1 ? (
               <button
-                type="button"
-                onClick={() => setStep(2)}
+                type="submit"
                 disabled={!discountName.trim() || (!isForAllBranches && selectedBranchIds.length === 0)}
                 className="flex items-center gap-2 rounded-[14px] bg-[#EA580C] px-4 py-2.5 font-['Inter'] text-sm font-bold text-white shadow-[0px_4px_6px_-4px_#EA580C33,0px_10px_15px_-3px_#EA580C33] hover:bg-[#c2410c] disabled:opacity-50"
               >
