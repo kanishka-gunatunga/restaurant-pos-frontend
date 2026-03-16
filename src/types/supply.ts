@@ -57,6 +57,13 @@ export interface CreateSupplierBody {
 export type UpdateSupplierBody = Partial<CreateSupplierBody>;
 
 // --- Material ---
+export interface MaterialBranchMinStock {
+  branchId: number;
+  branchName?: string;
+  minStockValue: number;
+  minStockUnit: string;
+}
+
 export interface Material {
   id: number;
   name: string;
@@ -66,6 +73,7 @@ export interface Material {
   branchIds: number[];
   minStockValue: number;
   minStockUnit: string;
+   perBranchMinStocks?: MaterialBranchMinStock[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -83,6 +91,7 @@ export interface CreateMaterialBody {
   branchIds?: number[];
   minStockValue?: number;
   minStockUnit?: string;
+  perBranchMinStocks?: MaterialBranchMinStock[];
 }
 
 export type UpdateMaterialBody = Partial<CreateMaterialBody>;

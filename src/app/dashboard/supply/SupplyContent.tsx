@@ -38,6 +38,7 @@ import {
   useUpdateAssignment,
   useDeleteAssignment,
 } from "@/hooks/useSupply";
+import { useGetAllCategories } from "@/hooks/useCategory";
 import AddSupplierModal from "@/components/supply/AddSupplierModal";
 import AddMaterialModal from "@/components/supply/AddMaterialModal";
 import AddStockModal from "@/components/supply/AddStockModal";
@@ -181,6 +182,7 @@ export default function SupplyContent() {
   const router = useRouter();
   const { isCashier } = useAuth();
   const { data: branches = [] } = useGetAllBranches("active");
+  const { data: categories = [] } = useGetAllCategories("active");
 
   const [activeTab, setActiveTab] = useState<SupplyTabId>("suppliers");
   const [selectedSupplierBranch, setSelectedSupplierBranch] = useState<string>("all");
@@ -577,9 +579,6 @@ export default function SupplyContent() {
                           <th className="px-4 py-3 font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A]">
                             Branches
                           </th>
-                          <th className="px-4 py-3 font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A]">
-                            Min Stock Level
-                          </th>
                           <th className="px-4 py-3 text-right font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A]">
                             Actions
                           </th>
@@ -619,16 +618,13 @@ export default function SupplyContent() {
                                     .map((name) => (
                                       <span
                                         key={`${row.id}-${name}`}
-                                        className="inline-flex h-[22px] w-[80px] items-center justify-center gap-1 rounded-[8px] border border-[#0000001A] bg-[#F8FAFC] px-2 py-0.5 font-['Inter'] text-xs font-medium leading-4 text-[#0A0A0A]"
+                                        className="inline-flex  items-center justify-center gap-1 rounded-[8px] border border-[#0000001A] bg-[#F8FAFC] px-3 py-1 font-['Inter'] text-xs font-medium leading-4 text-[#0A0A0A]"
                                       >
                                         {name}
                                       </span>
                                     ))}
                                 </div>
                               )}
-                            </td>
-                            <td className="px-4 py-3 font-['Inter'] text-sm font-normal leading-5 text-[#0A0A0A]">
-                              {row.minStockValue} {row.minStockUnit}
                             </td>
                             <td className="px-4 py-3 text-right">
                               <div className="flex items-center justify-end gap-2">
@@ -1145,7 +1141,7 @@ export default function SupplyContent() {
                         branch: editingSupplier.branch?.name ?? "",
                         branchId: editingSupplier.branchId,
                         contactPerson: editingSupplier.contactPerson,
-                        email: editingSupplier.email,
+                        email: editingSupplier.email ?? undefined,
                         country: editingSupplier.country ?? undefined,
                         phone: editingSupplier.phone,
                         address: editingSupplier.address ?? undefined,
@@ -1172,24 +1168,20 @@ export default function SupplyContent() {
                   setIsAddMaterialOpen(false);
                   setEditingMaterial(null);
                 }}
-                initialMaterial={
-                  editingMaterial
-                    ? {
-                        id: String(editingMaterial.id),
-                        name: editingMaterial.name,
-                        category: editingMaterial.category,
-                        unit: editingMaterial.unit,
-                        branches: editingMaterial.allBranches
-                          ? "All Branches"
-                          : (editingMaterial.branchIds ?? [])
-                              .map((id) => branches.find((b) => b.id === id)?.name)
-                              .filter(Boolean)
-                              .join(" "),
-                        allBranches: editingMaterial.allBranches,
-                        minStockLevel: `${editingMaterial.minStockValue} ${editingMaterial.minStockUnit}`,
-                      }
-                    : undefined
-                }
+                branches={branches}
+                categories={categories}
+                initialMaterial={editingMaterial ?? undefined}
+                onSave={async (body) => {
+                  if (editingMaterial) {
+                    await updateMaterialMutation.mutateAsync({
+                      id: editingMaterial.id,
+                      data: body,
+                    });
+                  } else {
+                    await createMaterialMutation.mutateAsync(body);
+                  }
+                }}
+                isSaving={createMaterialMutation.isPending || updateMaterialMutation.isPending}
               />
             )}
             {isAddStockOpen && (
