@@ -8,193 +8,42 @@ import {
   ChevronDown,
   Pencil,
   Trash2,
-  Check,
-  AlertCircle,
-  XCircle,
   Download,
   Upload,
 } from "lucide-react";
 import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
 import { ROUTES } from "@/lib/constants";
-import { BRANCHES } from "@/lib/branchData";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
+import { SUPPLY_TABS, type SupplyTabId } from "@/domains/supply/types";
+import type { Supplier, Material, StockItem, ProductAssignment } from "@/types/supply";
+import { useGetAllBranches } from "@/hooks/useBranch";
 import {
-  SUPPLY_TABS,
-  type SupplyTabId,
-  type MockSupplier,
-  type MockMaterial,
-  type MockStock,
-  type MockAssignment,
-} from "@/domains/supply/types";
+  useSuppliersList,
+  useCreateSupplier,
+  useUpdateSupplier,
+  useDeleteSupplier,
+  useMaterialsList,
+  useCreateMaterial,
+  useUpdateMaterial,
+  useDeleteMaterial,
+  useStocksList,
+  useCreateStock,
+  useUpdateStock,
+  useDeleteStock,
+  useExportStocks,
+  useImportStocks,
+  useAssignmentsList,
+  useCreateAssignment,
+  useUpdateAssignment,
+  useDeleteAssignment,
+} from "@/hooks/useSupply";
 import AddSupplierModal from "@/components/supply/AddSupplierModal";
 import AddMaterialModal from "@/components/supply/AddMaterialModal";
 import AddStockModal from "@/components/supply/AddStockModal";
 import ExportStocksModal from "@/components/supply/ExportStocksModal";
 import AddAssignmentModal from "@/components/supply/AddAssignmentModal";
 import ConfirmModal from "@/components/ui/ConfirmModal";
-const MOCK_SUPPLIERS: MockSupplier[] = [
-  {
-    id: "1",
-    name: "Fresh Farms Co.",
-    branch: "Maharagama",
-    contactPerson: "John Smith",
-    email: "john@freshfarms.com",
-    phone: "+94 234-567-8901",
-    status: "active",
-  },
-  {
-    id: "2",
-    name: "Dairy Delight Ltd.",
-    branch: "Maharagama",
-    contactPerson: "Sarah Johnson",
-    email: "sarah@dairydelight.com",
-    phone: "+94 234-567-8902",
-    status: "active",
-  },
-  {
-    id: "3",
-    name: "Quality Meats Inc.",
-    branch: "Nugegoda",
-    contactPerson: "Mike Brown",
-    email: "mike@qualitymeats.com",
-    phone: "+94 234-567-8903",
-    status: "active",
-  },
-  {
-    id: "4",
-    name: "Ocean Fresh Seafood",
-    branch: "Nugegoda",
-    contactPerson: "Lisa Wilson",
-    email: "lisa@oceanfresh.com",
-    phone: "+94 234-567-8904",
-    status: "inactive",
-  },
-];
-
-const MOCK_MATERIALS: MockMaterial[] = [
-  {
-    id: "1",
-    name: "Beef Patties",
-    category: "Meat",
-    unit: "pieces",
-    branches: "Downtown Uptown",
-    allBranches: false,
-    minStockLevel: "100 pieces",
-  },
-  {
-    id: "2",
-    name: "Mozzarella Cheese",
-    category: "Dairy",
-    unit: "kg",
-    branches: "All Branches",
-    allBranches: true,
-    minStockLevel: "50 kg",
-  },
-  {
-    id: "3",
-    name: "Fresh Tomatoes",
-    category: "Vegetables",
-    unit: "kg",
-    branches: "Downtown",
-    allBranches: false,
-    minStockLevel: "30 kg",
-  },
-  {
-    id: "4",
-    name: "Lettuce",
-    category: "Vegetables",
-    unit: "g",
-    branches: "All Branches",
-    allBranches: true,
-    minStockLevel: "2 kg",
-  },
-];
-
-const MOCK_STOCKS: MockStock[] = [
-  {
-    id: "1",
-    materialName: "Beef Patties",
-    category: "Meat",
-    supplier: "Quality Meats Inc.",
-    batchNo: "BTH-2026-001",
-    expiryDate: "3/15/2026",
-    expired: false,
-    quantity: "250 pieces",
-    status: "available",
-  },
-  {
-    id: "2",
-    materialName: "Mozzarella Cheese",
-    category: "Dairy",
-    supplier: "Dairy Delight Ltd.",
-    batchNo: "BTH-2026-002",
-    expiryDate: "3/20/2026",
-    expired: false,
-    quantity: "45 kg",
-    status: "low",
-  },
-  {
-    id: "3",
-    materialName: "Fresh Tomatoes",
-    category: "Vegetables",
-    supplier: "Fresh Farms Co.",
-    batchNo: "BTH-2026-003",
-    expiryDate: "3/8/2026",
-    expired: true,
-    quantity: "0 kg",
-    status: "out",
-  },
-  {
-    id: "4",
-    materialName: "Lettuce",
-    category: "Vegetables",
-    supplier: "Fresh Farms Co.",
-    batchNo: "BTH-2026-004",
-    expiryDate: "3/5/2026",
-    expired: true,
-    quantity: "500g",
-    status: "expired",
-  },
-];
-
-const MOCK_ASSIGNMENTS: MockAssignment[] = [
-  {
-    id: "1",
-    productName: "Margherita Pizza",
-    quantity: "80",
-    batchNo: "PIZZA-2026-042",
-    expiryDate: "3/15/2026",
-    materialsUsed: [
-      { name: "Mozzarella Cheese", qty: "2 kg" },
-      { name: "Fresh Tomatoes", qty: "500 g" },
-      { name: "Lettuce", qty: "100 g" },
-    ],
-  },
-  {
-    id: "2",
-    productName: "Pepperoni Pizza",
-    quantity: "90",
-    batchNo: "PIZZA-2026-043",
-    expiryDate: "3/15/2026",
-    materialsUsed: [
-      { name: "Mozzarella Cheese", qty: "2 kg" },
-      { name: "Pepperoni", qty: "300 g" },
-    ],
-  },
-  {
-    id: "3",
-    productName: "Veggie Pizza",
-    quantity: "85",
-    batchNo: "PIZZA-2026-044",
-    expiryDate: "3/18/2026",
-    materialsUsed: [
-      { name: "Mozzarella Cheese", qty: "1.5 kg" },
-      { name: "Fresh Tomatoes", qty: "400 g" },
-      { name: "Lettuce", qty: "200 g" },
-    ],
-  },
-];
 
 function StatusPill({
   status,
@@ -326,9 +175,13 @@ function StockOutIcon() {
   );
 }
 
+const DEFAULT_PAGE_SIZE = 100;
+
 export default function SupplyContent() {
   const router = useRouter();
   const { isCashier } = useAuth();
+  const { data: branches = [] } = useGetAllBranches("active");
+
   const [activeTab, setActiveTab] = useState<SupplyTabId>("suppliers");
   const [selectedSupplierBranch, setSelectedSupplierBranch] = useState<string>("all");
   const [searchSuppliers, setSearchSuppliers] = useState("");
@@ -336,43 +189,79 @@ export default function SupplyContent() {
   const [selectedMaterialCategory, setSelectedMaterialCategory] = useState<string>("all");
   const [selectedMaterialBranch, setSelectedMaterialBranch] = useState<string>("all");
   const [searchStocks, setSearchStocks] = useState("");
-  const [selectedStockBranch, setSelectedStockBranch] = useState<string>("Maharagama");
+  const [selectedStockBranch, setSelectedStockBranch] = useState<number | "all">("all");
   const [selectedStockCategory, setSelectedStockCategory] = useState<string>("all");
   const [selectedStockStatus, setSelectedStockStatus] = useState<string>("all");
   const [searchAssignments, setSearchAssignments] = useState("");
-  const [selectedAssignmentBranch, setSelectedAssignmentBranch] = useState<string>("Maharagama");
-  const [suppliers, setSuppliers] = useState<MockSupplier[]>(MOCK_SUPPLIERS);
-  const [supplierToDelete, setSupplierToDelete] = useState<MockSupplier | null>(null);
+  const [selectedAssignmentBranch, setSelectedAssignmentBranch] = useState<number | "all">("all");
+  const [supplierToDelete, setSupplierToDelete] = useState<Supplier | null>(null);
   const [isAddSupplierOpen, setIsAddSupplierOpen] = useState(false);
-  const [editingSupplier, setEditingSupplier] = useState<MockSupplier | null>(null);
-  const [materials, setMaterials] = useState<MockMaterial[]>(MOCK_MATERIALS);
-  const [materialToDelete, setMaterialToDelete] = useState<MockMaterial | null>(null);
-  const [editingMaterial, setEditingMaterial] = useState<MockMaterial | null>(null);
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+  const [materialToDelete, setMaterialToDelete] = useState<Material | null>(null);
+  const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
   const [isAddMaterialOpen, setIsAddMaterialOpen] = useState(false);
-  const [stocks, setStocks] = useState<MockStock[]>(MOCK_STOCKS);
-  const [stockToDelete, setStockToDelete] = useState<MockStock | null>(null);
-  const [editingStock, setEditingStock] = useState<MockStock | null>(null);
+  const [stockToDelete, setStockToDelete] = useState<StockItem | null>(null);
+  const [editingStock, setEditingStock] = useState<StockItem | null>(null);
   const [isAddStockOpen, setIsAddStockOpen] = useState(false);
   const [isExportStocksOpen, setIsExportStocksOpen] = useState(false);
-  const [assignments, setAssignments] = useState<MockAssignment[]>(MOCK_ASSIGNMENTS);
-  const [assignmentToDelete, setAssignmentToDelete] = useState<MockAssignment | null>(null);
-  const [editingAssignment, setEditingAssignment] = useState<MockAssignment | null>(null);
+  const [assignmentToDelete, setAssignmentToDelete] = useState<ProductAssignment | null>(null);
+  const [editingAssignment, setEditingAssignment] = useState<ProductAssignment | null>(null);
   const [isAddAssignmentOpen, setIsAddAssignmentOpen] = useState(false);
+
+  const supplierBranchId = selectedSupplierBranch === "all" ? "all" : Number(selectedSupplierBranch);
+  const { data: suppliersResponse, isLoading: suppliersLoading } = useSuppliersList({
+    q: searchSuppliers || undefined,
+    branchId: Number.isNaN(supplierBranchId) ? "all" : supplierBranchId,
+    page: 1,
+    pageSize: DEFAULT_PAGE_SIZE,
+  });
+  const suppliers = suppliersResponse?.data ?? [];
+
+  const materialBranchId = selectedMaterialBranch === "all" ? "all" : Number(selectedMaterialBranch);
+  const { data: materialsResponse, isLoading: materialsLoading } = useMaterialsList({
+    q: searchMaterials || undefined,
+    category: selectedMaterialCategory === "all" ? "all" : selectedMaterialCategory,
+    branchId: Number.isNaN(materialBranchId) ? "all" : materialBranchId,
+    page: 1,
+    pageSize: DEFAULT_PAGE_SIZE,
+  });
+  const materials = materialsResponse?.data ?? [];
+
+  const { data: stocksResponse, isLoading: stocksLoading } = useStocksList({
+    q: searchStocks || undefined,
+    branchId: selectedStockBranch,
+    category: selectedStockCategory === "all" ? "all" : selectedStockCategory,
+    status: selectedStockStatus === "all" ? "all" : (selectedStockStatus as "available" | "low" | "out" | "expired"),
+    page: 1,
+    pageSize: DEFAULT_PAGE_SIZE,
+  });
+  const stocks = stocksResponse?.data ?? [];
+
+  const { data: assignmentsResponse, isLoading: assignmentsLoading } = useAssignmentsList({
+    q: searchAssignments || undefined,
+    branchId: selectedAssignmentBranch,
+    page: 1,
+    pageSize: DEFAULT_PAGE_SIZE,
+  });
+  const assignments = assignmentsResponse?.data ?? [];
+
+  const createSupplierMutation = useCreateSupplier();
+  const updateSupplierMutation = useUpdateSupplier();
+  const deleteSupplierMutation = useDeleteSupplier();
+  const createMaterialMutation = useCreateMaterial();
+  const updateMaterialMutation = useUpdateMaterial();
+  const deleteMaterialMutation = useDeleteMaterial();
+  const createStockMutation = useCreateStock();
+  const updateStockMutation = useUpdateStock();
+  const deleteStockMutation = useDeleteStock();
+  const exportStocksMutation = useExportStocks();
+  const importStocksMutation = useImportStocks();
+  const createAssignmentMutation = useCreateAssignment();
+  const updateAssignmentMutation = useUpdateAssignment();
+  const deleteAssignmentMutation = useDeleteAssignment();
 
   const materialCategories = useMemo(
     () => Array.from(new Set(materials.map((m) => m.category))),
-    [materials]
-  );
-  const materialBranches = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          materials
-            .filter((m) => !m.allBranches)
-            .flatMap((m) => m.branches.split(" "))
-            .filter(Boolean)
-        )
-      ),
     [materials]
   );
   const stockCategories = useMemo(
@@ -485,8 +374,8 @@ export default function SupplyContent() {
                           className="flex h-9 w-[256px] cursor-pointer appearance-none items-center rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFC] pl-4 pr-10 font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A] focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C] [background-image:url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%20fill%3D%22none%22%3E%3Cpath%20d%3D%22M3%204.5L6%207.5L9%204.5%22%20stroke%3D%22%2390A1B9%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] [background-position:right_0.75rem_center] [background-repeat:no-repeat] [background-size:12px]"
                         >
                           <option value="all">All Branches</option>
-                          {BRANCHES.map((b) => (
-                            <option key={b.id} value={b.id}>
+                          {branches.map((b) => (
+                            <option key={b.id} value={String(b.id)}>
                               {b.name}
                             </option>
                           ))}
@@ -522,13 +411,14 @@ export default function SupplyContent() {
                         </tr>
                       </thead>
                       <tbody className="bg-white">
-                        {suppliers
-                          .filter(
-                            (s) =>
-                              !searchSuppliers ||
-                              s.name.toLowerCase().includes(searchSuppliers.toLowerCase())
-                          )
-                          .map((row) => (
+                        {suppliersLoading ? (
+                          <tr>
+                            <td colSpan={7} className="px-4 py-8 text-center font-['Inter'] text-sm text-[#62748E]">
+                              Loading suppliers...
+                            </td>
+                          </tr>
+                        ) : (
+                          suppliers.map((row) => (
                           <tr
                             key={row.id}
                             className="border-b border-[#F1F5F9] transition-colors last:border-b-0 hover:bg-[#F8FAFC]"
@@ -538,7 +428,7 @@ export default function SupplyContent() {
                             </td>
                             <td className="px-4 py-3">
                               <span className="inline-flex h-[22px] w-[93px] items-center justify-center gap-1 rounded-[8px] border border-[#0000001A] bg-[#F8FAFC] px-2 py-0.5 font-['Inter'] text-xs font-medium leading-4 text-[#0A0A0A]">
-                                {row.branch}
+                                {row.branch?.name ?? String(row.branchId)}
                               </span>
                             </td>
                             <td className="px-4 py-3 font-['Inter'] text-sm font-normal leading-5 text-[#0A0A0A]">
@@ -594,7 +484,8 @@ export default function SupplyContent() {
                               </div>
                             </td>
                           </tr>
-                        ))}
+                          ))
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -658,9 +549,9 @@ export default function SupplyContent() {
                             className="h-6 cursor-pointer appearance-none bg-[#F8FAFC] pr-6 font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A] focus:outline-none"
                           >
                             <option value="all">All Branches</option>
-                            {materialBranches.map((b) => (
-                              <option key={b} value={b}>
-                                {b}
+                            {branches.map((b) => (
+                              <option key={b.id} value={String(b.id)}>
+                                {b.name}
                               </option>
                             ))}
                           </select>
@@ -695,22 +586,14 @@ export default function SupplyContent() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[#F1F5F9]">
-                        {materials
-                          .filter((m) => {
-                            const matchesSearch =
-                              !searchMaterials ||
-                              m.name.toLowerCase().includes(searchMaterials.toLowerCase());
-                            const matchesCategory =
-                              selectedMaterialCategory === "all" ||
-                              m.category === selectedMaterialCategory;
-                            const branchTokens = m.branches.split(" ").filter(Boolean);
-                            const matchesBranch =
-                              selectedMaterialBranch === "all" ||
-                              m.allBranches ||
-                              branchTokens.includes(selectedMaterialBranch);
-                            return matchesSearch && matchesCategory && matchesBranch;
-                          })
-                          .map((row) => (
+                        {materialsLoading ? (
+                          <tr>
+                            <td colSpan={6} className="px-4 py-8 text-center font-['Inter'] text-sm text-[#62748E]">
+                              Loading materials...
+                            </td>
+                          </tr>
+                        ) : (
+                          materials.map((row) => (
                           <tr key={row.id} className="hover:bg-[#F8FAFC] transition-colors">
                             <td className="px-4 py-3 font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A]">
                               {row.name}
@@ -730,22 +613,22 @@ export default function SupplyContent() {
                                 </span>
                               ) : (
                                 <div className="flex flex-wrap items-center gap-2">
-                                  {row.branches
-                                    .split(" ")
+                                  {(row.branchIds ?? [])
+                                    .map((id) => branches.find((b) => b.id === id)?.name)
                                     .filter(Boolean)
-                                    .map((b) => (
+                                    .map((name) => (
                                       <span
-                                        key={`${row.id}-${b}`}
+                                        key={`${row.id}-${name}`}
                                         className="inline-flex h-[22px] w-[80px] items-center justify-center gap-1 rounded-[8px] border border-[#0000001A] bg-[#F8FAFC] px-2 py-0.5 font-['Inter'] text-xs font-medium leading-4 text-[#0A0A0A]"
                                       >
-                                        {b}
+                                        {name}
                                       </span>
                                     ))}
                                 </div>
                               )}
                             </td>
                             <td className="px-4 py-3 font-['Inter'] text-sm font-normal leading-5 text-[#0A0A0A]">
-                              {row.minStockLevel}
+                              {row.minStockValue} {row.minStockUnit}
                             </td>
                             <td className="px-4 py-3 text-right">
                               <div className="flex items-center justify-end gap-2">
@@ -771,7 +654,8 @@ export default function SupplyContent() {
                               </div>
                             </td>
                           </tr>
-                        ))}
+                          ))
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -791,12 +675,20 @@ export default function SupplyContent() {
                           Select Branch:
                         </label>
                         <select
-                          value={selectedStockBranch}
-                          onChange={(e) => setSelectedStockBranch(e.target.value)}
+                          value={selectedStockBranch === "all" ? "all" : String(selectedStockBranch)}
+                          onChange={(e) =>
+                            setSelectedStockBranch(
+                              e.target.value === "all" ? "all" : Number(e.target.value)
+                            )
+                          }
                           className="h-9 min-w-[160px] cursor-pointer appearance-none rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFC] pl-4 pr-8 font-['Inter'] text-sm font-medium leading-5 text-[#1D293D] focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary bg-[url('data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%2212%22%20height=%2212%22%20viewBox=%220%200%2012%2012%22%20fill=%22none%22%3E%3Cpath%20d=%22M3%204.5L6%207.5L9%204.5%22%20stroke=%22%2390A1B9%22%20stroke-width=%221.5%22%20stroke-linecap=%22round%22%20stroke-linejoin=%22round%22/%3E%3C/svg%3E')] bg-no-repeat bg-[length:12px] bg-[right_0.75rem_center]"
                         >
-                          <option value="Maharagama">Maharagama</option>
-                          <option value="Nugegoda">Nugegoda</option>
+                          <option value="all">All Branches</option>
+                          {branches.map((b) => (
+                            <option key={b.id} value={b.id}>
+                              {b.name}
+                            </option>
+                          ))}
                         </select>
                       </div>
                     </div>
@@ -814,13 +706,26 @@ export default function SupplyContent() {
                         />
                       </div>
                       <div className="flex shrink-0 flex-wrap items-center gap-2">
-                        <button
-                          type="button"
-                          className="flex items-center gap-2 rounded-[14px] border border-[#E2E8F0] bg-white px-4 py-2.5 font-['Inter'] text-sm font-semibold text-[#0A0A0A] hover:bg-[#F8FAFC]"
+                        <input
+                          type="file"
+                          accept=".csv,.xlsx,.xls"
+                          className="hidden"
+                          id="import-stocks-file"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              importStocksMutation.mutate(file);
+                              e.target.value = "";
+                            }
+                          }}
+                        />
+                        <label
+                          htmlFor="import-stocks-file"
+                          className="flex cursor-pointer items-center gap-2 rounded-[14px] border border-[#E2E8F0] bg-white px-4 py-2.5 font-['Inter'] text-sm font-semibold text-[#0A0A0A] hover:bg-[#F8FAFC]"
                         >
                           <Download className="h-4 w-4" />
                           Import from Excel
-                        </button>
+                        </label>
                         <button
                           type="button"
                           onClick={() => setIsExportStocksOpen(true)}
@@ -910,18 +815,14 @@ export default function SupplyContent() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[#F1F5F9]">
-                        {stocks
-                          .filter((s) => {
-                            const matchesSearch =
-                              !searchStocks ||
-                              s.materialName.toLowerCase().includes(searchStocks.toLowerCase());
-                            const matchesCategory =
-                              selectedStockCategory === "all" || s.category === selectedStockCategory;
-                            const matchesStatus =
-                              selectedStockStatus === "all" || s.status === selectedStockStatus;
-                            return matchesSearch && matchesCategory && matchesStatus;
-                          })
-                          .map((row) => (
+                        {stocksLoading ? (
+                          <tr>
+                            <td colSpan={8} className="px-4 py-8 text-center font-['Inter'] text-sm text-[#62748E]">
+                              Loading stocks...
+                            </td>
+                          </tr>
+                        ) : (
+                          stocks.map((row) => (
                           <tr key={row.id} className="hover:bg-[#F8FAFC] transition-colors">
                             <td className="px-4 py-3 font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A]">
                               {row.materialName}
@@ -932,13 +833,13 @@ export default function SupplyContent() {
                               </span>
                             </td>
                             <td className="px-4 py-3 font-['Inter'] text-sm font-normal leading-5 text-[#0A0A0A]">
-                              {row.supplier}
+                              {row.supplierName}
                             </td>
                             <td className="px-4 py-3 font-['Inter'] text-sm font-mono leading-5 text-[#0A0A0A]">
-                              {row.batchNo}
+                              {row.batchNo ?? ""}
                             </td>
                             <td className="px-4 py-3 font-['Inter'] text-sm font-normal leading-5 text-[#0A0A0A]">
-                              {row.expiryDate}
+                              {row.expiryDate ?? ""}
                               {row.expired && (
                                 <span className="ml-1 font-['Inter'] text-sm font-medium leading-5 text-[#E7000B]">
                                   (Expired)
@@ -953,7 +854,7 @@ export default function SupplyContent() {
                                     : "font-normal text-[#0A0A0A]"
                                 }
                               >
-                                {row.quantity}
+                                {row.quantityValue} {row.quantityUnit}
                               </span>
                             </td>
                             <td className="px-4 py-3">
@@ -1000,7 +901,8 @@ export default function SupplyContent() {
                               </div>
                             </td>
                           </tr>
-                        ))}
+                          ))
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -1020,12 +922,20 @@ export default function SupplyContent() {
                           Select Branch:
                         </label>
                         <select
-                          value={selectedAssignmentBranch}
-                          onChange={(e) => setSelectedAssignmentBranch(e.target.value)}
+                          value={selectedAssignmentBranch === "all" ? "all" : String(selectedAssignmentBranch)}
+                          onChange={(e) =>
+                            setSelectedAssignmentBranch(
+                              e.target.value === "all" ? "all" : Number(e.target.value)
+                            )
+                          }
                           className="h-9 min-w-[160px] cursor-pointer appearance-none rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFC] pl-4 pr-8 font-['Inter'] text-sm font-medium leading-5 text-[#1D293D] focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary bg-[url('data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%2212%22%20height=%2212%22%20viewBox=%220%200%2012%2012%22%20fill=%22none%22%3E%3Cpath%20d=%22M3%204.5L6%207.5L9%204.5%22%20stroke=%22%2390A1B9%22%20stroke-width=%221.5%22%20stroke-linecap=%22round%22%20stroke-linejoin=%22round%22/%3E%3C/svg%3E')] bg-no-repeat bg-[length:12px] bg-[right_0.75rem_center]"
                         >
-                          <option value="Maharagama">Maharagama</option>
-                          <option value="Nugegoda">Nugegoda</option>
+                          <option value="all">All Branches</option>
+                          {branches.map((b) => (
+                            <option key={b.id} value={b.id}>
+                              {b.name}
+                            </option>
+                          ))}
                         </select>
                       </div>
                     </div>
@@ -1078,13 +988,14 @@ export default function SupplyContent() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[#F1F5F9]">
-                        {assignments
-                          .filter(
-                            (a) =>
-                              !searchAssignments ||
-                              a.productName.toLowerCase().includes(searchAssignments.toLowerCase())
-                          )
-                          .map((row) => (
+                        {assignmentsLoading ? (
+                          <tr>
+                            <td colSpan={6} className="px-4 py-8 text-center font-['Inter'] text-sm text-[#62748E]">
+                              Loading assignments...
+                            </td>
+                          </tr>
+                        ) : (
+                          assignments.map((row) => (
                           <tr key={row.id} className="hover:bg-[#F8FAFC] transition-colors">
                             <td className="px-4 py-3 font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A]">
                               {row.productName}
@@ -1093,16 +1004,16 @@ export default function SupplyContent() {
                               {row.quantity}
                             </td>
                             <td className="px-4 py-3 font-['Inter'] text-sm font-mono leading-5 text-[#0A0A0A]">
-                              {row.batchNo}
+                              {row.batchNo ?? ""}
                             </td>
                             <td className="px-4 py-3 font-['Inter'] text-sm font-normal leading-5 text-[#0A0A0A]">
-                              {row.expiryDate}
+                              {row.expiryDate ?? ""}
                             </td>
                             <td className="px-4 py-3">
                               <ul className="list-none space-y-0.5 font-['Inter'] text-sm font-normal leading-5 text-[#45556C]">
-                                {row.materialsUsed.map((m, i) => (
+                                {(row.materialsUsed ?? []).map((m, i) => (
                                   <li key={i}>
-                                    • {m.name}: {m.qty}
+                                    • {m.materialName ?? "Material"}: {m.qtyValue} {m.qtyUnit}
                                   </li>
                                 ))}
                               </ul>
@@ -1131,7 +1042,8 @@ export default function SupplyContent() {
                               </div>
                             </td>
                           </tr>
-                        ))}
+                          ))
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -1142,27 +1054,32 @@ export default function SupplyContent() {
             <ConfirmModal
               isOpen={!!supplierToDelete}
               onClose={() => setSupplierToDelete(null)}
-              onConfirm={() => {
-                if (supplierToDelete) {
-                  setSuppliers((prev) => prev.filter((s) => s.id !== supplierToDelete.id));
+              onConfirm={async () => {
+                if (supplierToDelete && supplierToDelete.status !== "inactive") {
+                  await updateSupplierMutation.mutateAsync({
+                    id: supplierToDelete.id,
+                    data: { status: "inactive" },
+                  });
                 }
+                setSupplierToDelete(null);
               }}
-              title="Delete Supplier"
+              title="Deactivate Supplier"
               message={
                 supplierToDelete
-                  ? `Are you sure you want to delete "${supplierToDelete.name}"? This action cannot be undone.`
+                  ? `Are you sure you want to mark "${supplierToDelete.name}" as inactive?`
                   : ""
               }
-              confirmLabel="Delete"
+              confirmLabel="Deactivate"
               cancelLabel="Cancel"
               variant="danger"
             />
             <ConfirmModal
               isOpen={!!materialToDelete}
               onClose={() => setMaterialToDelete(null)}
-              onConfirm={() => {
+              onConfirm={async () => {
                 if (materialToDelete) {
-                  setMaterials((prev) => prev.filter((m) => m.id !== materialToDelete.id));
+                  await deleteMaterialMutation.mutateAsync(materialToDelete.id);
+                  setMaterialToDelete(null);
                 }
               }}
               title="Delete Material"
@@ -1178,9 +1095,10 @@ export default function SupplyContent() {
             <ConfirmModal
               isOpen={!!stockToDelete}
               onClose={() => setStockToDelete(null)}
-              onConfirm={() => {
+              onConfirm={async () => {
                 if (stockToDelete) {
-                  setStocks((prev) => prev.filter((s) => s.id !== stockToDelete.id));
+                  await deleteStockMutation.mutateAsync(stockToDelete.id);
+                  setStockToDelete(null);
                 }
               }}
               title="Delete Stock"
@@ -1196,9 +1114,10 @@ export default function SupplyContent() {
             <ConfirmModal
               isOpen={!!assignmentToDelete}
               onClose={() => setAssignmentToDelete(null)}
-              onConfirm={() => {
+              onConfirm={async () => {
                 if (assignmentToDelete) {
-                  setAssignments((prev) => prev.filter((a) => a.id !== assignmentToDelete.id));
+                  await deleteAssignmentMutation.mutateAsync(assignmentToDelete.id);
+                  setAssignmentToDelete(null);
                 }
               }}
               title="Delete Assignment"
@@ -1218,18 +1137,32 @@ export default function SupplyContent() {
                   setIsAddSupplierOpen(false);
                   setEditingSupplier(null);
                 }}
+                branches={branches}
                 initialSupplier={
                   editingSupplier
                     ? {
                         name: editingSupplier.name,
-                        branch: editingSupplier.branch,
+                        branch: editingSupplier.branch?.name ?? "",
+                        branchId: editingSupplier.branchId,
                         contactPerson: editingSupplier.contactPerson,
                         email: editingSupplier.email,
+                        country: editingSupplier.country ?? undefined,
                         phone: editingSupplier.phone,
+                        address: editingSupplier.address ?? undefined,
+                        taxId: editingSupplier.taxId ?? undefined,
+                        paymentTerms: editingSupplier.paymentTerms ?? undefined,
                         status: editingSupplier.status === "active" ? "active" : "inactive",
                       }
                     : null
                 }
+                onSave={async (body) => {
+                  if (editingSupplier) {
+                    await updateSupplierMutation.mutateAsync({ id: editingSupplier.id, data: body });
+                  } else {
+                    await createSupplierMutation.mutateAsync(body);
+                  }
+                }}
+                isSaving={createSupplierMutation.isPending || updateSupplierMutation.isPending}
               />
             )}
             {isAddMaterialOpen && (
@@ -1239,7 +1172,24 @@ export default function SupplyContent() {
                   setIsAddMaterialOpen(false);
                   setEditingMaterial(null);
                 }}
-                initialMaterial={editingMaterial}
+                initialMaterial={
+                  editingMaterial
+                    ? {
+                        id: String(editingMaterial.id),
+                        name: editingMaterial.name,
+                        category: editingMaterial.category,
+                        unit: editingMaterial.unit,
+                        branches: editingMaterial.allBranches
+                          ? "All Branches"
+                          : (editingMaterial.branchIds ?? [])
+                              .map((id) => branches.find((b) => b.id === id)?.name)
+                              .filter(Boolean)
+                              .join(" "),
+                        allBranches: editingMaterial.allBranches,
+                        minStockLevel: `${editingMaterial.minStockValue} ${editingMaterial.minStockUnit}`,
+                      }
+                    : undefined
+                }
               />
             )}
             {isAddStockOpen && (
@@ -1249,7 +1199,21 @@ export default function SupplyContent() {
                   setIsAddStockOpen(false);
                   setEditingStock(null);
                 }}
-                initialStock={editingStock}
+                initialStock={
+                  editingStock
+                    ? {
+                        id: String(editingStock.id),
+                        materialName: editingStock.materialName,
+                        category: editingStock.category,
+                        supplier: editingStock.supplierName,
+                        batchNo: editingStock.batchNo ?? "",
+                        expiryDate: editingStock.expiryDate ?? "",
+                        expired: editingStock.expired,
+                        quantity: `${editingStock.quantityValue} ${editingStock.quantityUnit}`,
+                        status: editingStock.status,
+                      }
+                    : undefined
+                }
               />
             )}
             {isExportStocksOpen && (
@@ -1257,6 +1221,13 @@ export default function SupplyContent() {
                 isOpen={isExportStocksOpen}
                 onClose={() => setIsExportStocksOpen(false)}
                 stocks={stocks}
+                onExport={() =>
+                  exportStocksMutation.mutate({
+                    branchId: selectedStockBranch,
+                    category: selectedStockCategory === "all" ? undefined : selectedStockCategory,
+                    status: selectedStockStatus === "all" ? undefined : selectedStockStatus,
+                  })
+                }
               />
             )}
             {isAddAssignmentOpen && (
@@ -1266,7 +1237,21 @@ export default function SupplyContent() {
                   setIsAddAssignmentOpen(false);
                   setEditingAssignment(null);
                 }}
-                initialAssignment={editingAssignment}
+                initialAssignment={
+                  editingAssignment
+                    ? {
+                        id: String(editingAssignment.id),
+                        productName: editingAssignment.productName,
+                        quantity: String(editingAssignment.quantity),
+                        batchNo: editingAssignment.batchNo ?? "",
+                        expiryDate: editingAssignment.expiryDate ?? "",
+                        materialsUsed: (editingAssignment.materialsUsed ?? []).map((m) => ({
+                          name: m.materialName ?? "Material",
+                          qty: `${m.qtyValue} ${m.qtyUnit}`,
+                        })),
+                      }
+                    : undefined
+                }
               />
             )}
           </div>
