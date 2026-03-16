@@ -2,12 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { X } from "lucide-react";
-import type { MockStock } from "@/domains/supply/types";
+import type { StockItem } from "@/types/supply";
 
 interface ExportStocksModalProps {
   isOpen: boolean;
   onClose: () => void;
-  stocks?: MockStock[];
+  stocks?: StockItem[];
+  onExport?: () => void;
 }
 
 const STATUS_OPTIONS: { label: string; status: "available" | "low" | "out" | "expired" }[] = [
@@ -17,7 +18,7 @@ const STATUS_OPTIONS: { label: string; status: "available" | "low" | "out" | "ex
   { label: "Expired", status: "expired" },
 ];
 
-export default function ExportStocksModal({ isOpen, onClose, stocks = [] }: ExportStocksModalProps) {
+export default function ExportStocksModal({ isOpen, onClose, stocks = [], onExport }: ExportStocksModalProps) {
   const [selected, setSelected] = useState<string[]>(["Available"]);
 
   const statusCounts = useMemo(() => {
@@ -121,7 +122,10 @@ export default function ExportStocksModal({ isOpen, onClose, stocks = [] }: Expo
           </button>
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => {
+              onExport?.();
+              onClose();
+            }}
             className="flex h-11 flex-1 items-center justify-center rounded-[16px] bg-[#EA580C] p-2.5 font-['Inter'] text-base font-bold leading-6 text-white shadow-[0px_8px_10px_-6px_#EA580C33,0px_20px_25px_-5px_#EA580C33] hover:bg-[#DC4C04]"
           >
             Export
