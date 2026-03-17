@@ -74,6 +74,7 @@ export interface Material {
   minStockValue: number;
   minStockUnit: string;
    perBranchMinStocks?: MaterialBranchMinStock[];
+  isActive?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -111,6 +112,7 @@ export interface StockItem {
   quantityUnit: string;
   status: StockStatus;
   expired: boolean;
+  isActive?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -157,6 +159,7 @@ export interface ProductAssignment {
   quantity: number;
   quantityUnit: string;
   materialsUsed: AssignmentMaterialUsed[];
+  isActive?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }

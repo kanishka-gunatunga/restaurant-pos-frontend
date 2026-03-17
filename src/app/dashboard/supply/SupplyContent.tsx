@@ -31,7 +31,6 @@ import {
   useCreateStock,
   useUpdateStock,
   useDeleteStock,
-  useExportStocks,
   useImportStocks,
   useAssignmentsList,
   useCreateAssignment,
@@ -42,9 +41,216 @@ import { useGetAllCategories } from "@/hooks/useCategory";
 import AddSupplierModal from "@/components/supply/AddSupplierModal";
 import AddMaterialModal from "@/components/supply/AddMaterialModal";
 import AddStockModal from "@/components/supply/AddStockModal";
-import ExportStocksModal from "@/components/supply/ExportStocksModal";
 import AddAssignmentModal from "@/components/supply/AddAssignmentModal";
 import ConfirmModal from "@/components/ui/ConfirmModal";
+import { toast } from "sonner";
+import * as XLSX from "xlsx";
+
+function formatQuantityValue(value: number | string): string {
+  const n = Number(value);
+  if (Number.isNaN(n)) return String(value);
+  if (Number.isInteger(n)) return String(Math.round(n));
+  return parseFloat(n.toFixed(3)).toString();
+}
+
+const STOCK_STATUS_LABELS: Record<string, string> = {
+  available: "Available",
+  low: "Low Stock",
+  out: "Out of Stock",
+  expired: "Expired",
+};
+
+function exportStocksToExcel(
+  stocks: StockItem[],
+  branches: { id: number; name: string }[]
+) {
+  if (stocks.length === 0) return;
+  const rows = stocks.map((row) => ({
+    "Material Name": row.materialName,
+    "Category": row.category,
+    "Supplier": row.supplierName,
+    "Batch No.": row.batchNo ?? "",
+    "Expiry Date": row.expiryDate ?? "",
+    "Quantity": `${formatQuantityValue(row.quantityValue)} ${row.quantityUnit}`,
+    "Status": STOCK_STATUS_LABELS[row.status] ?? row.status,
+    "Branch": branches.find((b) => b.id === row.branchId)?.name ?? "",
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Stocks");
+  XLSX.writeFile(wb, `stocks-export-${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
+
+// (CSV export helpers removed; import supports Excel -> CSV conversion client-side)
+
+function toYmdFromUnknown(value: unknown): string {
+  if (!value) return "";
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    const y = value.getFullYear();
+    const m = String(value.getMonth() + 1).padStart(2, "0");
+    const d = String(value.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+  const s = String(value).trim();
+  if (!s) return "";
+  // already ISO-like
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  // common MM/DD/YYYY or M/D/YYYY
+  const mdY = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (mdY) {
+    const [, mm, dd, yyyy] = mdY;
+    return `${yyyy}-${mm.padStart(2, "0")}-${dd.padStart(2, "0")}`;
+  }
+  return s;
+}
+
+function csvEscapeCell(value: unknown): string {
+  const s = String(value ?? "");
+  if (/[",\n\r]/.test(s)) return `"${s.replaceAll('"', '""')}"`;
+  return s;
+}
+
+function parseQuantityString(raw: unknown): { value: number; unit?: string } {
+  const s = String(raw ?? "").trim();
+  if (!s) return { value: NaN };
+  // supports "12.5 kg" or "12.5kg"
+  const m = s.match(/^([0-9]*\.?[0-9]+)\s*([a-zA-Z]+)?$/);
+  if (!m) return { value: NaN };
+  const value = Number(m[1]);
+  const unitRaw = (m[2] ?? "").toLowerCase();
+  const unit =
+    unitRaw === "pcs" ? "pieces" : unitRaw === "piece" ? "pieces" : unitRaw || undefined;
+  return { value, unit };
+}
+
+async function excelFileToImportCsvFile(
+  file: File,
+  lookups: {
+    branches: { id: number; name: string }[];
+    materials: { id: number; name: string; unit?: string; allBranches?: boolean; branchIds?: number[] }[];
+    suppliers: { id: number; name: string }[];
+  },
+  forcedBranchId: number
+): Promise<File> {
+  const buf = await file.arrayBuffer();
+  const wb = XLSX.read(buf, { type: "array", cellDates: true });
+  const sheetName = wb.SheetNames?.[0];
+  if (!sheetName) throw new Error("Excel file has no sheets.");
+  const ws = wb.Sheets[sheetName];
+
+  // Read header row to detect format
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" }) as unknown[][];
+  const headerRow = (rows[0] ?? []).map((h) => String(h).trim());
+
+  const hasIdHeaders =
+    headerRow.includes("branchId") &&
+    headerRow.includes("materialId") &&
+    headerRow.includes("supplierId") &&
+    headerRow.includes("quantityValue");
+
+  // If already ID-based, just convert sheet to CSV as-is
+  if (hasIdHeaders) {
+    const csv = XLSX.utils.sheet_to_csv(ws, { FS: ",", RS: "\n" });
+    return new File([csv], file.name.replace(/\.(xlsx|xls)$/i, ".csv"), { type: "text/csv" });
+  }
+
+  // Otherwise try to map from our Export-to-Excel format:
+  // "Material Name", "Supplier", "Batch No.", "Expiry Date", "Quantity", "Branch"
+  const idx = (name: string) => headerRow.findIndex((h) => h === name);
+  const iMaterial = idx("Material Name");
+  const iSupplier = idx("Supplier");
+  const iBatch = idx("Batch No.");
+  const iExpiry = idx("Expiry Date");
+  const iQty = idx("Quantity");
+  const iBranch = idx("Branch");
+
+  const requiredPresent = [iMaterial, iSupplier, iQty].every((i) => i >= 0);
+  if (!requiredPresent) {
+    throw new Error(
+      "Invalid Excel format. Please upload either an ID-based import template (branchId/materialId/...) or an exported Stocks Excel."
+    );
+  }
+
+  const branchByName = new Map(
+    lookups.branches.map((b) => [b.name.trim().toLowerCase(), b.id])
+  );
+  const materialByName = new Map(
+    lookups.materials.map((m) => [
+      m.name.trim().toLowerCase(),
+      { id: m.id, unit: m.unit, allBranches: m.allBranches, branchIds: m.branchIds ?? [] },
+    ])
+  );
+  const supplierByName = new Map(
+    lookups.suppliers.map((s) => [s.name.trim().toLowerCase(), s.id])
+  );
+
+  const outHeader = [
+    "branchId",
+    "materialId",
+    "supplierId",
+    "quantityValue",
+    "quantityUnit",
+    "batchNo",
+    "expiryDate",
+  ];
+
+  const outLines: string[] = [outHeader.join(",")];
+  const errors: string[] = [];
+
+  for (let r = 1; r < rows.length; r++) {
+    const row = rows[r] ?? [];
+    const branchName = iBranch >= 0 ? String(row[iBranch] ?? "").trim() : "";
+    const materialName = String(row[iMaterial] ?? "").trim();
+    const supplierName = String(row[iSupplier] ?? "").trim();
+    const qtyRaw = row[iQty];
+
+    if (!branchName && !materialName && !supplierName && !String(qtyRaw ?? "").trim()) {
+      continue; // skip empty row
+    }
+
+    const branchId =
+      forcedBranchId ||
+      branchByName.get(branchName.toLowerCase());
+    const materialInfo = materialByName.get(materialName.toLowerCase());
+    const supplierId = supplierByName.get(supplierName.toLowerCase());
+    const parsedQty = parseQuantityString(qtyRaw);
+
+    if (!branchId) errors.push(`Row ${r + 1}: Missing/invalid branch (select a branch in UI)`);
+    if (!materialInfo) errors.push(`Row ${r + 1}: Unknown material "${materialName}"`);
+    if (!supplierId) errors.push(`Row ${r + 1}: Unknown supplier "${supplierName}"`);
+    if (!Number.isFinite(parsedQty.value)) errors.push(`Row ${r + 1}: Invalid quantity "${qtyRaw}"`);
+
+    if (!branchId || !materialInfo || !supplierId || !Number.isFinite(parsedQty.value)) continue;
+
+    // Do not block import when a material isn't assigned to the selected branch.
+    // Backend will fall back to material-level min stock (or 0) when no per-branch min exists.
+
+    const quantityUnit = parsedQty.unit || materialInfo.unit || "";
+    const batchNo = iBatch >= 0 ? String(row[iBatch] ?? "").trim() : "";
+    const expiryDate = iExpiry >= 0 ? toYmdFromUnknown(row[iExpiry]) : "";
+
+    outLines.push(
+      [
+        branchId,
+        materialInfo.id,
+        supplierId,
+        parsedQty.value,
+        quantityUnit,
+        batchNo,
+        expiryDate,
+      ]
+        .map(csvEscapeCell)
+        .join(",")
+    );
+  }
+
+  if (errors.length) {
+    throw new Error(errors.slice(0, 5).join(" | ") + (errors.length > 5 ? " ..." : ""));
+  }
+
+  const csv = outLines.join("\n");
+  return new File([csv], file.name.replace(/\.(xlsx|xls)$/i, ".csv"), { type: "text/csv" });
+}
 
 function StatusPill({
   status,
@@ -205,7 +411,9 @@ export default function SupplyContent() {
   const [stockToDelete, setStockToDelete] = useState<StockItem | null>(null);
   const [editingStock, setEditingStock] = useState<StockItem | null>(null);
   const [isAddStockOpen, setIsAddStockOpen] = useState(false);
-  const [isExportStocksOpen, setIsExportStocksOpen] = useState(false);
+  const [importStocksFile, setImportStocksFile] = useState<{ original: File; upload: File } | null>(
+    null
+  );
   const [assignmentToDelete, setAssignmentToDelete] = useState<ProductAssignment | null>(null);
   const [editingAssignment, setEditingAssignment] = useState<ProductAssignment | null>(null);
   const [isAddAssignmentOpen, setIsAddAssignmentOpen] = useState(false);
@@ -227,7 +435,7 @@ export default function SupplyContent() {
     page: 1,
     pageSize: DEFAULT_PAGE_SIZE,
   });
-  const materials = materialsResponse?.data ?? [];
+  const materials = (materialsResponse?.data ?? []).filter((m) => m.isActive !== false);
 
   const { data: stocksResponse, isLoading: stocksLoading } = useStocksList({
     q: searchStocks || undefined,
@@ -237,7 +445,7 @@ export default function SupplyContent() {
     page: 1,
     pageSize: DEFAULT_PAGE_SIZE,
   });
-  const stocks = stocksResponse?.data ?? [];
+  const stocks = (stocksResponse?.data ?? []).filter((s) => s.isActive !== false);
 
   const { data: assignmentsResponse, isLoading: assignmentsLoading } = useAssignmentsList({
     q: searchAssignments || undefined,
@@ -245,7 +453,20 @@ export default function SupplyContent() {
     page: 1,
     pageSize: DEFAULT_PAGE_SIZE,
   });
-  const assignments = assignmentsResponse?.data ?? [];
+  const assignments = (assignmentsResponse?.data ?? []).filter((a) => a.isActive !== false);
+
+  const { data: allSuppliersResponse } = useSuppliersList({
+    status: "active",
+    page: 1,
+    pageSize: 100,
+  });
+  const allSuppliers = allSuppliersResponse?.data ?? [];
+
+  const { data: allMaterialsResponse } = useMaterialsList({
+    page: 1,
+    pageSize: 100,
+  });
+  const allMaterials = allMaterialsResponse?.data ?? [];
 
   const createSupplierMutation = useCreateSupplier();
   const updateSupplierMutation = useUpdateSupplier();
@@ -256,7 +477,6 @@ export default function SupplyContent() {
   const createStockMutation = useCreateStock();
   const updateStockMutation = useUpdateStock();
   const deleteStockMutation = useDeleteStock();
-  const exportStocksMutation = useExportStocks();
   const importStocksMutation = useImportStocks();
   const createAssignmentMutation = useCreateAssignment();
   const updateAssignmentMutation = useUpdateAssignment();
@@ -707,11 +927,43 @@ export default function SupplyContent() {
                           accept=".csv,.xlsx,.xls"
                           className="hidden"
                           id="import-stocks-file"
-                          onChange={(e) => {
+                          onChange={async (e) => {
                             const file = e.target.files?.[0];
-                            if (file) {
-                              importStocksMutation.mutate(file);
-                              e.target.value = "";
+                            e.target.value = "";
+                            if (!file) return;
+
+                            if (selectedStockBranch === "all") {
+                              toast.error("Please select a branch first before importing stocks.");
+                              return;
+                            }
+
+                            const name = file.name.toLowerCase();
+                            const isAllowed =
+                              name.endsWith(".csv") || name.endsWith(".xlsx") || name.endsWith(".xls");
+                            if (!isAllowed) {
+                              toast.error("Please select a .csv, .xlsx, or .xls file.");
+                              return;
+                            }
+                            const maxBytes = 10 * 1024 * 1024; // 10MB
+                            if (file.size > maxBytes) {
+                              toast.error("File is too large. Please upload a file under 10MB.");
+                              return;
+                            }
+                            try {
+                              const upload =
+                                name.endsWith(".csv")
+                                  ? file
+                                  : await excelFileToImportCsvFile(file, {
+                                      branches,
+                                      materials: allMaterials,
+                                      suppliers: allSuppliers,
+                                    }, selectedStockBranch);
+                              setImportStocksFile({ original: file, upload });
+                            } catch (err: unknown) {
+                              const msg =
+                                (err as { message?: string })?.message ||
+                                "Could not read the Excel file. Please check the file and try again.";
+                              toast.error(msg);
                             }
                           }}
                         />
@@ -724,7 +976,14 @@ export default function SupplyContent() {
                         </label>
                         <button
                           type="button"
-                          onClick={() => setIsExportStocksOpen(true)}
+                          onClick={() => {
+                            if (stocks.length === 0) {
+                              toast.error("No stock data to export.");
+                              return;
+                            }
+                            exportStocksToExcel(stocks, branches);
+                            toast.success("Stocks exported to Excel.");
+                          }}
                           className="flex items-center gap-2 rounded-[14px] border border-[#E2E8F0] bg-white px-4 py-2.5 font-['Inter'] text-sm font-semibold text-[#0A0A0A] hover:bg-[#F8FAFC]"
                         >
                           <Upload className="h-4 w-4" />
@@ -732,7 +991,13 @@ export default function SupplyContent() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => setIsAddStockOpen(true)}
+                          onClick={() => {
+                            if (selectedStockBranch === "all") {
+                              toast.error("Please select a branch first before trying to add new stock.");
+                              return;
+                            }
+                            setIsAddStockOpen(true);
+                          }}
                           className="flex items-center gap-2 rounded-[14px] bg-primary px-4 py-2.5 font-['Inter'] text-sm font-bold text-white shadow-[var(--shadow-primary)] transition-opacity hover:bg-primary-hover"
                         >
                           <Plus className="h-4 w-4" />
@@ -834,10 +1099,12 @@ export default function SupplyContent() {
                             <td className="px-4 py-3 font-['Inter'] text-sm font-mono leading-5 text-[#0A0A0A]">
                               {row.batchNo ?? ""}
                             </td>
-                            <td className="px-4 py-3 font-['Inter'] text-sm font-normal leading-5 text-[#0A0A0A]">
+                            <td
+                              className={`px-4 py-3 font-['Inter'] text-sm  leading-5 ${row.expired ? "text-[#E7000B] font-medium" : "text-[#0A0A0A] font-normal"}`}
+                            >
                               {row.expiryDate ?? ""}
                               {row.expired && (
-                                <span className="ml-1 font-['Inter'] text-sm font-medium leading-5 text-[#E7000B]">
+                                <span className="ml-1 font-medium">
                                   (Expired)
                                 </span>
                               )}
@@ -850,7 +1117,7 @@ export default function SupplyContent() {
                                     : "font-normal text-[#0A0A0A]"
                                 }
                               >
-                                {row.quantityValue} {row.quantityUnit}
+                                {formatQuantityValue(row.quantityValue)} {row.quantityUnit}
                               </span>
                             </td>
                             <td className="px-4 py-3">
@@ -1078,13 +1345,13 @@ export default function SupplyContent() {
                   setMaterialToDelete(null);
                 }
               }}
-              title="Delete Material"
+              title="Deactivate Material"
               message={
                 materialToDelete
-                  ? `Are you sure you want to delete "${materialToDelete.name}"? This action cannot be undone.`
+                  ? `Are you sure you want to deactivate "${materialToDelete.name}"? You can re-activate later if needed.`
                   : ""
               }
-              confirmLabel="Delete"
+              confirmLabel="Deactivate"
               cancelLabel="Cancel"
               variant="danger"
             />
@@ -1097,13 +1364,13 @@ export default function SupplyContent() {
                   setStockToDelete(null);
                 }
               }}
-              title="Delete Stock"
+              title="Deactivate Stock"
               message={
                 stockToDelete
-                  ? `Are you sure you want to delete "${stockToDelete.materialName}" (${stockToDelete.batchNo})? This action cannot be undone.`
+                  ? `Are you sure you want to deactivate "${stockToDelete.materialName}" (${stockToDelete.batchNo})? You can re-activate later if needed.`
                   : ""
               }
-              confirmLabel="Delete"
+              confirmLabel="Deactivate"
               cancelLabel="Cancel"
               variant="danger"
             />
@@ -1116,13 +1383,88 @@ export default function SupplyContent() {
                   setAssignmentToDelete(null);
                 }
               }}
-              title="Delete Assignment"
+              title="Deactivate Assignment"
               message={
                 assignmentToDelete
-                  ? `Are you sure you want to delete the assignment for "${assignmentToDelete.productName}"? This action cannot be undone.`
+                  ? `Are you sure you want to deactivate the assignment for "${assignmentToDelete.productName}"? You can re-activate later if needed.`
                   : ""
               }
-              confirmLabel="Delete"
+              confirmLabel="Deactivate"
+              cancelLabel="Cancel"
+              variant="danger"
+            />
+            <ConfirmModal
+              isOpen={!!importStocksFile}
+              onClose={() => setImportStocksFile(null)}
+              onConfirm={async () => {
+                if (!importStocksFile) return;
+                try {
+                  const res = await importStocksMutation.mutateAsync(importStocksFile.upload);
+                  const created = typeof res.created === "number" ? res.created : undefined;
+                  const updated = typeof res.updated === "number" ? res.updated : undefined;
+                  const failedRows = Array.isArray(res.failedRows) ? res.failedRows : [];
+                  const failedCount = failedRows.length;
+                  const parts = [
+                    created !== undefined ? `created ${created}` : null,
+                    updated !== undefined ? `updated ${updated}` : null,
+                    failedCount ? `failed ${failedCount}` : null,
+                  ].filter(Boolean);
+
+                  const createdNum = typeof created === "number" ? created : 0;
+                  const updatedNum = typeof updated === "number" ? updated : 0;
+
+                  if (failedCount > 0 && createdNum + updatedNum === 0) {
+                    const sampleReasons = failedRows
+                      .slice(0, 3)
+                      .map((r) => {
+                        if (!r || typeof r !== "object") return "";
+                        if (!("reason" in r)) return "";
+                        const reason = (r as { reason?: unknown }).reason;
+                        return reason == null ? "" : String(reason);
+                      })
+                      .filter(Boolean)
+                      .join(" | ");
+                    toast.error(
+                      `Import finished but no rows were applied (${parts.join(", ")}).` +
+                        (sampleReasons ? ` ${sampleReasons}` : "")
+                    );
+                  } else {
+                    toast.success(parts.length ? `Import completed: ${parts.join(", ")}.` : "Import completed.");
+                    if (failedCount > 0) {
+                      const sampleReasons = failedRows
+                        .slice(0, 3)
+                        .map((r) => {
+                          if (!r || typeof r !== "object") return "";
+                          if (!("reason" in r)) return "";
+                          const reason = (r as { reason?: unknown }).reason;
+                          return reason == null ? "" : String(reason);
+                        })
+                        .filter(Boolean)
+                        .join(" | ");
+                      toast.error(
+                        `Some rows failed to import (${failedCount}).` +
+                          (sampleReasons ? ` ${sampleReasons}` : "")
+                      );
+                    }
+                  }
+                } catch (err: unknown) {
+                  const msg =
+                    (err as { response?: { data?: { message?: string } }; message?: string })?.response
+                      ?.data?.message ||
+                    (err as { message?: string })?.message ||
+                    "Import failed. Please check the file format and try again.";
+                  toast.error(msg);
+                } finally {
+                  setImportStocksFile(null);
+                }
+              }}
+              title="Import Stocks"
+              message={
+                importStocksFile
+                  ? `You're about to import "${importStocksFile.original.name}". This will create or update stock records in the database. Continue?`
+                  : ""
+              }
+              confirmLabel="Import"
               cancelLabel="Cancel"
               variant="danger"
             />
@@ -1184,44 +1526,43 @@ export default function SupplyContent() {
                 isSaving={createMaterialMutation.isPending || updateMaterialMutation.isPending}
               />
             )}
-            {isAddStockOpen && (
-              <AddStockModal
-                isOpen={isAddStockOpen}
-                onClose={() => {
-                  setIsAddStockOpen(false);
-                  setEditingStock(null);
-                }}
-                initialStock={
-                  editingStock
-                    ? {
-                        id: String(editingStock.id),
-                        materialName: editingStock.materialName,
-                        category: editingStock.category,
-                        supplier: editingStock.supplierName,
-                        batchNo: editingStock.batchNo ?? "",
-                        expiryDate: editingStock.expiryDate ?? "",
-                        expired: editingStock.expired,
-                        quantity: `${editingStock.quantityValue} ${editingStock.quantityUnit}`,
-                        status: editingStock.status,
-                      }
-                    : undefined
-                }
-              />
-            )}
-            {isExportStocksOpen && (
-              <ExportStocksModal
-                isOpen={isExportStocksOpen}
-                onClose={() => setIsExportStocksOpen(false)}
-                stocks={stocks}
-                onExport={() =>
-                  exportStocksMutation.mutate({
-                    branchId: selectedStockBranch,
-                    category: selectedStockCategory === "all" ? undefined : selectedStockCategory,
-                    status: selectedStockStatus === "all" ? undefined : selectedStockStatus,
-                  })
-                }
-              />
-            )}
+            {isAddStockOpen && (() => {
+              const selectedBranchForNewStock =
+                selectedStockBranch === "all"
+                  ? branches[0]
+                  : branches.find((b) => b.id === selectedStockBranch);
+              const branchIdForNewStock = selectedBranchForNewStock?.id ?? branches[0]?.id ?? 0;
+              const branchNameForNewStock = selectedBranchForNewStock?.name ?? "Branch";
+              const branchIdForFilter = editingStock ? editingStock.branchId : branchIdForNewStock;
+              const materialsForBranch = allMaterials.filter(
+                (m) =>
+                  m.allBranches ||
+                  (m.branchIds?.includes(branchIdForFilter) ?? false) ||
+                  (editingStock?.materialId === m.id)
+              );
+              return (
+                <AddStockModal
+                  isOpen={isAddStockOpen}
+                  onClose={() => {
+                    setIsAddStockOpen(false);
+                    setEditingStock(null);
+                  }}
+                  branchIdForNewStock={branchIdForNewStock}
+                  branchNameForNewStock={branchNameForNewStock}
+                  materials={materialsForBranch}
+                  suppliers={allSuppliers}
+                  initialStock={editingStock ?? undefined}
+                  onSave={async (body) => {
+                    if (editingStock) {
+                      await updateStockMutation.mutateAsync({ id: editingStock.id, data: body });
+                    } else {
+                      await createStockMutation.mutateAsync(body);
+                    }
+                  }}
+                  isSaving={createStockMutation.isPending || updateStockMutation.isPending}
+                />
+              );
+            })()}
             {isAddAssignmentOpen && (
               <AddAssignmentModal
                 isOpen={isAddAssignmentOpen}
