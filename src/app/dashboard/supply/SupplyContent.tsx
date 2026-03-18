@@ -38,6 +38,7 @@ import {
   useDeleteAssignment,
 } from "@/hooks/useSupply";
 import { useGetAllCategories } from "@/hooks/useCategory";
+import { useGetProductsByBranch } from "@/hooks/useProduct";
 import AddSupplierModal from "@/components/supply/AddSupplierModal";
 import AddMaterialModal from "@/components/supply/AddMaterialModal";
 import AddStockModal from "@/components/supply/AddStockModal";
@@ -45,13 +46,9 @@ import AddAssignmentModal from "@/components/supply/AddAssignmentModal";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
-
-function formatQuantityValue(value: number | string): string {
-  const n = Number(value);
-  if (Number.isNaN(n)) return String(value);
-  if (Number.isInteger(n)) return String(Math.round(n));
-  return parseFloat(n.toFixed(3)).toString();
-}
+import { getStockRowDisplay } from "@/lib/supply/stockExpiry";
+import { getAssignmentMaterialsUsed } from "@/lib/supply/assignmentHelpers";
+import { formatQuantityValue, formatOptionalField } from "@/lib/format";
 
 const STOCK_STATUS_LABELS: Record<string, string> = {
   available: "Available",
@@ -72,7 +69,7 @@ function exportStocksToExcel(
     "Batch No.": row.batchNo ?? "",
     "Expiry Date": row.expiryDate ?? "",
     "Quantity": `${formatQuantityValue(row.quantityValue)} ${row.quantityUnit}`,
-    "Status": STOCK_STATUS_LABELS[row.status] ?? row.status,
+    "Status": STOCK_STATUS_LABELS[getStockRowDisplay(row).displayStatus] ?? row.status,
     "Branch": branches.find((b) => b.id === row.branchId)?.name ?? "",
   }));
   const ws = XLSX.utils.json_to_sheet(rows);
@@ -80,8 +77,6 @@ function exportStocksToExcel(
   XLSX.utils.book_append_sheet(wb, ws, "Stocks");
   XLSX.writeFile(wb, `stocks-export-${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
-
-// (CSV export helpers removed; import supports Excel -> CSV conversion client-side)
 
 function toYmdFromUnknown(value: unknown): string {
   if (!value) return "";
@@ -467,6 +462,33 @@ export default function SupplyContent() {
     pageSize: 100,
   });
   const allMaterials = allMaterialsResponse?.data ?? [];
+
+  const assignmentBranchId =
+    selectedAssignmentBranch === "all" ? null : Number(selectedAssignmentBranch);
+  const { data: stocksForAssignmentBranchResponse } = useStocksList({
+    branchId: assignmentBranchId ?? "all",
+    status: "all",
+    page: 1,
+    pageSize: 200,
+  });
+  const stocksForAssignmentBranch = (stocksForAssignmentBranchResponse?.data ?? []).filter(
+    (s) => s.isActive !== false
+  );
+  const { data: productsForAssignmentBranch = [] } = useGetProductsByBranch(
+    assignmentBranchId ?? 0
+  );
+
+  const editBranchId = editingAssignment?.branchId ?? 0;
+  const { data: stocksForEditBranchResponse } = useStocksList({
+    branchId: editBranchId || "all",
+    status: "all",
+    page: 1,
+    pageSize: 200,
+  });
+  const stocksForEditBranch = (stocksForEditBranchResponse?.data ?? []).filter(
+    (s) => s.isActive !== false
+  );
+  const { data: productsForEditBranch = [] } = useGetProductsByBranch(editBranchId);
 
   const createSupplierMutation = useCreateSupplier();
   const updateSupplierMutation = useUpdateSupplier();
@@ -1083,7 +1105,9 @@ export default function SupplyContent() {
                             </td>
                           </tr>
                         ) : (
-                          stocks.map((row) => (
+                          stocks.map((row) => {
+                            const { showExpired, displayStatus } = getStockRowDisplay(row);
+                            return (
                           <tr key={row.id} className="hover:bg-[#F8FAFC] transition-colors">
                             <td className="px-4 py-3 font-['Inter'] text-sm font-medium leading-5 text-[#0A0A0A]">
                               {row.materialName}
@@ -1097,13 +1121,17 @@ export default function SupplyContent() {
                               {row.supplierName}
                             </td>
                             <td className="px-4 py-3 font-['Inter'] text-sm font-mono leading-5 text-[#0A0A0A]">
-                              {row.batchNo ?? ""}
+                              {formatOptionalField(
+                                row.batchNo ?? (row as { batch_no?: string }).batch_no
+                              )}
                             </td>
                             <td
-                              className={`px-4 py-3 font-['Inter'] text-sm  leading-5 ${row.expired ? "text-[#E7000B] font-medium" : "text-[#0A0A0A] font-normal"}`}
+                              className={`px-4 py-3 font-['Inter'] text-sm  leading-5 ${showExpired ? "text-[#E7000B] font-medium" : "text-[#0A0A0A] font-normal"}`}
                             >
-                              {row.expiryDate ?? ""}
-                              {row.expired && (
+                              {formatOptionalField(
+                                row.expiryDate ?? (row as { expiry_date?: string }).expiry_date
+                              )}
+                              {showExpired && (
                                 <span className="ml-1 font-medium">
                                   (Expired)
                                 </span>
@@ -1112,7 +1140,7 @@ export default function SupplyContent() {
                             <td className="px-4 py-3 font-['Inter'] text-sm leading-5 text-[#0A0A0A]">
                               <span
                                 className={
-                                  row.status === "low"
+                                  displayStatus === "low"
                                     ? "font-medium text-[#F54900]"
                                     : "font-normal text-[#0A0A0A]"
                                 }
@@ -1121,22 +1149,22 @@ export default function SupplyContent() {
                               </span>
                             </td>
                             <td className="px-4 py-3">
-                              {row.status === "available" && (
+                              {displayStatus === "available" && (
                                 <span className="inline-flex h-[22px] items-center justify-center gap-1 rounded-[8px] border border-[#B9F8CF] bg-[#DCFCE7] px-2 py-0.5 font-['Inter'] text-xs font-medium leading-4 text-[#008236]">
                                   <StockAvailableIcon />
                                   Available
                                 </span>
                               )}
-                              {row.status === "low" && (
+                              {displayStatus === "low" && (
                                 <span className="inline-flex h-[22px] items-center justify-center gap-1 rounded-[8px] border border-[#FFD6A8] bg-[#FFF7ED] px-2 py-0.5 font-['Inter'] text-xs font-medium leading-4 text-[#CA3500]">
                                   <StockLowIcon />
                                   Low Stock
                                 </span>
                               )}
-                              {(row.status === "out" || row.status === "expired") && (
+                              {(displayStatus === "out" || displayStatus === "expired") && (
                                 <span className="inline-flex h-[22px] items-center justify-center gap-1 rounded-[8px] border  bg-[#D4183D] px-2 py-0.5 font-['Inter'] text-xs font-medium leading-4 text-white">
                                   <StockOutIcon />
-                                  {row.status === "out" ? "Out of Stock" : "Expired"}
+                                  {displayStatus === "out" ? "Out of Stock" : "Expired"}
                                 </span>
                               )}
                             </td>
@@ -1164,7 +1192,8 @@ export default function SupplyContent() {
                               </div>
                             </td>
                           </tr>
-                          ))
+                            );
+                          })
                         )}
                       </tbody>
                     </table>
@@ -1217,7 +1246,15 @@ export default function SupplyContent() {
                       </div>
                       <button
                         type="button"
-                        onClick={() => setIsAddAssignmentOpen(true)}
+                        onClick={() => {
+                          if (selectedAssignmentBranch === "all") {
+                            toast.error(
+                              "Please select a branch first before adding an assignment."
+                            );
+                            return;
+                          }
+                          setIsAddAssignmentOpen(true);
+                        }}
                         className="flex shrink-0 items-center gap-2 rounded-[14px] bg-primary px-4 py-2.5 font-['Inter'] text-sm font-bold text-white shadow-[var(--shadow-primary)] transition-opacity hover:bg-primary-hover"
                       >
                         <Plus className="h-4 w-4" />
@@ -1264,19 +1301,23 @@ export default function SupplyContent() {
                               {row.productName}
                             </td>
                             <td className="px-4 py-3 font-['Inter'] text-sm font-normal leading-5 text-[#0A0A0A]">
-                              {row.quantity}
+                              {formatQuantityValue(row.quantity)} {row.quantityUnit || ""}
                             </td>
                             <td className="px-4 py-3 font-['Inter'] text-sm font-mono leading-5 text-[#0A0A0A]">
-                              {row.batchNo ?? ""}
+                              {formatOptionalField(
+                                row.batchNo ?? (row as { batch_no?: string }).batch_no
+                              )}
                             </td>
                             <td className="px-4 py-3 font-['Inter'] text-sm font-normal leading-5 text-[#0A0A0A]">
-                              {row.expiryDate ?? ""}
+                              {formatOptionalField(
+                                row.expiryDate ?? (row as { expiry_date?: string }).expiry_date
+                              )}
                             </td>
                             <td className="px-4 py-3">
                               <ul className="list-none space-y-0.5 font-['Inter'] text-sm font-normal leading-5 text-[#45556C]">
-                                {(row.materialsUsed ?? []).map((m, i) => (
+                                {getAssignmentMaterialsUsed(row, allMaterials).map((m, i) => (
                                   <li key={i}>
-                                    • {m.materialName ?? "Material"}: {m.qtyValue} {m.qtyUnit}
+                                    • {m.materialName ?? "Material"}: {formatQuantityValue(m.qtyValue)} {m.qtyUnit}
                                   </li>
                                 ))}
                               </ul>
@@ -1380,6 +1421,7 @@ export default function SupplyContent() {
               onConfirm={async () => {
                 if (assignmentToDelete) {
                   await deleteAssignmentMutation.mutateAsync(assignmentToDelete.id);
+                  toast.success("Assignment deactivated");
                   setAssignmentToDelete(null);
                 }
               }}
@@ -1563,27 +1605,38 @@ export default function SupplyContent() {
                 />
               );
             })()}
-            {isAddAssignmentOpen && (
+            {isAddAssignmentOpen && (assignmentBranchId || editingAssignment) && (
               <AddAssignmentModal
+                key={editingAssignment ? `edit-${editingAssignment.id}` : "create"}
                 isOpen={isAddAssignmentOpen}
                 onClose={() => {
                   setIsAddAssignmentOpen(false);
                   setEditingAssignment(null);
                 }}
-                initialAssignment={
-                  editingAssignment
-                    ? {
-                        id: String(editingAssignment.id),
-                        productName: editingAssignment.productName,
-                        quantity: String(editingAssignment.quantity),
-                        batchNo: editingAssignment.batchNo ?? "",
-                        expiryDate: editingAssignment.expiryDate ?? "",
-                        materialsUsed: (editingAssignment.materialsUsed ?? []).map((m) => ({
-                          name: m.materialName ?? "Material",
-                          qty: `${m.qtyValue} ${m.qtyUnit}`,
-                        })),
-                      }
-                    : undefined
+                branchId={editingAssignment?.branchId ?? assignmentBranchId ?? 0}
+                branchName={
+                  branches.find(
+                    (b) => b.id === (editingAssignment?.branchId ?? assignmentBranchId)
+                  )?.name ?? "Branch"
+                }
+                materials={allMaterials}
+                products={editingAssignment ? productsForEditBranch : productsForAssignmentBranch}
+                stocks={editingAssignment ? stocksForEditBranch : stocksForAssignmentBranch}
+                initialAssignment={editingAssignment ?? undefined}
+                onSave={async (body) => {
+                  if (editingAssignment) {
+                    await updateAssignmentMutation.mutateAsync({
+                      id: editingAssignment.id,
+                      data: body,
+                    });
+                    toast.success("Assignment updated");
+                  } else {
+                    await createAssignmentMutation.mutateAsync(body);
+                    toast.success("Assignment created");
+                  }
+                }}
+                isSaving={
+                  createAssignmentMutation.isPending || updateAssignmentMutation.isPending
                 }
               />
             )}

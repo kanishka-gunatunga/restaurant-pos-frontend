@@ -200,14 +200,16 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
                         e.stopPropagation();
                         setSelectedVariant(v);
                       }}
-                      className={`product-card-variant-text min-w-0 rounded-[14px] px-3 py-1.5 text-left font-medium transition-colors ${selectedVariant?.name === v.name
-                        ? "border-2 border-primary bg-primary-muted"
-                        : "border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
-                        }`}
+                      className={`product-card-variant-text min-w-0 rounded-[14px] px-3 py-1.5 text-left font-medium transition-colors ${
+                        selectedVariant?.name === v.name
+                          ? "border-2 border-primary bg-primary-muted"
+                          : "border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
+                      }`}
                     >
                       <span
-                        className={`product-card-variant-text block font-semibold ${selectedVariant?.name === v.name ? "text-primary" : ""
-                          }`}
+                        className={`product-card-variant-text block font-semibold ${
+                          selectedVariant?.name === v.name ? "text-primary" : ""
+                        }`}
                       >
                         {v.name}
                       </span>
@@ -228,14 +230,16 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
                     e.stopPropagation();
                     setIsAddOnsOpen(!isAddOnsOpen);
                   }}
-                  className={`flex w-full min-w-0 items-center justify-between rounded-[14px] border-2 px-3 py-2 text-left transition-colors ${isAddOnsOpen
-                    ? "border-[#1D293D] bg-[#1D293D] text-white"
-                    : " border-[#E2E8F0] bg-white"
-                    }`}
+                  className={`flex w-full min-w-0 items-center justify-between rounded-[14px] border-2 px-3 py-2 text-left transition-colors ${
+                    isAddOnsOpen
+                      ? "border-[#1D293D] bg-[#1D293D] text-white"
+                      : " border-[#E2E8F0] bg-white"
+                  }`}
                 >
                   <span
-                    className={`product-card-addon-header flex min-w-0 items-center gap-1.5 px-2 py-1 text-center font-bold uppercase ${isAddOnsOpen ? "text-white" : "text-[#1D293D]"
-                      }`}
+                    className={`product-card-addon-header flex min-w-0 items-center gap-1.5 px-2 py-1 text-center font-bold uppercase ${
+                      isAddOnsOpen ? "text-white" : "text-[#1D293D]"
+                    }`}
                   >
                     <svg
                       className="h-4 w-[12.7px] shrink-0"
@@ -315,10 +319,11 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
                         return (
                           <div
                             key={addOn.id}
-                            className={`flex min-w-0 items-center justify-between gap-1.5 rounded-md border p-2 ${selected
-                              ? "border-primary bg-primary-muted"
-                              : "border-zinc-200 bg-white"
-                              }`}
+                            className={`flex min-w-0 items-center justify-between gap-1.5 rounded-md border p-2 ${
+                              selected
+                                ? "border-primary bg-primary-muted"
+                                : "border-zinc-200 bg-white"
+                            }`}
                           >
                             <button
                               type="button"
@@ -329,8 +334,9 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
                               className="flex min-w-0 flex-1 items-center gap-2 text-left"
                             >
                               <div
-                                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${selected ? "border-primary bg-primary" : "border-zinc-300"
-                                  }`}
+                                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                                  selected ? "border-primary bg-primary" : "border-zinc-300"
+                                }`}
                               >
                                 {selected && (
                                   <svg

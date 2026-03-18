@@ -218,4 +218,5 @@ export interface AssignmentsQueryParams {
   branchId?: number | "all";
   page?: number;
   pageSize?: number;
+  includeInactive?: boolean;
 }

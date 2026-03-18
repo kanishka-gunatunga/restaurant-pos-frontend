@@ -36,9 +36,24 @@ export function formatTime(dateStr: string | null | undefined): string {
 }
 
 /**
- * Formats a number or numeric string as currency (LKR).
- * Defaults to "Rs.0.00" if input is invalid.
+ * Formats an optional field for display. Returns "N/A" when null, undefined, or empty.
  */
+export function formatOptionalField(
+  value: string | null | undefined,
+  fallback = "N/A"
+): string {
+  if (value == null) return fallback;
+  const s = String(value).trim();
+  return s || fallback;
+}
+
+export function formatQuantityValue(value: number | string | null | undefined): string {
+  const n = Number(value);
+  if (Number.isNaN(n)) return String(value ?? "");
+  return parseFloat(n.toFixed(6)).toString();
+}
+
+
 export function formatCurrency(amount: number | string | null | undefined): string {
   const numericAmount = typeof amount === "string" ? parseFloat(amount) : amount;
   

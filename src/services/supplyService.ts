@@ -164,6 +164,7 @@ export async function getAssignmentsList(params?: AssignmentsQueryParams): Promi
     branchId: params?.branchId,
     page: params?.page ?? 1,
     pageSize: params?.pageSize ?? PAGE_SIZE,
+    includeInactive: params?.includeInactive === true ? "true" : undefined,
   });
   const res = await axiosInstance.get<AssignmentListResponse>("/supply/assignments", { params: query });
   return res.data;
