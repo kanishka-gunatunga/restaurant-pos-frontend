@@ -47,12 +47,15 @@ export function formatOptionalField(
   return s || fallback;
 }
 
+/**
+ * Formats a quantity for display (no trailing zeros).
+ * 3.000 -> "3", 12.5 -> "12.5", 100 -> "100"
+ */
 export function formatQuantityValue(value: number | string | null | undefined): string {
   const n = Number(value);
   if (Number.isNaN(n)) return String(value ?? "");
   return parseFloat(n.toFixed(6)).toString();
 }
-
 
 export function formatCurrency(amount: number | string | null | undefined): string {
   const numericAmount = typeof amount === "string" ? parseFloat(amount) : amount;

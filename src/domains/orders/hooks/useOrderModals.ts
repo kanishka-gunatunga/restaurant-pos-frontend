@@ -1,8 +1,11 @@
 import { useState, useCallback } from "react";
+import { toast } from "sonner";
 import type { OrderRow, OrderDetailsView } from "../types";
 import { EditOrderLineItem } from "@/components/orders/EditOrderModal";
 import { useUpdateOrderStatus, useUpdateOrder } from "@/hooks/useOrder";
+import { useUpdateCustomer } from "@/hooks/useCustomer";
 import { useUpdatePaymentStatus, useGetPaymentsByOrder } from "@/hooks/usePayment";
+import * as paymentService from "@/services/paymentService";
 import type { OrderDetailsData } from "@/contexts/OrderContext";
 
 function mapOrderTypeToApi(orderType: OrderDetailsData["orderType"]) {
@@ -34,6 +37,7 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
     paymentStatus: order.paymentStatus,
     customerName: order.customerName,
     phone: order.phone,
+    customerId: order.customerId,
     totalAmount: order.totalAmount,
     orderType: order.orderType,
     tableNumber: order.tableNumber,
@@ -48,6 +52,7 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
 
   const updateStatusMutation = useUpdateOrderStatus();
   const updateOrderMutation = useUpdateOrder();
+  const updateCustomerMutation = useUpdateCustomer();
   const updatePaymentStatusMutation = useUpdatePaymentStatus();
 
   // We'll fetch payments for the current edit order to handle refunds
@@ -60,16 +65,50 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
   const handleVerify = useCallback(async (passcode: string) => {
     if (!authModal.orderNo) return;
     const cancelledOrderNo = authModal.orderNo;
-    await updateStatusMutation.mutateAsync({
-      id: cancelledOrderNo,
-      data: {
-        status: "cancel",
-        passcode,
-      },
-    });
-    setAuthModal({ isOpen: false, orderNo: null });
-    onOrderCancelled?.(cancelledOrderNo);
-  }, [authModal.orderNo, updateStatusMutation, onOrderCancelled]);
+    
+    try {
+      // 1. Fetch payments for this order
+      const orderPayments = await paymentService.getPaymentsByOrder(Number(cancelledOrderNo));
+      
+      // 2. Trigger refunds for each payment
+      if (orderPayments && orderPayments.length > 0) {
+        toast.info(`Processing ${orderPayments.length} refund(s)...`);
+        
+        await Promise.all(orderPayments.map(async (payment) => {
+          try {
+            await updatePaymentStatusMutation.mutateAsync({
+              id: payment.id,
+              payload: {
+                is_refund: 1,
+                refund_type: "full",
+                status: "refund"
+              }
+            });
+            toast.success(`Refund processed for payment #${payment.id}`);
+          } catch (err) {
+            console.error(`Refund failed for payment #${payment.id}:`, err);
+            toast.error(`Refund failed for payment #${payment.id}`);
+          }
+        }));
+      }
+
+      // 3. Cancel the order
+      await updateStatusMutation.mutateAsync({
+        id: cancelledOrderNo,
+        data: {
+          status: "cancel",
+          passcode,
+        },
+      });
+      
+      toast.success("Order cancelled successfully");
+      setAuthModal({ isOpen: false, orderNo: null });
+      onOrderCancelled?.(cancelledOrderNo);
+    } catch (error: any) {
+      console.error("Cancellation process failed:", error);
+      toast.error(error?.response?.data?.message || error.message || "Failed to cancel order");
+    }
+  }, [authModal.orderNo, updateStatusMutation, updatePaymentStatusMutation, onOrderCancelled]);
 
   const handleCloseAuthModal = useCallback(() => {
     setAuthModal({ isOpen: false, orderNo: null });
@@ -170,13 +209,23 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
           },
           {
             onSuccess: () => {
+              // Update the customer record as well if we have a customerId
+              if (editOrderInfoModal.customerId) {
+                updateCustomerMutation.mutate({
+                  id: editOrderInfoModal.customerId,
+                  data: {
+                    name: data.customerName,
+                    mobile: data.phone,
+                  },
+                });
+              }
               setEditOrderInfoModal(null);
             },
           }
         );
       }
     },
-    [editOrderInfoModal, updateOrderMutation]
+    [editOrderInfoModal, updateOrderMutation, updateCustomerMutation]
   );
 
   const openCancelFromView = useCallback((orderNo: string) => {

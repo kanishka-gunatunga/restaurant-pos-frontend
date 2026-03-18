@@ -29,6 +29,7 @@ export type OrderDetailsView = {
   paymentStatus: PaymentStatus;
   customerName: string;
   phone: string;
+  customerId?: string | number;
   totalAmount: number;
   orderType?: OrderTypeLabel;
   tableNumber?: string;
@@ -48,6 +49,7 @@ export type OrderRow = {
   time: string;
   customerName: string;
   phone: string;
+  customerId?: string | number;
   totalAmount: number;
   status: OrderStatus;
   paymentStatus: PaymentStatus;
@@ -74,14 +76,15 @@ export function mapOrderToRow(apiOrder: ApiOrder): OrderRow {
 
   return {
     id: String(apiOrder.id),
-    orderNo: String(apiOrder.id), // Using ID as Order No if not separate
+    orderNo: String(apiOrder.id),
     date: formatDate(apiOrder.createdAt),
     time: formatTime(apiOrder.createdAt),
     customerName: apiOrder.customer?.name || "Guest",
     phone: apiOrder.customer?.mobile || "N/A",
+    customerId: apiOrder.customerId || apiOrder.customer?.id,
     totalAmount: Number(apiOrder.totalAmount),
-    status: apiOrder.status,
-    paymentStatus: apiOrder.paymentStatus as PaymentStatus,
+    status: apiOrder.status || "pending",
+    paymentStatus: (apiOrder.paymentStatus as PaymentStatus) || "pending",
     orderType,
     tableNumber: apiOrder.tableNumber,
     deliveryAddress: apiOrder.deliveryAddress,
@@ -89,8 +92,8 @@ export function mapOrderToRow(apiOrder: ApiOrder): OrderRow {
     zipCode: apiOrder.zipcode,
     deliveryInstructions: apiOrder.deliveryInstructions,
     items: apiOrder.items?.map(mapOrderItemToDetail),
-    subtotal: Number(apiOrder.totalAmount) - Number(apiOrder.tax || 0) + Number(apiOrder.orderDiscount || 0),
-    discount: Number(apiOrder.orderDiscount),
+    subtotal: Number(apiOrder.totalAmount) - Number(apiOrder.tax || 0) + Number(apiOrder.orderDiscount || 0) + (apiOrder.items?.reduce((sum, item) => sum + (Number(item.productDiscount || 0) * item.quantity), 0) || 0),
+    discount: Number(apiOrder.orderDiscount || 0) + (apiOrder.items?.reduce((sum, item) => sum + (Number(item.productDiscount || 0) * item.quantity), 0) || 0),
   };
 }
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Plus, X, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { useCreateModification, useUpdateModification } from "@/hooks/useModification";
 import { Modification } from "@/types/product";
 
@@ -74,15 +75,18 @@ export default function AddGroupModal({
             items: validItems,
           },
         });
+        toast.success("Add-on group updated successfully");
       } else {
         await createMutation.mutateAsync({
           title: groupName,
           items: validItems,
         });
+        toast.success("Add-on group created successfully");
       }
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to save addon group:", error);
+      toast.error(error?.response?.data?.message || "Failed to save add-on group");
     }
   };
 

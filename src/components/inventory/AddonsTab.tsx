@@ -1,6 +1,7 @@
 "use client";
 
 import { Plus, Pencil, Power, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import {
   useGetAllModifications,
   useActivateModification,
@@ -22,11 +23,14 @@ export default function AddonsTab({ onAddGroup, onEditGroup }: AddonsTabProps) {
     try {
       if (mod.status === "active") {
         await deactivateMutation.mutateAsync(mod.id);
+        toast.success("Add-on group deactivated successfully");
       } else {
         await activateMutation.mutateAsync(mod.id);
+        toast.success("Add-on group activated successfully");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to toggle modification status:", err);
+      toast.error(err?.response?.data?.message || "Failed to change add-on group status");
     }
   };
 

@@ -60,6 +60,7 @@ type Props = {
   order: OrderForEdit;
   onClose: () => void;
   onSubmit: (data: { items: EditOrderLineItem[] }) => void;
+  onPayNow?: (totalAmount: number) => void;
 };
 
 const formatRs = (n: number) =>
@@ -138,7 +139,7 @@ function AddItemCard({
       {/* Left: image */}
       <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-[10px] bg-[#F1F5F9]">
         <Image
-          src={getProdImage(item.id)}
+          src={item.image ? item.image : getProdImage(String(item.productId))}
           alt={item.name}
           fill
           className="object-cover"
@@ -256,7 +257,7 @@ function AddItemCard({
   );
 }
 
-export default function EditOrderModal({ order, onClose, onSubmit }: Props) {
+export default function EditOrderModal({ order, onClose, onSubmit, onPayNow }: Props) {
   const { user } = useAuth();
   const branchId = user?.branchId || 1;
   const { data: products = [], isLoading: isLoadingProducts } = useGetProductsByBranch(branchId, {
@@ -355,6 +356,12 @@ export default function EditOrderModal({ order, onClose, onSubmit }: Props) {
 
   const handleSubmit = () => {
     onSubmit({ items: lineItems });
+    onClose();
+  };
+
+  const handleOrderAndPay = () => {
+    onSubmit({ items: lineItems });
+    onPayNow?.(updatedAmount);
     onClose();
   };
 
@@ -601,7 +608,7 @@ export default function EditOrderModal({ order, onClose, onSubmit }: Props) {
               </button>
               <button
                 type="button"
-                onClick={handleSubmit}
+                onClick={handleOrderAndPay}
                 className="h-14 w-[274px] rounded-[16px] bg-[#EA580C] font-['Inter'] text-base font-bold leading-6 text-white text-center shadow-[0px_4px_6px_-4px_#0000001A,0px_10px_15px_-3px_#0000001A] hover:bg-[#DC4C04]"
               >
                 Order & Pay

@@ -15,6 +15,7 @@ import {
   Check,
   ChevronDown,
 } from "lucide-react";
+import { toast } from "sonner";
 import { useSearchParams } from "next/navigation";
 import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
 import { ROUTES } from "@/lib/constants";
@@ -336,17 +337,19 @@ export default function AddProductContent() {
           data: payload as any,
           imageFile: imageFile || undefined,
         });
+        toast.success("Product updated successfully");
       } else {
         await createProductMutation.mutateAsync({
           data: payload as any,
           imageFile: imageFile || undefined,
         });
+        toast.success("Product created successfully");
       }
 
       router.push(ROUTES.DASHBOARD_INVENTORY);
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Failed to ${isEditing ? "update" : "create"} product:`, error);
-      alert(`Failed to ${isEditing ? "update" : "create"} product. Please try again.`);
+      toast.error(error?.response?.data?.message || `Failed to ${isEditing ? "update" : "create"} product`);
     }
   };
 
@@ -433,7 +436,7 @@ export default function AddProductContent() {
           {currentStep === 1 && (
             <form
               onSubmit={handleStep1Submit}
-              className="overflow-hidden rounded-[20px] border border-[#E2E8F0] bg-white p-6 shadow-[0px_1px_2px_-1px_#0000001A,0px_1px_3px_0px_#0000001A] sm:p-8"
+              className="rounded-[20px] border border-[#E2E8F0] bg-white p-6 shadow-[0px_1px_2px_-1px_#0000001A,0px_1px_3px_0px_#0000001A] sm:p-8"
             >
               <h2 className="mb-6 flex items-center gap-2 font-['Inter'] text-xl font-bold text-[#1D293D]">
                 <FileText className="h-6 w-6" />
@@ -560,7 +563,7 @@ export default function AddProductContent() {
                       <ChevronDown className="h-5 w-5 text-[#90A1B9]" />
                     </button>
                     {showCategoryDropdown && (
-                      <div className="absolute top-full left-0 right-0 z-10 mt-2 max-h-60 overflow-auto rounded-xl border-2 border-[#E2E8F0] bg-white shadow-lg">
+                      <div className="absolute top-full left-0 right-0 z-10 mt-2 max-h-60 overflow-auto scrollbar-subtle rounded-xl border-2 border-[#E2E8F0] bg-white shadow-lg">
                         {categories?.map((cat) => (
                           <button
                             key={cat.id}
@@ -602,7 +605,7 @@ export default function AddProductContent() {
                       <ChevronDown className="h-5 w-5 text-[#90A1B9]" />
                     </button>
                     {showSubCategoryDropdown && selectedCategoryData && (
-                      <div className="absolute top-full left-0 right-0 z-10 mt-2 max-h-60 overflow-auto rounded-xl border-2 border-[#E2E8F0] bg-white shadow-lg">
+                      <div className="absolute top-full left-0 right-0 z-10 mt-2 max-h-60 overflow-auto scrollbar-subtle rounded-xl border-2 border-[#E2E8F0] bg-white shadow-lg">
                         {selectedCategoryData.subcategories?.map((sub) => (
                           <button
                             key={sub.id}

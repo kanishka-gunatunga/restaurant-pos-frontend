@@ -19,7 +19,7 @@ import {
   useDeactivateUser
 } from "@/hooks/useUser";
 import type { CreateUserData, UpdateUserData, User } from "@/types/user";
-// import { toast } from "sonner";
+import { toast } from "sonner";
 
 export default function UsersContent() {
   const router = useRouter();
@@ -40,7 +40,7 @@ export default function UsersContent() {
 
   const parsing = (() => {
     const term = debouncedSearchTerm.toLowerCase().trim();
-    if (!term) return { name: "", role: "", status: "active" };
+    if (!term) return { name: "", role: "", status: "all" };
 
     const parts = term.split(/\s+/);
     let role = "";
@@ -64,7 +64,7 @@ export default function UsersContent() {
     return {
       name: nameParts.join(" "),
       role,
-      status: status || "active"
+      status: status || "all"
     };
   })();
 
@@ -97,10 +97,10 @@ export default function UsersContent() {
         const { password, ...updatePayloadWithoutPassword } = basePayload;
         const updatePayload: UpdateUserData = password ? basePayload : updatePayloadWithoutPassword;
         await updateMutation.mutateAsync({ id: selectedUser.id, data: updatePayload });
-        // toast.success("User updated successfully");
+        toast.success("User updated successfully");
       } else {
         await registerMutation.mutateAsync(basePayload);
-        // toast.success("User registered successfully");
+        toast.success("User registered successfully");
       }
 
       setIsAddModalOpen(false);
@@ -111,7 +111,9 @@ export default function UsersContent() {
         error instanceof AxiosError
           ? (error.response?.data as { message?: string })?.message
           : null;
-      setSaveError(message || "Failed to save user. Please try again.");
+      const finalMessage = message || "Failed to save user. Please try again.";
+      setSaveError(finalMessage);
+      toast.error(finalMessage);
     }
   };
 
@@ -124,14 +126,14 @@ export default function UsersContent() {
     try {
       if (user.status === "active") {
         await deactivateMutation.mutateAsync(user.id);
-        // toast.success("User deactivated successfully");
+        toast.success("User deactivated successfully");
       } else {
         await activateMutation.mutateAsync(user.id);
-        // toast.success("User activated successfully");
+        toast.success("User activated successfully");
       }
     } catch (error) {
       console.error("Failed to toggle status:", error);
-      // toast.error("Failed to update user status");
+      toast.error("Failed to update user status");
     }
   };
 

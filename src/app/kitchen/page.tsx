@@ -19,11 +19,11 @@ import {
   CircleX,
   LogOut,
 } from "lucide-react";
-import {
-  useGetOrdersExcludeStatus,
-  useUpdateOrderItemStatus,
-  useUpdateOrderStatus,
-} from "@/hooks/useOrder";
+import { toast } from "sonner";
+
+import { useGetOrdersExcludeStatus, useUpdateOrderItemStatus, useUpdateOrderStatus } from "@/hooks/useOrder";
+import { useUpdatePaymentStatus } from "@/hooks/usePayment";
+
 import { useMemo } from "react";
 import ManagerAuthorizationModal from "@/components/orders/ManagerAuthorizationModal";
 import { useAuth } from "@/contexts/AuthContext";
@@ -56,6 +56,7 @@ interface Order {
   type: OrderType;
   table?: string;
   items: OrderItem[];
+  payments: any[];
   kitchenNote?: string;
   orderNote?: string;
 }
@@ -89,9 +90,7 @@ const mapBackendOrderToOrder = (backendOrder: any): Order => {
 
   return {
     id: backendOrder.id?.toString() || Math.random().toString(),
-    orderNumber:
-      backendOrder.orderNumber ||
-      `#${backendOrder.id ? String(backendOrder.id).padStart(4, "0") : Math.floor(Math.random() * 10000)}`,
+    orderNumber: backendOrder.orderNumber || `${backendOrder.id ? String(backendOrder.id).padStart(4, '0') : Math.floor(Math.random() * 10000)}`,
     status: mappedStatus,
     time: createdAt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
     minutesAgo: minutesAgo,
@@ -131,6 +130,7 @@ const mapBackendOrderToOrder = (backendOrder: any): Order => {
         completed: item.status === "complete" || false,
       };
     }),
+    payments: backendOrder.payments || [],
     kitchenNote: backendOrder.kitchenNote || "",
     orderNote: backendOrder.orderNote || backendOrder.notes || "",
   };
@@ -140,6 +140,7 @@ export default function KitchenPage() {
   const { data: backendOrders, isLoading: isQueryLoading } = useGetOrdersExcludeStatus("cancel");
   const updateItemStatus = useUpdateOrderItemStatus();
   const updateOrderStatus = useUpdateOrderStatus();
+  const updatePaymentStatus = useUpdatePaymentStatus();
   const { logout } = useAuth();
 
   const [filter, setFilter] = useState<OrderStatus | "All Orders">("All Orders");
@@ -154,11 +155,17 @@ export default function KitchenPage() {
       return [];
     }
 
-    return backendOrders.map(mapBackendOrderToOrder).sort((a, b) => {
-      if (a.status === "Ready" && b.status !== "Ready") return 1;
-      if (a.status !== "Ready" && b.status === "Ready") return -1;
-      return b.minutesAgo - a.minutesAgo;
-    });
+    return backendOrders
+      .filter((o: any) => {
+        const status = (o.status || "").toLowerCase();
+        return status !== "complete" && status !== "completed" && status !== "delivered" && status !== "cancel";
+      })
+      .map(mapBackendOrderToOrder)
+      .sort((a, b) => {
+        if (a.status === "Ready" && b.status !== "Ready") return 1;
+        if (a.status !== "Ready" && b.status === "Ready") return -1;
+        return b.minutesAgo - a.minutesAgo;
+      });
   }, [backendOrders]);
 
   const isLoading = isQueryLoading;
@@ -213,15 +220,58 @@ export default function KitchenPage() {
       }
       return;
     }
-    updateOrderStatus.mutate({ id, data: { status: status as any } });
+    updateOrderStatus.mutate(
+      { id, data: { status: status as any } },
+      {
+        onSuccess: () => {
+          toast.success(`Order ${status === "complete" ? "served" : status} successfully`);
+        },
+        onError: (err: any) => {
+          toast.error(err?.response?.data?.message || "Failed to update order status");
+        },
+      }
+    );
   };
 
-  const handleVerifyCancel = (passcode: string) => {
+  const handleVerifyCancel = async (passcode: string) => {
     if (authOrder) {
-      updateOrderStatus.mutate({
-        id: authOrder.id,
-        data: { status: "cancel" as any, passcode },
-      });
+      const orderToCancel = orders.find(o => o.id === String(authOrder.id));
+
+      updateOrderStatus.mutate(
+        {
+          id: authOrder.id,
+          data: { status: "cancel" as any, passcode }
+        },
+        {
+          onSuccess: async () => {
+            toast.success("Order cancelled successfully");
+
+            // Handle refunds for all payments
+            if (orderToCancel && orderToCancel.payments && orderToCancel.payments.length > 0) {
+              for (const payment of orderToCancel.payments) {
+                if (payment.status === 'paid' || payment.status === 'partial_refund') {
+                  try {
+                    await updatePaymentStatus.mutateAsync({
+                      id: payment.id,
+                      payload: {
+                        is_refund: 1,
+                        refund_type: "full"
+                      }
+                    });
+                    toast.success(`Payment #${payment.id} refunded successfully`);
+                  } catch (refundError: any) {
+                    console.error(`Failed to refund payment #${payment.id}:`, refundError);
+                    toast.error(`Failed to refund payment #${payment.id}: ${refundError?.response?.data?.message || "Internal error"}`);
+                  }
+                }
+              }
+            }
+          },
+          onError: (err: any) => {
+            toast.error(err?.response?.data?.message || "Failed to cancel order");
+          }
+        }
+      );
       setIsAuthModalOpen(false);
       setAuthOrder(null);
     }
@@ -396,10 +446,8 @@ function OrderCard({
       >
         <div className="flex justify-between items-start mb-2">
           <div>
-            <h2
-              className={`text-[30px] font-[900] ${order.status === "Pending" ? "text-[#D97706]" : order.status === "Preparing" ? "text-[#2563EB]" : order.status === "Hold" ? "text-[#E11D48]" : "text-[#059669]"}`}
-            >
-              {order.orderNumber}
+            <h2 className={`text-[30px] font-[900] ${order.status === "Pending" ? "text-[#D97706]" : order.status === "Preparing" ? "text-[#2563EB]" : order.status === "Hold" ? "text-[#E11D48]" : "text-[#059669]"}`}>
+              #{order.orderNumber}
             </h2>
             <div
               className={`flex items-center ${order.status === "Pending" ? "text-[#D97706]" : order.status === "Preparing" ? "text-[#2563EB]" : order.status === "Hold" ? "text-[#E11D48]" : "text-[#059669]"} gap-1 text-sm font-bold`}
@@ -601,7 +649,7 @@ function OrderCard({
         {order.status === "Ready" && (
           <>
             <button
-              onClick={() => onUpdateStatus(order.id, "delivered")}
+              onClick={() => onUpdateStatus(order.id, "complete")}
               className={`w-full py-3 rounded-xl font-bold text-white shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-2 ${theme.button}`}
             >
               <CircleCheck className="w-4 h-4" /> Mark as Served

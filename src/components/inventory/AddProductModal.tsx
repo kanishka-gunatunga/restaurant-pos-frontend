@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Plus, X, ChevronDown, Link2, Package, Calendar, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { Product, UpdateProductPayload } from "@/types/product";
 import { useGetAllCategories } from "@/hooks/useCategory";
 import { useGetAllModifications } from "@/hooks/useModification";
@@ -11,7 +12,7 @@ import { useGetAllBranches } from "@/hooks/useBranch";
 type AddProductModalProps = {
   open: boolean;
   overlayVisible: boolean;
-  branchId: string; // Added branchId
+  branchId: string;
   branchName: string;
   product: Product | null;
   onClose: () => void;
@@ -127,12 +128,15 @@ export default function AddProductModal({
     try {
       if (isEditing) {
         await updateMutation.mutateAsync({ id: product.id, data: payload });
+        toast.success("Product updated successfully");
       } else {
         await createMutation.mutateAsync({ data: payload as any });
+        toast.success("Product created successfully");
       }
       onClose();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to save product:", err);
+      toast.error(err?.response?.data?.message || "Failed to save product");
     }
   };
 
