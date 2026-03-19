@@ -59,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Sync token to cookie for axiosInstance and other consumers
   useEffect(() => {
     if (token) {
-      Cookies.set("token", token, { expires: 1 }); // 1 day
+      Cookies.set("token", token, { expires: 1 });
     } else if (status === "unauthenticated") {
       Cookies.remove("token");
     }

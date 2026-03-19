@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, signOut, useSession } from "next-auth/react";
 import Image from "next/image";
+import { toast } from "sonner";
 import { User, Lock, ArrowRight } from "lucide-react";
 import { ROUTES } from "@/lib/constants";
 import { useAuth } from "@/contexts/AuthContext";
@@ -40,18 +41,28 @@ export default function LoginForm() {
   const [loginSuccess, setLoginSuccess] = useState(false);
 
   const fromLogout = searchParams.get("from") === "logout";
+  const fromIdle = searchParams.get("from") === "idle";
+  const fromSessionExpired = searchParams.get("from") === "session_expired";
+
+  useEffect(() => {
+    if (fromIdle) {
+      toast.info("You were signed out due to inactivity. Please sign in again.");
+    } else if (fromSessionExpired) {
+      toast.info("Your session expired. Please sign in again.");
+    }
+  }, [fromIdle, fromSessionExpired]);
 
   // Redirect only when authenticated AND we have a valid mapped user.
-  // If we just came from an explicit logout, wait until a new login succeeds.
+  // If we just came from an explicit logout, idle timeout, or session expiry, wait until a new login succeeds.
   useEffect(() => {
-    if (fromLogout && !loginSuccess) return;
+    if ((fromLogout || fromIdle || fromSessionExpired) && !loginSuccess) return;
     if (sessionStatus !== "authenticated" || !user) return;
     if (user.role === "kitchen") router.replace(ROUTES.KITCHEN);
     else if (user.role === "cashier") router.replace(ROUTES.DASHBOARD_MENU);
     else router.replace(ROUTES.DASHBOARD);
-  }, [sessionStatus, user, router, fromLogout, loginSuccess]);
+  }, [sessionStatus, user, router, fromLogout, fromIdle, fromSessionExpired, loginSuccess]);
 
-  // Signed in but role not supported or missing (e.g. backend returned role "employee" – we only allow cashier/manager/admin)
+
   useEffect(() => {
     if (sessionStatus !== "authenticated" || user) return;
     setError(ERROR_MESSAGES.ROLE_NOT_SUPPORTED);

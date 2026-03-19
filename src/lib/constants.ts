@@ -5,6 +5,9 @@
 
 export const APP_NAME = "Restaurant POS";
 
+/** Auth idle timeout in minutes. */
+export const AUTH_IDLE_TIMEOUT_MINUTES = 15;
+
 export const ROUTES = {
   HOME: "/",
   DASHBOARD: "/dashboard",

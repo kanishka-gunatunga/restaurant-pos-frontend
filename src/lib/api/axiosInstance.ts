@@ -1,12 +1,14 @@
 import axios from "axios";
 import Cookies from "js-cookie";
-import { getSession } from "next-auth/react";
+import { getSession, signOut } from "next-auth/react";
+import { notifyUserActivity } from "@/hooks/useAuthIdleTimeout";
+import { ROUTES } from "@/lib/constants";
 
 function getBackendOrigin(): string {
   const raw = process.env.NEXT_PUBLIC_API_URL?.trim();
   const fallback = "http://localhost:5000";
   if (!raw) return fallback;
-  // Accept either origin ("https://api.example.com") or accidentally-provided ".../api"
+
   return raw.replace(/\/+$/, "").replace(/\/api$/i, "") || fallback;
 }
 
@@ -20,26 +22,36 @@ const axiosInstance = axios.create({
 
 axiosInstance.interceptors.request.use(
   async (config) => {
-    // 1. Try to get the token from cookies first (fastest)
     let token = typeof window !== "undefined" ? Cookies.get("token") : null;
 
-    // 2. Fallback: Get the token from NextAuth session if cookie is missing
     if (!token && typeof window !== "undefined") {
       const session = await getSession();
       token = (session?.user as { token?: string })?.token ?? null;
 
-      // If we found it in the session, sync it back to the cookie for future fast access
       if (token) {
-        Cookies.set("token", token, { expires: 1 }); // 1 day
+        Cookies.set("token", token, { expires: 1 });
       }
     }
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      notifyUserActivity();
     }
     return config;
   },
   (error) => {
+    return Promise.reject(error);
+  }
+);
+
+axiosInstance.interceptors.response.use(
+  (res) => res,
+  (error) => {
+    const status = error?.response?.status;
+    if (status === 401 && typeof window !== "undefined") {
+      Cookies.remove("token");
+      signOut({ callbackUrl: `${ROUTES.HOME}?from=session_expired` });
+    }
     return Promise.reject(error);
   }
 );

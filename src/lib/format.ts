@@ -35,9 +35,6 @@ export function formatTime(dateStr: string | null | undefined): string {
   }
 }
 
-/**
- * Formats an optional field for display. Returns "N/A" when null, undefined, or empty.
- */
 export function formatOptionalField(
   value: string | null | undefined,
   fallback = "N/A"
@@ -47,10 +44,6 @@ export function formatOptionalField(
   return s || fallback;
 }
 
-/**
- * Formats a quantity for display (no trailing zeros).
- * 3.000 -> "3", 12.5 -> "12.5", 100 -> "100"
- */
 export function formatQuantityValue(value: number | string | null | undefined): string {
   const n = Number(value);
   if (Number.isNaN(n)) return String(value ?? "");

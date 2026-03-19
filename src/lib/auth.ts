@@ -117,7 +117,8 @@ export const authOptions: NextAuthOptions = {
     signIn: "/",
   },
   session: {
-    maxAge: 24 * 60 * 60, // 1 day to match backend JWT
+    maxAge: 12 * 60 * 60, // 12 hours absolute max
+    updateAge: 15 * 60, // Extend session on activity every 15 min (rolling)
   },
   secret: process.env.NEXTAUTH_SECRET,
 };

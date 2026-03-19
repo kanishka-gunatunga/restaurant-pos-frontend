@@ -53,9 +53,10 @@ export const createProduct = async (
       },
     });
     return res.data;
-  } catch (error: any) {
-    if (error.response?.data) {
-      console.error("Backend Error Details:", error.response.data);
+  } catch (error: unknown) {
+    if (process.env.NODE_ENV === "development" && error && typeof error === "object" && "response" in error) {
+      const err = error as { response?: { data?: unknown } };
+      if (err.response?.data) console.error("Backend Error Details:", err.response.data);
     }
     throw error;
   }

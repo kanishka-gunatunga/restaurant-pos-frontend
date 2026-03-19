@@ -6,6 +6,7 @@ import MinWidthGuard from "@/components/MinWidthGuard";
 import QueryProvider from "@/utils/providers";
 import * as Auth from "@/contexts/AuthContext";
 import { SessionProvider } from "@/components/providers/SessionProvider";
+import { AuthIdleTimeoutProvider } from "@/components/providers/AuthIdleTimeoutProvider";
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -15,6 +16,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Restaurant POS",
   description: "Point of Sale system for restaurant operations",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({
@@ -29,8 +33,10 @@ export default function RootLayout({
           <SessionProvider>
             <QueryProvider>
               <Auth.AuthProvider>
-                {children}
-                <Toaster position="top-center" richColors closeButton />
+                <AuthIdleTimeoutProvider>
+                  {children}
+                  <Toaster position="top-center" richColors closeButton />
+                </AuthIdleTimeoutProvider>
               </Auth.AuthProvider>
             </QueryProvider>
           </SessionProvider>
