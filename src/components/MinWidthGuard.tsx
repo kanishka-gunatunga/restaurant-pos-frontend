@@ -1,24 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
-
-const MIN_WIDTH = 1000;
-
 export default function MinWidthGuard({ children }: { children: React.ReactNode }) {
-  const [width, setWidth] = useState<number | null>(null);
-
-  useEffect(() => {
-    const updateWidth = () => setWidth(window.innerWidth);
-    updateWidth();
-    window.addEventListener("resize", updateWidth);
-    return () => window.removeEventListener("resize", updateWidth);
-  }, []);
-
-  const showRestriction = width === null || width < MIN_WIDTH;
-
-  if (showRestriction) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[#F8FAFC] px-6">
+  return (
+    <>
+      <div className="hidden min-[1000px]:block">{children}</div>
+      <div className="min-[1000px]:hidden flex min-h-screen flex-col items-center justify-center bg-[#F8FAFC] px-6">
         <div className="w-full max-w-md rounded-[24px] border border-[#E2E8F0] bg-white p-8 shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.07),0px_10px_15px_-3px_rgba(0,0,0,0.05)] text-center">
           <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#FFF7ED]">
             <svg
@@ -44,8 +30,6 @@ export default function MinWidthGuard({ children }: { children: React.ReactNode 
           </p>
         </div>
       </div>
-    );
-  }
-
-  return <>{children}</>;
+    </>
+  );
 }
