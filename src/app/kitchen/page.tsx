@@ -21,8 +21,10 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { useGetOrdersExcludeStatus, useUpdateOrderItemStatus, useUpdateOrderStatus } from "@/hooks/useOrder";
+import { useGetOrdersExcludeStatus, useUpdateOrderItemStatus, useUpdateOrderStatus, ORDER_KEYS } from "@/hooks/useOrder";
 import { useUpdatePaymentStatus } from "@/hooks/usePayment";
+import Pusher from "pusher-js";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { useMemo } from "react";
 import ManagerAuthorizationModal from "@/components/orders/ManagerAuthorizationModal";
@@ -142,6 +144,7 @@ export default function KitchenPage() {
   const updateOrderStatus = useUpdateOrderStatus();
   const updatePaymentStatus = useUpdatePaymentStatus();
   const { logout } = useAuth();
+  const queryClient = useQueryClient();
 
   const [filter, setFilter] = useState<OrderStatus | "All Orders">("All Orders");
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -174,6 +177,32 @@ export default function KitchenPage() {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    const pusherKey = process.env.NEXT_PUBLIC_PUSHER_KEY;
+    const pusherCluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
+
+    if (!pusherKey || !pusherCluster) {
+      console.warn("Pusher environment variables are missing.");
+      return;
+    }
+
+    const pusher = new Pusher(pusherKey, {
+      cluster: pusherCluster,
+    });
+
+    const channel = pusher.subscribe("orders-channel");
+
+    channel.bind("new-order", (data: any) => {
+      console.log("New order detected from Pusher:", data);
+      queryClient.invalidateQueries({ queryKey: ORDER_KEYS.all });
+    });
+
+    return () => {
+      channel.unbind_all();
+      channel.unsubscribe();
+    };
+  }, [queryClient]);
 
   const counts = {
     "All Orders": orders.length,
