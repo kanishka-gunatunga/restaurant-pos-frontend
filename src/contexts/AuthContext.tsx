@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useCallback, useEffect, type ReactNode } from "react";
+import { createContext, useContext, useCallback, useLayoutEffect, type ReactNode } from "react";
 import { useSession, signOut } from "next-auth/react";
 import Cookies from "js-cookie";
 import { ROUTES } from "@/lib/constants";
@@ -56,17 +56,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const user = sessionUserToAuthUser(session?.user ?? null);
   const token = (session?.user as { token?: string } | undefined)?.token ?? null;
 
-  // Sync token to cookie for axiosInstance and other consumers
-  useEffect(() => {
+  // useLayoutEffect runs before paint so the cookie is set before any child component's effects (e.g. dashboard fetch)
+  useLayoutEffect(() => {
     if (token) {
-      Cookies.set("token", token, { expires: 1 });
+      Cookies.set("token", token, {
+        expires: 1,
+        sameSite: "lax",
+        secure: typeof window !== "undefined" && window.location?.protocol === "https:",
+      });
     } else if (status === "unauthenticated") {
       Cookies.remove("token");
     }
   }, [token, status]);
 
   const logout = useCallback(() => {
-    // Add a query flag so the login page knows this navigation came from a logout
     signOut({ callbackUrl: `${ROUTES.HOME}?from=logout` });
   }, []);
 

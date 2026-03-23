@@ -13,6 +13,8 @@ export type OrderType = "Dine In" | "Take Away" | "Delivery";
 export type OrderDetailsData = {
   customerName: string;
   phone: string;
+  customerId?: string | number;
+  originalCustomerName?: string;
   orderType: OrderType;
   tableNumber?: string;
   deliveryAddress?: string;
