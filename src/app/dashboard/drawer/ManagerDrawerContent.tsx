@@ -83,6 +83,7 @@ export default function ManagerDrawerContent() {
     setHasDrawerStarted,
     setHasActiveSession,
     setSessionData,
+    refreshSession,
   } = drawerSession;
   const [isStartModalOpen, setIsStartModalOpen] = useState(false);
   const [isCreateSessionModalOpen, setIsCreateSessionModalOpen] = useState(false);
@@ -99,6 +100,7 @@ export default function ManagerDrawerContent() {
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [activeSessionDetail, setActiveSessionDetail] = useState<sessionService.ActiveSessionDetail | null>(null);
+  const [activeCashOutLedger, setActiveCashOutLedger] = useState<sessionService.CashOutLedgerRow[]>([]);
 
   /** Map GET /api/sessions/all-history item to table row. Uses backend's camelCase shape. */
   const mapAllHistoryToRow = useCallback((item: AllHistorySession): SessionHistoryRow => {
@@ -163,30 +165,51 @@ export default function ManagerDrawerContent() {
   }, [fetchSessionHistory]);
 
   const fetchActiveSessionDetail = useCallback(async () => {
-    if (!hasActiveSession) {
-      setActiveSessionDetail(null);
-      return;
-    }
     try {
-      const detail = await sessionService.getActiveSessionDetail();
-      setActiveSessionDetail(detail);
+      const session = await sessionService.getCurrentSession();
+      if (!session) {
+        setActiveSessionDetail(null);
+        setActiveCashOutLedger([]);
+        return;
+      }
+      setActiveSessionDetail(sessionService.parseActiveSessionDetail(session));
+      setActiveCashOutLedger(
+        sessionService.extractCashOutLedgerFromSession(session, user?.name ?? "Current user")
+      );
     } catch {
       setActiveSessionDetail(null);
+      setActiveCashOutLedger([]);
     }
-  }, [hasActiveSession]);
+  }, [user?.name]);
 
   useEffect(() => {
     if (!hasActiveSession) {
       setActiveSessionDetail(null);
+      setActiveCashOutLedger([]);
       return;
     }
-    fetchActiveSessionDetail();
+    void fetchActiveSessionDetail();
+    const sync = async () => {
+      try {
+        await refreshSession();
+      } catch {
+        /* ignore */
+      }
+      await fetchActiveSessionDetail();
+    };
     const onFocus = () => {
-      fetchActiveSessionDetail().catch(() => {});
+      void sync();
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") void sync();
     };
     window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
-  }, [hasActiveSession, fetchActiveSessionDetail]);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [hasActiveSession, fetchActiveSessionDetail, refreshSession]);
 
   const uniqueCashiers = useMemo(
     () => [...new Set(historyRows.map((r) => r.cashier).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
@@ -282,37 +305,51 @@ export default function ManagerDrawerContent() {
     ? [activeSessionCard, ...closedTodaySessions]
     : todaysSessions;
 
-  // Summary cards: today's closed sessions only — actual balances, cash sales, cash outs (exclude active)
-  const totalExpectedBalance = todaysSessions.reduce(
-    (sum, s) => sum + (s.actualBalance ?? 0),
-    0,
-  );
-  const totalCashSales = todaysSessions.reduce(
-    (sum, s) => sum + (Number.isFinite(s.cashSales) ? s.cashSales : 0),
-    0,
-  );
-  const totalCashOuts = todaysSessions.reduce(
-    (sum, s) => sum + (Number.isFinite(s.cashOuts) ? s.cashOuts : 0),
-    0,
-  );
+  // Summary cards: today's closed sessions + live active session (totals were 0 while only an open session existed)
+  const activeSummary =
+    hasActiveSession && activeSessionDetail
+      ? {
+          expectedBalance: activeSessionDetail.currentBalance,
+          cashSales: activeSessionDetail.cashSalesAmount,
+          cashOuts: activeSessionDetail.cashOutsAmount,
+        }
+      : { expectedBalance: 0, cashSales: 0, cashOuts: 0 };
+  const totalExpectedBalance =
+    todaysSessions.reduce((sum, s) => sum + (s.actualBalance ?? 0), 0) + activeSummary.expectedBalance;
+  const totalCashSales =
+    todaysSessions.reduce((sum, s) => sum + (Number.isFinite(s.cashSales) ? s.cashSales : 0), 0) +
+    activeSummary.cashSales;
+  const totalCashOuts =
+    todaysSessions.reduce((sum, s) => sum + (Number.isFinite(s.cashOuts) ? s.cashOuts : 0), 0) +
+    activeSummary.cashOuts;
 
-  const cashOutHistory: CashOutEntry[] = filteredRows
-    .filter((row) => row.cashOuts > 0)
-    // Only include today's cash outs
-    .filter((row) => {
-      if (!row.closedAtRaw) return false;
-      const d = new Date(row.closedAtRaw);
-      const todayOnly = new Date();
-      todayOnly.setHours(0, 0, 0, 0);
-      d.setHours(0, 0, 0, 0);
-      return d.getTime() === todayOnly.getTime();
-    })
-    .slice(0, 5)
-    .map((row) => ({
-      dateTime: row.endTime ? `${row.date} • ${row.endTime}` : row.date,
-      by: row.cashier,
-      amount: row.cashOuts,
+  const cashOutHistory = useMemo((): CashOutEntry[] => {
+    const todayOnly = new Date();
+    todayOnly.setHours(0, 0, 0, 0);
+    const fromClosed = filteredRows
+      .filter((row) => row.cashOuts > 0 && row.closedAtRaw)
+      .filter((row) => {
+        const d = new Date(row.closedAtRaw!);
+        d.setHours(0, 0, 0, 0);
+        return d.getTime() === todayOnly.getTime();
+      })
+      .map((row) => ({
+        dateTime: row.endTime ? `${row.date} • ${row.endTime}` : row.date,
+        by: row.cashier,
+        amount: row.cashOuts,
+        sortKey: new Date(row.closedAtRaw!).getTime(),
+      }));
+    const fromLive = activeCashOutLedger.map((e) => ({
+      dateTime: e.dateTime,
+      by: e.by,
+      amount: e.amount,
+      sortKey: e.sortKey,
     }));
+    return [...fromLive, ...fromClosed]
+      .sort((a, b) => b.sortKey - a.sortKey)
+      .slice(0, 5)
+      .map((row) => ({ dateTime: row.dateTime, by: row.by, amount: row.amount }));
+  }, [filteredRows, activeCashOutLedger]);
 
   const [previousSessions, setPreviousSessions] = useState<{
     closedAt: string;

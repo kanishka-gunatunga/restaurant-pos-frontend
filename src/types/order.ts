@@ -60,7 +60,8 @@ export interface Order {
   zipcode?: string;
   deliveryInstructions?: string;
   status: OrderStatus;
-  paymentStatus: "paid" | "pending" | "refund";
+  paymentStatus: "paid" | "pending" | "refund" | "partial_refund" | string;
+  balanceDue?: number;
   userId?: string | number;
   createdAt: string;
   updatedAt: string;
@@ -105,6 +106,7 @@ export interface CreateOrderData {
 
 export interface UpdateOrderData extends Partial<CreateOrderData> {
   passcode?: string;
+  paymentStatus?: string;
 }
 
 export interface OrderSearchParams {

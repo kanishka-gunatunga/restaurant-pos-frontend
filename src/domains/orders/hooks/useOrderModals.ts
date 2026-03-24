@@ -5,8 +5,16 @@ import { EditOrderLineItem } from "@/components/orders/EditOrderModal";
 import { useUpdateOrderStatus, useUpdateOrder } from "@/hooks/useOrder";
 import { useUpdateCustomer } from "@/hooks/useCustomer";
 import { useUpdatePaymentStatus, useGetPaymentsByOrder } from "@/hooks/usePayment";
-import * as paymentService from "@/services/paymentService";
 import type { OrderDetailsData } from "@/contexts/OrderContext";
+import { totalsFromOrderLineItems } from "@/domains/orders/orderLineTotals";
+import { isInvalidManagerPasscodeError } from "@/lib/api/managerPasscodeError";
+
+const MONEY_EPS = 0.02;
+
+function paymentRowAmount(p: { amount?: unknown }): number {
+  const n = Number(p.amount);
+  return Number.isFinite(n) ? n : 0;
+}
 
 function mapOrderTypeToApi(orderType: OrderDetailsData["orderType"]) {
   if (orderType === "Dine In") return "dining";
@@ -48,6 +56,8 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
     items: order.items,
     subtotal: order.subtotal,
     discount: order.discount,
+    orderDiscount: order.orderDiscount ?? 0,
+    balanceDue: order.balanceDue,
   }), []);
 
   const updateStatusMutation = useUpdateOrderStatus();
@@ -65,34 +75,8 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
   const handleVerify = useCallback(async (passcode: string) => {
     if (!authModal.orderNo) return;
     const cancelledOrderNo = authModal.orderNo;
-    
-    try {
-      // 1. Fetch payments for this order
-      const orderPayments = await paymentService.getPaymentsByOrder(Number(cancelledOrderNo));
-      
-      // 2. Trigger refunds for each payment
-      if (orderPayments && orderPayments.length > 0) {
-        toast.info(`Processing ${orderPayments.length} refund(s)...`);
-        
-        await Promise.all(orderPayments.map(async (payment) => {
-          try {
-            await updatePaymentStatusMutation.mutateAsync({
-              id: payment.id,
-              payload: {
-                is_refund: 1,
-                refund_type: "full",
-                status: "refund"
-              }
-            });
-            toast.success(`Refund processed for payment #${payment.id}`);
-          } catch (err) {
-            console.error(`Refund failed for payment #${payment.id}:`, err);
-            toast.error(`Refund failed for payment #${payment.id}`);
-          }
-        }));
-      }
 
-      // 3. Cancel the order
+    try {
       await updateStatusMutation.mutateAsync({
         id: cancelledOrderNo,
         data: {
@@ -100,15 +84,23 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
           passcode,
         },
       });
-      
+
       toast.success("Order cancelled successfully");
       setAuthModal({ isOpen: false, orderNo: null });
       onOrderCancelled?.(cancelledOrderNo);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Cancellation process failed:", error);
-      toast.error(error?.response?.data?.message || error.message || "Failed to cancel order");
+      if (!isInvalidManagerPasscodeError(error)) {
+        const ax = error as { response?: { data?: { message?: string } }; message?: string };
+        toast.error(
+          ax?.response?.data?.message ||
+            (error instanceof Error ? error.message : null) ||
+            "Failed to cancel order"
+        );
+      }
+      throw error;
     }
-  }, [authModal.orderNo, updateStatusMutation, updatePaymentStatusMutation, onOrderCancelled]);
+  }, [authModal.orderNo, updateStatusMutation, onOrderCancelled]);
 
   const handleCloseAuthModal = useCallback(() => {
     setAuthModal({ isOpen: false, orderNo: null });
@@ -127,50 +119,74 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
   const handleEditOrderSubmit = useCallback(
     (data: { items: EditOrderLineItem[] }) => {
       if (editOrderModal) {
-        const TAX_RATE = 0.1;
-        const subtotal = data.items.reduce((sum, it) => sum + it.qty * (it.price - (it.productDiscount ?? 0)), 0);
-        const newTotal = subtotal * (1 + TAX_RATE);
+        const computed = totalsFromOrderLineItems(
+          data.items.map((it) => ({
+            name: it.name,
+            qty: it.qty,
+            price: it.price,
+            productDiscount: it.productDiscount,
+            modifications: it.modifications?.map((m) => ({ price: m.price })),
+          })),
+          editOrderModal.orderDiscount ?? 0
+        );
+        const newTotal = computed?.totalAmount ?? 0;
         const originalTotal = editOrderModal.totalAmount;
         const refundAmount = originalTotal - newTotal;
+        const additionalDue = newTotal - originalTotal;
 
-        const isPaid = editOrderModal.paymentStatus === "paid";
+        const paySt = String(editOrderModal.paymentStatus).toLowerCase();
+        const notifyBalanceAfterEdit =
+          additionalDue > MONEY_EPS &&
+          (paySt === "paid" || paySt === "partial_refund" || paySt === "pending");
 
-        updateOrderMutation.mutate({
-          id: editOrderModal.id,
-          data: {
-            // If already paid, don't change the totalAmount on the order itself
-            // The difference will be handled as a refund in the payments table
-            ...(isPaid ? {} : { totalAmount: newTotal }),
-            tax: subtotal * TAX_RATE,
-            order_products: data.items.map(item => ({
-              productId: Number(item.productId || item.id),
-              variationId: item.variationId ? Number(item.variationId) : undefined,
-              quantity: item.qty,
-              unitPrice: item.price,
-              productDiscount: item.productDiscount ?? 0,
-              modifications: item.modifications,
-            }))
-          }
-        }, {
-          onSuccess: () => {
-            // Handle refund if necessary
-            if (refundAmount > 0 && payments.length > 0) {
-              const payment = payments[0]; // Assuming first payment for now
-              const isFullRefund = refundAmount >= Number(payment.amount);
-              
-              updatePaymentStatusMutation.mutate({
-                id: payment.id,
-                payload: {
-                  is_refund: 1,
-                  refund_type: isFullRefund ? "full" : "partial",
-                  refund_amount: refundAmount,
-                  status: isFullRefund ? "refund" : "partial_refund"
+        updateOrderMutation.mutate(
+          {
+            id: editOrderModal.id,
+            data: {
+              // Server recomputes totals + syncBalanceDuePayment (balance_due row) in the same transaction.
+              order_products: data.items.map((item) => ({
+                productId: Number(item.productId || item.id),
+                variationId: item.variationId ? Number(item.variationId) : undefined,
+                quantity: item.qty,
+                unitPrice: item.price,
+                productDiscount: item.productDiscount ?? 0,
+                modifications: item.modifications,
+              })),
+            },
+          },
+          {
+            onSuccess: async () => {
+              try {
+                if (refundAmount > MONEY_EPS && payments.length > 0) {
+                  const payment = payments[0] as { id: number; amount?: number };
+                  const isFullRefund = refundAmount >= paymentRowAmount(payment);
+                  await updatePaymentStatusMutation.mutateAsync({
+                    id: payment.id,
+                    payload: {
+                      is_refund: 1,
+                      refund_type: isFullRefund ? "full" : "partial",
+                      refund_amount: refundAmount,
+                      status: isFullRefund ? "refund" : "partial_refund",
+                    },
+                  });
                 }
-              });
-            }
-            setEditOrderModal(null);
+                if (notifyBalanceAfterEdit) {
+                  toast.success(
+                    "Order updated. Use Pay to collect the balance due when the customer is ready."
+                  );
+                }
+              } catch (err: unknown) {
+                const msg =
+                  err && typeof err === "object" && "message" in err
+                    ? String((err as { message?: string }).message)
+                    : "Payment update failed";
+                toast.error(msg);
+              } finally {
+                setEditOrderModal(null);
+              }
+            },
           }
-        });
+        );
       }
     },
     [editOrderModal, updateOrderMutation, updatePaymentStatusMutation, payments]

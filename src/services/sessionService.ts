@@ -17,7 +17,9 @@ export interface CloseSessionPayload {
 
 /** Add or remove cash from the current drawer session. */
 export async function cashAction(payload: CashActionPayload): Promise<void> {
-  await axiosInstance.post("/sessions/cash-action", payload);
+  await axiosInstance.post("/sessions/cash-action", payload, {
+    skipAuthRedirectOn401: true,
+  });
 }
 
 export async function adjustInitialAmount(params: {
@@ -41,7 +43,7 @@ export async function closeSession(payload: CloseSessionPayload): Promise<void> 
   const body: Record<string, unknown> = { passcode: payload.passcode };
   if (payload.closingAmount != null) body.closingAmount = payload.closingAmount;
   if (payload.actualBalance != null) body.actualBalance = payload.actualBalance;
-  await axiosInstance.post("/sessions/close", body);
+  await axiosInstance.post("/sessions/close", body, { skipAuthRedirectOn401: true });
 }
 
 /**
@@ -125,6 +127,55 @@ export interface ActiveSessionDetail {
   cashOutsCount: number;
 }
 
+/** Classify a session ledger row for cash KPIs (used for totals and cash-out history). */
+function classifyDrawerTransaction(row: Record<string, unknown>): "sale" | "out" | null {
+  const type = String(row.type ?? row.transactionType ?? row.action ?? row.kind ?? "")
+    .toLowerCase()
+    .replace(/-/g, "_");
+  const desc = String(row.description ?? row.reason ?? row.source ?? "").toLowerCase();
+  const amount = parseBalance(row.amount ?? row.value ?? row.total);
+  if (amount <= 0) return null;
+  // Opening / initial float — not a cash sale for drawer KPIs
+  if (
+    type === "add" &&
+    (desc.includes("opening") ||
+      desc.includes("initial") ||
+      desc.includes("start balance") ||
+      desc.includes("session start") ||
+      desc.includes("drawer start"))
+  ) {
+    return null;
+  }
+  const saleTypes = new Set(["sale", "cash_sale", "cash_sales", "order", "payment", "cash"]);
+  const outTypes = new Set(["cash_out", "cash_outs", "remove", "withdrawal", "withdraw"]);
+  const pm = String(
+    row.paymentMethod ?? row.paymentMethodType ?? row.payment_method ?? row.payMethod ?? ""
+  ).toLowerCase();
+  const isCashPayment =
+    pm === "cash" ||
+    pm === "cod" ||
+    pm === "counter" ||
+    pm === "in_person" ||
+    String(row.paymentType ?? row.payment_type ?? "").toLowerCase() === "cash";
+  const isSale =
+    saleTypes.has(type) ||
+    type.includes("sale") ||
+    type.includes("order") ||
+    (type === "payment" && isCashPayment) ||
+    row.isCash === true ||
+    row.is_cash === true ||
+    (type === "add" && (desc.includes("sale") || desc.includes("order") || desc.includes("payment")));
+  const isOut =
+    outTypes.has(type) ||
+    type.includes("cash_out") ||
+    type.includes("remove") ||
+    type.includes("withdraw") ||
+    type === "payout";
+  if (isOut) return "out";
+  if (isSale) return "sale";
+  return null;
+}
+
 function sumTransactionsToCashTotals(transactions: unknown): {
   cashSalesAmount: number;
   cashSalesCount: number;
@@ -133,34 +184,87 @@ function sumTransactionsToCashTotals(transactions: unknown): {
 } {
   const out = { cashSalesAmount: 0, cashSalesCount: 0, cashOutsAmount: 0, cashOutsCount: 0 };
   if (!Array.isArray(transactions)) return out;
-  const saleTypes = new Set(["sale", "cash_sale", "cash_sales", "order", "payment", "cash"]);
-  const outTypes = new Set(["cash_out", "cash_outs", "remove", "withdrawal", "withdraw"]);
   for (const t of transactions) {
     if (!t || typeof t !== "object") continue;
     const row = t as Record<string, unknown>;
-    const type = String(row.type ?? row.transactionType ?? row.action ?? row.kind ?? "").toLowerCase().replace(/-/g, "_");
-    const desc = String(row.description ?? row.reason ?? row.source ?? "").toLowerCase();
+    const kind = classifyDrawerTransaction(row);
     const amount = parseBalance(row.amount ?? row.value ?? row.total);
-    if (amount <= 0) continue;
-    const isSale =
-      saleTypes.has(type) ||
-      type.includes("sale") ||
-      type.includes("order") ||
-      (type === "add" && (desc.includes("sale") || desc.includes("order") || desc.includes("payment")));
-    const isOut =
-      outTypes.has(type) ||
-      type.includes("out") ||
-      type.includes("remove") ||
-      type.includes("withdraw");
-    if (isSale) {
+    if (kind === "sale") {
       out.cashSalesAmount += amount;
       out.cashSalesCount += 1;
-    } else if (isOut) {
+    } else if (kind === "out") {
       out.cashOutsAmount += amount;
       out.cashOutsCount += 1;
     }
   }
   return out;
+}
+
+function transactionSortTimeMs(row: Record<string, unknown>): number {
+  const t =
+    row.createdAt ??
+    row.created_at ??
+    row.timestamp ??
+    row.time ??
+    row.date ??
+    row.updatedAt ??
+    row.updated_at;
+  if (t == null || t === "") return 0;
+  const n = new Date(String(t)).getTime();
+  return Number.isNaN(n) ? 0 : n;
+}
+
+function transactionActorName(row: Record<string, unknown>, fallback: string): string {
+  const u = row.user ?? row.User ?? row.performedBy ?? row.cashier ?? row.cashierUser;
+  if (u && typeof u === "object") {
+    const o = u as Record<string, unknown>;
+    return sessionUserDisplayName({
+      name: o.name as string | undefined,
+      employeeId: o.employeeId as string | undefined,
+      id: o.id as number | undefined,
+    });
+  }
+  const name = row.cashierName ?? row.userName ?? row.performedByName;
+  if (name != null && String(name).trim()) return String(name).trim();
+  return fallback;
+}
+
+export interface CashOutLedgerRow {
+  dateTime: string;
+  by: string;
+  amount: number;
+  sortKey: number;
+}
+
+/** Individual cash-out lines from GET /sessions/active `transactions` (closed sessions still come from all-history). */
+export function extractCashOutLedgerFromSession(
+  session: CurrentSession | null | undefined,
+  fallbackCashierName: string
+): CashOutLedgerRow[] {
+  if (!session || typeof session !== "object") return [];
+  const raw = session as Record<string, unknown>;
+  const txList = raw.transactions ?? raw.Transactions;
+  if (!Array.isArray(txList)) return [];
+  const rows: CashOutLedgerRow[] = [];
+  for (const t of txList) {
+    if (!t || typeof t !== "object") continue;
+    const row = t as Record<string, unknown>;
+    if (classifyDrawerTransaction(row) !== "out") continue;
+    const amount = parseBalance(row.amount ?? row.value ?? row.total);
+    if (amount <= 0) continue;
+    const sortKey = transactionSortTimeMs(row);
+    const when = sortKey ? new Date(sortKey) : new Date();
+    const datePart = when.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    const timePart = when.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
+    rows.push({
+      dateTime: `${datePart} • ${timePart}`,
+      by: transactionActorName(row, fallbackCashierName),
+      amount,
+      sortKey: sortKey || when.getTime(),
+    });
+  }
+  rows.sort((a, b) => b.sortKey - a.sortKey);
+  return rows;
 }
 
 export function parseActiveSessionDetail(session: CurrentSession | null): ActiveSessionDetail | null {
@@ -187,12 +291,17 @@ export function parseActiveSessionDetail(session: CurrentSession | null): Active
       ? Number((cashOuts as { count?: unknown }).count) || 0
       : Number(raw.cashOutsCount ?? raw.cash_outs_count) || 0;
   const txList = raw.transactions ?? raw.Transactions;
-  if (cashSalesAmount === 0 && cashOutsAmount === 0 && Array.isArray(txList) && txList.length > 0) {
-    const fromTx = sumTransactionsToCashTotals(txList);
-    cashSalesAmount = fromTx.cashSalesAmount;
-    cashSalesCount = fromTx.cashSalesCount;
-    cashOutsAmount = fromTx.cashOutsAmount;
-    cashOutsCount = fromTx.cashOutsCount;
+  const fromTx =
+    Array.isArray(txList) && txList.length > 0 ? sumTransactionsToCashTotals(txList) : null;
+  if (fromTx) {
+    if (cashSalesAmount === 0 && fromTx.cashSalesAmount > 0) {
+      cashSalesAmount = fromTx.cashSalesAmount;
+      cashSalesCount = fromTx.cashSalesCount;
+    }
+    if (cashOutsAmount === 0 && fromTx.cashOutsAmount > 0) {
+      cashOutsAmount = fromTx.cashOutsAmount;
+      cashOutsCount = fromTx.cashOutsCount;
+    }
   }
   return {
     initialAmount: base.initialAmount,
@@ -216,7 +325,10 @@ export interface StartSessionPayload {
 }
 
 export async function startSession(payload: StartSessionPayload): Promise<void> {
-  await axiosInstance.post("/sessions/start", payload);
+  const hasPasscode = Boolean(payload.passcode != null && String(payload.passcode).trim() !== "");
+  await axiosInstance.post("/sessions/start", payload, {
+    skipAuthRedirectOn401: hasPasscode,
+  });
 }
 
 export type SessionUserInfo = {

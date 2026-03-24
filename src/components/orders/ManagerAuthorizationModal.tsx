@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Lock, X } from "lucide-react";
+import { isInvalidManagerPasscodeError } from "@/lib/api/managerPasscodeError";
 
 type Props = {
   orderNo: string;
@@ -36,8 +37,7 @@ export default function ManagerAuthorizationModal({ orderNo, isOpen, onClose, on
       const raw =
         (err as { response?: { status?: number; data?: { message?: string } } })?.response?.data?.message ||
         (err instanceof Error ? err.message : "Verification failed.");
-      const status = (err as { response?: { status?: number } })?.response?.status;
-      if (status === 401 || /invalid passcode|invalid manager passcode|unauthorized/i.test(String(raw))) {
+      if (isInvalidManagerPasscodeError(err)) {
         setError("Wrong passcode.");
       } else if (/request failed|status code|ECONNREFUSED|ECONNRESET|ENOTFOUND/i.test(String(raw))) {
         setError("Unable to verify. Please try again or contact support.");

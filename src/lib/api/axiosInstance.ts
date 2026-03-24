@@ -57,7 +57,10 @@ axiosInstance.interceptors.response.use(
   (res) => res,
   (error) => {
     const status = error?.response?.status;
-    if (status === 401 && typeof window !== "undefined") {
+    // Wrong passcode → 403 + INVALID_MANAGER_PASSCODE (no logout). 
+    const skipAuthRedirect =
+      error?.config?.skipAuthRedirectOn401 === true;
+    if (status === 401 && typeof window !== "undefined" && !skipAuthRedirect) {
       Cookies.remove("token");
       signOut({ callbackUrl: `${ROUTES.HOME}?from=session_expired` });
     }

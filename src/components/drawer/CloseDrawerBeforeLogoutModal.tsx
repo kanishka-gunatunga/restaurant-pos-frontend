@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { X, Wallet } from "lucide-react";
 import { ROUTES } from "@/lib/constants";
+import { isInvalidManagerPasscodeError } from "@/lib/api/managerPasscodeError";
 
 function parseAmount(value: string): number {
   const cleaned = value.replace(/[^0-9.]/g, "");
@@ -52,7 +53,7 @@ export default function CloseDrawerBeforeLogoutModal({
       const isTechnical = /initialization vector|ECONNREFUSED|ECONNRESET|decrypt|ENOTFOUND/i.test(String(raw));
       if (isTechnical) {
         setError("Unable to close session. Please try again or contact support.");
-      } else if (/invalid manager passcode|invalid passcode/i.test(String(raw))) {
+      } else if (isInvalidManagerPasscodeError(err)) {
         setError("Wrong passcode.");
       } else {
         setError(raw || "Failed to close session.");

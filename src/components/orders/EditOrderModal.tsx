@@ -19,8 +19,7 @@ import type { MenuItem, ProductVariant, ProductAddOn } from "@/components/menu/t
 import { useGetAllModifications } from "@/hooks/useModification";
 import { useGetProductsByBranch } from "@/hooks/useProduct";
 import { useAuth } from "@/contexts/AuthContext";
-
-const TAX_RATE = 0.1;
+import { lineNetBeforeOrderDiscount, totalsFromOrderLineItems } from "@/domains/orders/orderLineTotals";
 
 export type EditOrderLineItem = {
   id: string;
@@ -41,6 +40,7 @@ type OrderForEdit = {
   orderNo: string;
   customerName: string;
   totalAmount: number;
+  orderDiscount?: number;
   items?: {
     id: string;
     productId?: string;
@@ -302,10 +302,8 @@ export default function EditOrderModal({ order, onClose, onSubmit, onPayNow }: P
   const refundClipId = useId();
 
   const originalAmount = order.totalAmount;
-  const subtotalBeforeDiscount = lineItems.reduce((sum, it) => sum + it.qty * it.price, 0);
-  const totalItemDiscount = lineItems.reduce((sum, it) => sum + it.qty * (it.productDiscount ?? 0), 0);
-  const subtotal = subtotalBeforeDiscount - totalItemDiscount;
-  const updatedAmount = subtotal * (1 + TAX_RATE);
+  const lineTotals = totalsFromOrderLineItems(lineItems, order.orderDiscount ?? 0);
+  const updatedAmount = lineTotals?.totalAmount ?? order.totalAmount;
   const paymentDiff = updatedAmount - originalAmount;
   const hasAdditionalPayment = paymentDiff > 0;
 
@@ -471,7 +469,15 @@ export default function EditOrderModal({ order, onClose, onSubmit, onPayNow }: P
                     <div className="text-right">
                       <p className="font-['Inter'] text-xs font-medium text-[#62748E]">Item Total</p>
                       <p className="font-['Inter'] text-base font-bold text-[#1D293D]">
-                        {formatRs(it.qty * (it.price - (it.productDiscount ?? 0)))}
+                        {formatRs(
+                          lineNetBeforeOrderDiscount({
+                            name: it.name,
+                            qty: it.qty,
+                            price: it.price,
+                            productDiscount: it.productDiscount,
+                            modifications: it.modifications,
+                          })
+                        )}
                       </p>
                       {it.productDiscount ? it.productDiscount > 0 && (
                         <p className="text-[10px] text-[#10B981]">

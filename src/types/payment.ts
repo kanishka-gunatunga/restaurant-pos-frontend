@@ -10,6 +10,8 @@ export interface Payment {
   paymentStatus: PaymentStatus;
   amount: number;
   refundedAmount?: number;
+  /** Server: `sale` | `balance_due` */
+  paymentRole?: string;
 }
 
 export interface PaymentUpdatePayload {

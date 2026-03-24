@@ -1,8 +1,26 @@
 import type { Order as ApiOrder, OrderItem as ApiOrderItem } from "@/types/order";
 import { formatDate, formatTime } from "@/lib/format";
+import { totalsFromOrderLineItems } from "./orderLineTotals";
+
+function readBalanceDueFromApi(o: ApiOrder & Record<string, unknown>): number | undefined {
+  const v = o.balanceDue ?? o.balance_due;
+  if (v == null || v === "") return undefined;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : undefined;
+}
 
 export type OrderStatus = "pending" | "preparing" | "ready" | "hold" | "complete" | "cancel";
 export type PaymentStatus = "pending" | "paid" | "refund" | "partial_refund";
+
+function readPaymentStatusFromApi(o: ApiOrder & Record<string, unknown>): PaymentStatus {
+  const raw = o.paymentStatus ?? o.payment_status;
+  if (raw == null || raw === "") return "pending";
+  const s = String(raw).trim().toLowerCase().replace(/\s+/g, "_");
+  const allowed: PaymentStatus[] = ["pending", "paid", "refund", "partial_refund"];
+  if (allowed.includes(s as PaymentStatus)) return s as PaymentStatus;
+  return "pending";
+}
+
 export type OrderType = "takeaway" | "dining" | "delivery";
 export type OrderTypeLabel = "Dine In" | "Take Away" | "Delivery";
 
@@ -40,6 +58,8 @@ export type OrderDetailsView = {
   items?: OrderDetailItem[];
   subtotal?: number;
   discount?: number;
+  orderDiscount?: number;
+  balanceDue?: number;
 };
 
 export type OrderRow = {
@@ -62,9 +82,14 @@ export type OrderRow = {
   items?: OrderDetailItem[];
   subtotal?: number;
   discount?: number;
+  orderDiscount?: number;
+  balanceDue?: number;
 };
 
 export function mapOrderToRow(apiOrder: ApiOrder): OrderRow {
+  const raw = apiOrder as ApiOrder & Record<string, unknown>;
+  const balanceDue = readBalanceDueFromApi(raw);
+
   const orderType =
     apiOrder.orderType === "dining"
       ? "Dine In"
@@ -74,6 +99,21 @@ export function mapOrderToRow(apiOrder: ApiOrder): OrderRow {
           ? "Delivery"
           : undefined;
 
+  const itemDiscountSum =
+    apiOrder.items?.reduce(
+      (sum, item) => sum + Number(item.productDiscount || 0) * item.quantity,
+      0
+    ) || 0;
+  const orderDiscount = Number(apiOrder.orderDiscount || 0);
+  const aggregateDiscount = orderDiscount + itemDiscountSum;
+  const items = apiOrder.items?.map(mapOrderItemToDetail);
+  const fromLines = totalsFromOrderLineItems(items, orderDiscount);
+  const subtotalFromApi =
+    Number(apiOrder.totalAmount) -
+    Number(apiOrder.tax || 0) +
+    Number(apiOrder.orderDiscount || 0) +
+    itemDiscountSum;
+
   return {
     id: String(apiOrder.id),
     orderNo: String(apiOrder.id),
@@ -82,18 +122,20 @@ export function mapOrderToRow(apiOrder: ApiOrder): OrderRow {
     customerName: apiOrder.customer?.name || "Guest",
     phone: apiOrder.customer?.mobile || "N/A",
     customerId: apiOrder.customerId || apiOrder.customer?.id,
-    totalAmount: Number(apiOrder.totalAmount),
+    totalAmount: fromLines?.totalAmount ?? Number(apiOrder.totalAmount),
     status: apiOrder.status || "pending",
-    paymentStatus: (apiOrder.paymentStatus as PaymentStatus) || "pending",
+    paymentStatus: readPaymentStatusFromApi(raw),
     orderType,
     tableNumber: apiOrder.tableNumber,
     deliveryAddress: apiOrder.deliveryAddress,
     landmark: apiOrder.landmark,
     zipCode: apiOrder.zipcode,
     deliveryInstructions: apiOrder.deliveryInstructions,
-    items: apiOrder.items?.map(mapOrderItemToDetail),
-    subtotal: Number(apiOrder.totalAmount) - Number(apiOrder.tax || 0) + Number(apiOrder.orderDiscount || 0) + (apiOrder.items?.reduce((sum, item) => sum + (Number(item.productDiscount || 0) * item.quantity), 0) || 0),
-    discount: Number(apiOrder.orderDiscount || 0) + (apiOrder.items?.reduce((sum, item) => sum + (Number(item.productDiscount || 0) * item.quantity), 0) || 0),
+    items,
+    subtotal: fromLines?.itemsSubtotal ?? subtotalFromApi,
+    discount: fromLines?.totalDiscountAmount ?? aggregateDiscount,
+    orderDiscount,
+    balanceDue,
   };
 }
 
