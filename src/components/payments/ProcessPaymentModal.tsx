@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { X, Banknote, CreditCard, Check, Calculator, ArrowRight, Loader2 } from "lucide-react";
 import { Payment } from "@/types/payment";
 import { useCreatePayment } from "@/hooks/usePayment";
+import { toast } from "sonner";
 
 interface ProcessPaymentModalProps {
     payment: Payment;
@@ -17,32 +18,61 @@ export default function ProcessPaymentModal({ payment, onClose }: ProcessPayment
     const [method, setMethod] = useState<"cash" | "card" | null>(null);
     const [amountGiven, setAmountGiven] = useState<string>(payment.amount.toString());
     const [changeToReturn, setChangeToReturn] = useState<number>(0);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const submitGuardRef = useRef(false);
 
     const createPaymentMutation = useCreatePayment();
+    const isBusy = isSubmitting || createPaymentMutation.isPending;
 
     useEffect(() => {
         const given = parseFloat(amountGiven) || 0;
         setChangeToReturn(Math.max(0, given - payment.amount));
     }, [amountGiven, payment.amount]);
 
-    const handleComplete = async () => {
-        if (!method) return;
-
+    const handleComplete = async (explicitMethod?: "cash" | "card") => {
+        const payMethod = explicitMethod ?? method;
+        if (!payMethod) return;
+        if (submitGuardRef.current || createPaymentMutation.isPending) return;
+        submitGuardRef.current = true;
+        setIsSubmitting(true);
         try {
             await createPaymentMutation.mutateAsync({
                 orderId: payment.orderNo as number,
-                paymentMethod: method,
+                paymentMethod: payMethod,
                 amount: payment.amount,
                 status: "paid"
             });
             setStep("SUCCESS");
-        } catch (error) {
+        } catch (error: unknown) {
             console.error("Payment failed:", error);
+            const msg =
+                error &&
+                typeof error === "object" &&
+                "response" in error &&
+                error.response &&
+                typeof error.response === "object" &&
+                "data" in error.response &&
+                error.response.data &&
+                typeof error.response.data === "object" &&
+                "message" in error.response.data
+                    ? String((error.response.data as { message?: unknown }).message)
+                    : error instanceof Error
+                      ? error.message
+                      : "Payment could not be saved.";
+            toast.error(msg);
+        } finally {
+            submitGuardRef.current = false;
+            setIsSubmitting(false);
         }
     };
 
+    const requestClose = () => {
+        if (isBusy) return;
+        onClose();
+    };
+
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={requestClose}>
             <div
                 className="relative w-full max-w-[550px] overflow-hidden rounded-[32px] bg-white shadow-2xl transition-all"
                 onClick={(e) => e.stopPropagation()}
@@ -58,8 +88,8 @@ export default function ProcessPaymentModal({ payment, onClose }: ProcessPayment
                         </div>
                     </div>
                     <button
-                        onClick={onClose}
-                        disabled={createPaymentMutation.isPending}
+                        onClick={requestClose}
+                        disabled={isBusy}
                         className="flex h-8 w-8 items-center justify-center rounded-full text-[#90A1B9] hover:bg-[#F8FAFC] transition-colors disabled:opacity-50"
                     >
                         <X className="h-5 w-5" />
@@ -72,8 +102,13 @@ export default function ProcessPaymentModal({ payment, onClose }: ProcessPayment
                             <h3 className="text-[18px] font-bold text-[#314158]">Select Payment Method</h3>
                             <div className="grid grid-cols-2 gap-6">
                                 <button
-                                    onClick={() => { setMethod("cash"); setStep("INPUT"); }}
-                                    className="group flex flex-col items-center gap-4 rounded-[24px] border-2 border-[#A4F4CF] bg-[#D0FAE580] p-8 transition-all hover:border-[#00BC7D] hover:bg-[#F1FDF9]"
+                                    type="button"
+                                    onClick={() => {
+                                        setMethod("cash");
+                                        setStep("INPUT");
+                                    }}
+                                    disabled={isBusy}
+                                    className="group flex flex-col items-center gap-4 rounded-[24px] border-2 border-[#A4F4CF] bg-[#D0FAE580] p-8 transition-all hover:border-[#00BC7D] hover:bg-[#F1FDF9] disabled:pointer-events-none disabled:opacity-50"
                                 >
                                     <div className="flex h-16 w-16 items-center justify-center rounded-[18px] bg-[#00BC7D] text-white shadow-lg shadow-[#00BC7D]/20 transition-transform group-hover:scale-110">
                                         <Banknote className="h-8 w-8" />
@@ -85,12 +120,16 @@ export default function ProcessPaymentModal({ payment, onClose }: ProcessPayment
                                 </button>
 
                                 <button
-                                    onClick={() => { setMethod("card"); handleComplete(); }}
-                                    disabled={createPaymentMutation.isPending}
-                                    className="group flex flex-col items-center gap-4 rounded-[24px] border-2 bg-[#DBEAFE80] border-[#BEDBFF] p-8 transition-all hover:border-[#2B7FFF] hover:bg-[#F1F7FF] disabled:opacity-50"
+                                    type="button"
+                                    onClick={() => {
+                                        setMethod("card");
+                                        void handleComplete("card");
+                                    }}
+                                    disabled={isBusy}
+                                    className="group flex flex-col items-center gap-4 rounded-[24px] border-2 bg-[#DBEAFE80] border-[#BEDBFF] p-8 transition-all hover:border-[#2B7FFF] hover:bg-[#F1F7FF] disabled:pointer-events-none disabled:opacity-50"
                                 >
                                     <div className="flex h-16 w-16 items-center justify-center rounded-[18px] bg-[#2B7FFF] text-white shadow-lg shadow-[#2B7FFF]/20 transition-transform group-hover:scale-110">
-                                        {createPaymentMutation.isPending && method === "card" ? (
+                                        {isBusy && step === "METHOD" ? (
                                             <Loader2 className="h-8 w-8 animate-spin" />
                                         ) : (
                                             <CreditCard className="h-8 w-8" />
@@ -125,8 +164,9 @@ export default function ProcessPaymentModal({ payment, onClose }: ProcessPayment
                                         type="number"
                                         value={amountGiven}
                                         onChange={(e) => setAmountGiven(e.target.value)}
+                                        disabled={isBusy}
                                         autoFocus
-                                        className="h-20 w-full rounded-[16px] border-2 border-[#E2E8F0] bg-white pl-18 pr-6 text-[30px] font-bold text-[#1D293D] outline-none transition-all focus:border-[#00BC7D] focus:ring-4 focus:ring-[#00BC7D]/5"
+                                        className="h-20 w-full rounded-[16px] border-2 border-[#E2E8F0] bg-white pl-18 pr-6 text-[30px] font-bold text-[#1D293D] outline-none transition-all focus:border-[#00BC7D] focus:ring-4 focus:ring-[#00BC7D]/5 disabled:opacity-60"
                                     />
                                 </div>
                             </div>
@@ -145,18 +185,20 @@ export default function ProcessPaymentModal({ payment, onClose }: ProcessPayment
 
                             <div className="grid grid-cols-2 gap-4 mt-8">
                                 <button
+                                    type="button"
                                     onClick={() => setStep("METHOD")}
-                                    disabled={createPaymentMutation.isPending}
-                                    className="flex h-14 items-center justify-center gap-2 rounded-[18px] bg-[#E2E8F0] text-[16px] font-bold text-[#314158] transition-all hover:bg-[#E2E8F0] active:scale-95 disabled:opacity-50"
+                                    disabled={isBusy}
+                                    className="flex h-14 items-center justify-center gap-2 rounded-[18px] bg-[#E2E8F0] text-[16px] font-bold text-[#314158] transition-all hover:bg-[#E2E8F0] active:scale-95 disabled:pointer-events-none disabled:opacity-50"
                                 >
                                     Back
                                 </button>
                                 <button
-                                    onClick={handleComplete}
-                                    disabled={createPaymentMutation.isPending || parseFloat(amountGiven) < payment.amount}
-                                    className="flex h-14 items-center justify-center gap-2 rounded-[18px] bg-[#00BC7D] text-[16px] font-bold text-white shadow-lg shadow-[#00BC7D]/20 transition-all hover:bg-[#009966] active:scale-95 disabled:opacity-50 disabled:scale-100"
+                                    type="button"
+                                    onClick={() => void handleComplete()}
+                                    disabled={isBusy || parseFloat(amountGiven) < payment.amount}
+                                    className="flex h-14 items-center justify-center gap-2 rounded-[18px] bg-[#00BC7D] text-[16px] font-bold text-white shadow-lg shadow-[#00BC7D]/20 transition-all hover:bg-[#009966] active:scale-95 disabled:pointer-events-none disabled:opacity-50 disabled:scale-100"
                                 >
-                                    {createPaymentMutation.isPending ? (
+                                    {isBusy ? (
                                         <>
                                             <Loader2 className="h-5 w-5 animate-spin" />
                                             Processing...

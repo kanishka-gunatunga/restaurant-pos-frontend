@@ -1,4 +1,8 @@
-import type { Order as ApiOrder, OrderItem as ApiOrderItem } from "@/types/order";
+import type {
+  Order as ApiOrder,
+  OrderItem as ApiOrderItem,
+  OrderItemModification,
+} from "@/types/order";
 import { formatDate, formatTime } from "@/lib/format";
 import { totalsFromOrderLineItems } from "./orderLineTotals";
 
@@ -24,6 +28,11 @@ function readPaymentStatusFromApi(o: ApiOrder & Record<string, unknown>): Paymen
 export type OrderType = "takeaway" | "dining" | "delivery";
 export type OrderTypeLabel = "Dine In" | "Take Away" | "Delivery";
 
+export type OrderDetailAddonLine = {
+  qty: number;
+  name: string;
+};
+
 export type OrderDetailItem = {
   id?: string;
   productId?: string;
@@ -35,6 +44,7 @@ export type OrderDetailItem = {
   image?: string;
   variant?: string;
   addOns?: string[];
+  addonLines?: OrderDetailAddonLine[];
   modifications?: { modificationId: number; price: number }[];
 };
 
@@ -139,24 +149,177 @@ export function mapOrderToRow(apiOrder: ApiOrder): OrderRow {
   };
 }
 
+/** Group/placeholder names — not a real customer-facing choice; hide "Variant:" row. */
+const VARIANT_LABEL_PLACEHOLDERS = new Set(
+  [
+    "variants",
+    "variant",
+    "variations",
+    "variation",
+    "size",
+    "sizes",
+    "options",
+    "option",
+    "select option",
+    "choose variant",
+    "choose size",
+  ].map((s) => s.toLowerCase())
+);
+
+function normalizeVariantLabelForCompare(label: string): string {
+  return label.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function isPlaceholderVariantLabel(label: string | undefined): boolean {
+  if (label == null || label.trim() === "") return true;
+  return VARIANT_LABEL_PLACEHOLDERS.has(normalizeVariantLabelForCompare(label));
+}
+
+function readOrderItemVariantLabel(item: ApiOrderItem & Record<string, unknown>): string | undefined {
+  const vo =
+    item.variationOption ??
+    (item.variation_option as { name?: string } | undefined);
+  if (vo && typeof vo === "object" && vo.name != null && String(vo.name).trim() !== "") {
+    const name = String(vo.name).trim();
+    if (!isPlaceholderVariantLabel(name)) return name;
+  }
+  const v = item.variation;
+  if (v && typeof v === "object" && "name" in v && String((v as { name?: string }).name || "").trim() !== "") {
+    const name = String((v as { name: string }).name).trim();
+    if (!isPlaceholderVariantLabel(name)) return name;
+  }
+  return undefined;
+}
+
+const MODIFICATION_ARRAY_KEYS = ["modifications", "order_modifications", "orderModifications"] as const;
+
+/** Prefer first array with at least one row (`[]` must not block `order_modifications`). */
+function firstNonEmptyModificationsArray(item: Record<string, unknown>): unknown[] {
+  for (const key of MODIFICATION_ARRAY_KEYS) {
+    const v = item[key];
+    if (Array.isArray(v) && v.length > 0) return v;
+  }
+  return [];
+}
+
+function readNestedModificationRow(r: Record<string, unknown>): Record<string, unknown> | undefined {
+  const n = r.modification ?? r.Modification ?? r.modification_item ?? r.modificationItem;
+  if (n != null && typeof n === "object") return n as Record<string, unknown>;
+  return undefined;
+}
+
+function titleFromModificationRecord(nested: Record<string, unknown> | undefined): string {
+  if (!nested) return "";
+  return String(
+    nested.title ??
+      nested.name ??
+      nested.label ??
+      nested.Title ??
+      nested.Name ??
+      nested.Label ??
+      ""
+  ).trim();
+}
+
+function parseOrderItemModificationRow(r: Record<string, unknown>): OrderItemModification | null {
+  const modificationId = r.modificationId ?? r.modification_id;
+  if (modificationId == null || modificationId === "") return null;
+  const price = Number(r.price ?? 0);
+  const qtyRaw = r.quantity ?? r.qty;
+  const quantity = Math.max(1, Math.floor(Number(qtyRaw) || 1));
+  const nested = readNestedModificationRow(r);
+  const nestedTitle = titleFromModificationRecord(nested);
+  const rowTitle = String(r.title ?? r.name ?? r.label ?? "").trim();
+  const title = nestedTitle || rowTitle;
+  const modId = modificationId as string | number;
+  const rid = r.id;
+  const oid = r.orderItemId ?? r.order_item_id;
+  const nestedPrice = nested
+    ? Number(nested.price ?? nested.Price ?? nested.unit_price ?? nested.unitPrice ?? NaN)
+    : NaN;
+  const unitPrice = Number.isFinite(nestedPrice) ? nestedPrice : price;
+
+  return {
+    id: (typeof rid === "string" || typeof rid === "number" ? rid : "") as string | number,
+    orderItemId: (typeof oid === "string" || typeof oid === "number" ? oid : "") as string | number,
+    modificationId: modId,
+    price,
+    quantity,
+    modification:
+      title || nested
+        ? {
+            id: (nested?.id ?? nested?.modificationId ?? nested?.modification_id ?? modId) as string | number,
+            title: title || "Add-on",
+            price: unitPrice,
+            modificationId: modId,
+          }
+        : undefined,
+  };
+}
+
+/** Normalize order line modifications from API (camelCase / snake_case / nested / row-level title). */
+function normalizeModificationsFromOrderItem(item: Record<string, unknown>): OrderItemModification[] {
+  const raw = firstNonEmptyModificationsArray(item);
+  const out: OrderItemModification[] = [];
+  for (const row of raw) {
+    if (row == null || typeof row !== "object") continue;
+    const parsed = parseOrderItemModificationRow(row as Record<string, unknown>);
+    if (parsed) out.push(parsed);
+  }
+  return out;
+}
+
+/** Group by modificationId; each row contributes `quantity` (default 1) or duplicate rows. */
+function addonLinesFromModifications(
+  modifications: OrderItemModification[] | undefined
+): OrderDetailAddonLine[] {
+  if (!modifications?.length) return [];
+  const byId = new Map<string, OrderDetailAddonLine>();
+  for (const m of modifications) {
+    const title = m.modification?.title?.trim() || "Add-on";
+    const key = String(m.modificationId);
+    const rowQty = Math.max(1, Math.floor(Number(m.quantity) || 1));
+    const cur = byId.get(key);
+    if (cur) cur.qty += rowQty;
+    else byId.set(key, { qty: rowQty, name: title });
+  }
+  return Array.from(byId.values()).filter((line) => line.name && line.name !== "Add-on");
+}
+
+/** Expand `quantity` on a mod row into repeated unit prices for `lineNetBeforeOrderDiscount`. */
+function flattenModificationsForTotals(mods: OrderItemModification[]): {
+  modificationId: number;
+  price: number;
+}[] {
+  const out: { modificationId: number; price: number }[] = [];
+  for (const m of mods) {
+    const q = Math.max(1, Math.floor(Number(m.quantity) || 1));
+    const p = Number(m.price || 0);
+    for (let i = 0; i < q; i++) {
+      out.push({ modificationId: Number(m.modificationId), price: p });
+    }
+  }
+  return out;
+}
+
 function mapOrderItemToDetail(item: ApiOrderItem): OrderDetailItem {
+  const rawItem = item as ApiOrderItem & Record<string, unknown>;
+  const rawMods = normalizeModificationsFromOrderItem(rawItem);
+  const addonLines = addonLinesFromModifications(rawMods);
+  const variant = readOrderItemVariantLabel(rawItem);
+  const modifications = flattenModificationsForTotals(rawMods);
   return {
     id: String(item.id),
     productId: String(item.productId),
     variationId: item.variationId != null ? String(item.variationId) : undefined,
-    name: (item.product as any)?.name || "Unknown Product",
+    name: (item.product as { name?: string } | undefined)?.name || "Unknown Product",
     qty: item.quantity,
     price: Number(item.unitPrice),
     productDiscount: Number(item.productDiscount || 0),
     image: item.product?.image,
-    variant: item.variation?.name,
-    addOns:
-      item.modifications
-        ?.map((modification) => modification.modification?.title)
-        .filter((title): title is string => Boolean(title)) ?? undefined,
-    modifications: item.modifications?.map((modification) => ({
-      modificationId: Number(modification.modificationId),
-      price: Number(modification.price),
-    })),
+    variant,
+    addonLines: addonLines.length > 0 ? addonLines : undefined,
+    addOns: addonLines.length > 0 ? addonLines.map((a) => `${a.qty}x ${a.name}`) : undefined,
+    modifications: modifications.length > 0 ? modifications : undefined,
   };
 }

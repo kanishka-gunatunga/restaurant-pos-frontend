@@ -288,24 +288,44 @@ export default function OrderDetailsViewModal({
                 <div className="min-h-0 overflow-y-auto space-y-2 pr-1">
                   {items.map((item, i) => (
                     <div
-                      key={i}
+                      key={item.id ?? `order-item-${i}`}
                       className="flex items-start justify-between gap-4 rounded-[14px] border border-[#E2E8F0] bg-white px-4 py-4"
                     >
                       <div className="min-w-0 flex-1 font-['Inter']">
                         <p className="text-base font-bold leading-6 text-[#1D293D]">
                           {item.qty}x {item.name}
                         </p>
-                        {/* Re-enable when backend returns the selected variation option, not only the variation group. */}
-                        {/* {item.variant && (
-                          <p className="mt-1 text-sm font-semibold leading-5 text-[#62748E]">
-                            Variant: {item.variant}
+                        {item.variant ? (
+                          <p className="mt-2 text-sm leading-5 text-[#62748E]">
+                            <span className="font-bold text-[#62748E]">Variant:</span>{" "}
+                            <span className="font-normal">{item.variant}</span>
                           </p>
-                        )}
-                        {item.addOns && item.addOns.length > 0 && (
-                          <p className="text-sm font-semibold leading-5 text-[#62748E]">
-                            Add-ons: {item.addOns.join(" ")}
+                        ) : null}
+                        {item.addonLines && item.addonLines.length > 0 ? (
+                          <p className="mt-2 text-sm leading-5 text-[#62748E]">
+                            <span className="font-bold text-[#62748E]">Add-ons:</span>{" "}
+                            <span className="font-normal">
+                              {item.addonLines.map((line, j) => (
+                                <span key={`${item.id ?? i}-addon-${j}`}>
+                                  {j > 0 ? ", " : ""}
+                                  {line.qty}x {line.name}
+                                </span>
+                              ))}
+                            </span>
                           </p>
-                        )} */}
+                        ) : item.addOns && item.addOns.length > 0 ? (
+                          <p className="mt-2 text-sm leading-5 text-[#62748E]">
+                            <span className="font-bold text-[#62748E]">Add-ons:</span>{" "}
+                            <span className="font-normal">
+                              {item.addOns.map((line, j) => (
+                                <span key={`${item.id ?? i}-legacy-${j}`}>
+                                  {j > 0 ? ", " : ""}
+                                  {line}
+                                </span>
+                              ))}
+                            </span>
+                          </p>
+                        ) : null}
                       </div>
                       <span className="shrink-0 font-['Inter'] text-base font-bold leading-6 text-[#1D293D]">
                         {formatRs(

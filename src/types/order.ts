@@ -8,6 +8,7 @@ export interface OrderItemModification {
   orderItemId: string | number;
   modificationId: string | number;
   price: number;
+  quantity?: number;
   modification?: {
     id: string | number;
     title: string;
@@ -40,6 +41,10 @@ export interface OrderItem {
     productId: string | number;
     name: string;
     status: "active" | "inactive";
+  };
+  variationOption?: {
+    id?: string | number;
+    name: string;
   };
   modifications?: OrderItemModification[];
 }
