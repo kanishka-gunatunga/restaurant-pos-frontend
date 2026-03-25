@@ -41,7 +41,8 @@ export default function AdminDashboardContent() {
         const stats = await getAdminDashboardStats();
         setData(stats);
       } catch (err) {
-        console.error("Error fetching admin dashboard stats:", err);
+        const res = (err as { response?: { status?: number; data?: unknown } })?.response;
+        console.error("Error fetching admin dashboard stats:", err, "status:", res?.status, "data:", res?.data);
         setError("Failed to load dashboard data");
       } finally {
         setIsLoading(false);

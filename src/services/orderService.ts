@@ -48,7 +48,9 @@ export const updateOrderStatus = async (
   id: string | number, 
   data: { status: OrderStatus; rejectReason?: string; passcode?: string }
 ): Promise<Order> => {
-  const res = await axiosInstance.put(`/orders/${id}/status`, data);
+  const res = await axiosInstance.put(`/orders/${id}/status`, data, {
+    skipAuthRedirectOn401: Boolean(data.passcode != null && String(data.passcode).trim() !== ""),
+  });
   return res.data;
 };
 

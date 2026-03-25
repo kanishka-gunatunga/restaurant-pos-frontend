@@ -12,6 +12,7 @@ export type BackendUser = {
   name: string;
   email: string | null;
   branchId: number | null;
+  branchName?: string | null;
 };
 
 export type LoginResponse = {

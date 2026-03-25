@@ -22,13 +22,13 @@ import {
 import { toast } from "sonner";
 
 import { useGetOrdersExcludeStatus, useUpdateOrderItemStatus, useUpdateOrderStatus, ORDER_KEYS } from "@/hooks/useOrder";
-import { useUpdatePaymentStatus } from "@/hooks/usePayment";
 import Pusher from "pusher-js";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { useMemo } from "react";
 import ManagerAuthorizationModal from "@/components/orders/ManagerAuthorizationModal";
 import { useAuth } from "@/contexts/AuthContext";
+import { isInvalidManagerPasscodeError } from "@/lib/api/managerPasscodeError";
 
 type OrderStatus = "Pending" | "Preparing" | "Ready" | "Hold";
 type OrderType = "Dine In" | "Take Away" | "Delivery";
@@ -142,7 +142,6 @@ export default function KitchenPage() {
   const { data: backendOrders, isLoading: isQueryLoading } = useGetOrdersExcludeStatus("cancel");
   const updateItemStatus = useUpdateOrderItemStatus();
   const updateOrderStatus = useUpdateOrderStatus();
-  const updatePaymentStatus = useUpdatePaymentStatus();
   const { logout } = useAuth();
   const queryClient = useQueryClient();
 
@@ -263,46 +262,23 @@ export default function KitchenPage() {
   };
 
   const handleVerifyCancel = async (passcode: string) => {
-    if (authOrder) {
-      const orderToCancel = orders.find(o => o.id === String(authOrder.id));
+    if (!authOrder) return;
 
-      updateOrderStatus.mutate(
-        {
-          id: authOrder.id,
-          data: { status: "cancel" as any, passcode }
-        },
-        {
-          onSuccess: async () => {
-            toast.success("Order cancelled successfully");
+    try {
+      await updateOrderStatus.mutateAsync({
+        id: authOrder.id,
+        data: { status: "cancel" as any, passcode },
+      });
 
-            // Handle refunds for all payments
-            if (orderToCancel && orderToCancel.payments && orderToCancel.payments.length > 0) {
-              for (const payment of orderToCancel.payments) {
-                if (payment.status === 'paid' || payment.status === 'partial_refund') {
-                  try {
-                    await updatePaymentStatus.mutateAsync({
-                      id: payment.id,
-                      payload: {
-                        is_refund: 1,
-                        refund_type: "full"
-                      }
-                    });
-                    toast.success(`Payment #${payment.id} refunded successfully`);
-                  } catch (refundError: any) {
-                    console.error(`Failed to refund payment #${payment.id}:`, refundError);
-                    toast.error(`Failed to refund payment #${payment.id}: ${refundError?.response?.data?.message || "Internal error"}`);
-                  }
-                }
-              }
-            }
-          },
-          onError: (err: any) => {
-            toast.error(err?.response?.data?.message || "Failed to cancel order");
-          }
-        }
-      );
+      toast.success("Order cancelled successfully");
       setIsAuthModalOpen(false);
       setAuthOrder(null);
+    } catch (err: unknown) {
+      if (!isInvalidManagerPasscodeError(err)) {
+        const ax = err as { response?: { data?: { message?: string } } };
+        toast.error(ax?.response?.data?.message || "Failed to cancel order");
+      }
+      throw err;
     }
   };
 

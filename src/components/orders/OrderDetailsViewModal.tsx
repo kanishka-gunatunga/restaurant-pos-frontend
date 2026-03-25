@@ -12,6 +12,13 @@ import {
   CreditCard,
 } from "lucide-react";
 import type { OrderDetailsView } from "@/domains/orders/types";
+import {
+  getOrderLineTaxRate,
+  isPlaceholderOrderLineItems,
+  lineNetBeforeOrderDiscount,
+  totalsFromOrderLineItems,
+} from "@/domains/orders/orderLineTotals";
+import { collectibleOrderAmount } from "@/domains/orders/orderCollectionAmount";
 
 import { STATUS_STYLES, DEFAULT_STATUS_STYLE } from "@/domains/orders/constants";
 
@@ -37,9 +44,22 @@ export default function OrderDetailsViewModal({
 }: Props) {
   const paymentClipId = useId();
   const cancelIconClipId = useId();
-  const subtotal = order.subtotal ?? order.totalAmount;
-  const discount = order.discount ?? 0;
-  const items = order.items ?? [{ name: "Order items", qty: 1, price: order.totalAmount }];
+  const items =
+    order.items && order.items.length > 0
+      ? order.items
+      : [{ name: "Order items", qty: 1, price: order.totalAmount }];
+  const deriveFromLines = !isPlaceholderOrderLineItems(order.items);
+  const fromLines = deriveFromLines
+    ? totalsFromOrderLineItems(order.items, order.orderDiscount ?? 0)
+    : null;
+  const taxRateForLabel = fromLines?.taxRate ?? getOrderLineTaxRate();
+  const taxPercentShort =
+    taxRateForLabel > 0 ? `${Math.round(taxRateForLabel * 1000) / 10}%` : "0%";
+  const subtotal = fromLines?.grossSubtotal ?? order.subtotal ?? order.totalAmount;
+  const discount =
+    fromLines?.totalDiscountAmount ?? order.discount ?? 0;
+  const taxAmount = fromLines?.taxAmount;
+  const totalAmount = fromLines?.totalAmount ?? order.totalAmount;
   const itemCount = items.reduce((sum, i) => sum + i.qty, 0);
   const orderTypeLabel = order.orderType ?? "Dine In";
   const paymentStatusLabel =
@@ -51,6 +71,7 @@ export default function OrderDetailsViewModal({
           ? "Refund"
           : "Partial Refund";
   const tableLabel = order.tableNumber ? `Table ${order.tableNumber}` : "";
+  const amountToCollect = collectibleOrderAmount(order);
 
   return (
     <div
@@ -243,6 +264,16 @@ export default function OrderDetailsViewModal({
                     Payment Status: {paymentStatusLabel}
                   </span>
                 </div>
+                {order.balanceDue != null && order.balanceDue > 0.02 && (
+                  <div className="rounded-[14px] border-2 border-[#A4F4CF] bg-[#ECFDF5] px-4 py-3">
+                    <p className="font-['Inter'] text-xs font-bold uppercase leading-4 text-[#007A55]">
+                      Balance due
+                    </p>
+                    <p className="mt-1 font-['Inter'] text-xl font-bold leading-7 text-[#007A55]">
+                      {formatRs(order.balanceDue)}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -257,27 +288,57 @@ export default function OrderDetailsViewModal({
                 <div className="min-h-0 overflow-y-auto space-y-2 pr-1">
                   {items.map((item, i) => (
                     <div
-                      key={i}
+                      key={item.id ?? `order-item-${i}`}
                       className="flex items-start justify-between gap-4 rounded-[14px] border border-[#E2E8F0] bg-white px-4 py-4"
                     >
                       <div className="min-w-0 flex-1 font-['Inter']">
                         <p className="text-base font-bold leading-6 text-[#1D293D]">
                           {item.qty}x {item.name}
                         </p>
-                        {/* Re-enable when backend returns the selected variation option, not only the variation group. */}
-                        {/* {item.variant && (
-                          <p className="mt-1 text-sm font-semibold leading-5 text-[#62748E]">
-                            Variant: {item.variant}
+                        {item.variant ? (
+                          <p className="mt-2 text-sm leading-5 text-[#62748E]">
+                            <span className="font-bold text-[#62748E]">Variant:</span>{" "}
+                            <span className="font-normal">{item.variant}</span>
                           </p>
-                        )}
-                        {item.addOns && item.addOns.length > 0 && (
-                          <p className="text-sm font-semibold leading-5 text-[#62748E]">
-                            Add-ons: {item.addOns.join(" ")}
+                        ) : null}
+                        {item.addonLines && item.addonLines.length > 0 ? (
+                          <p className="mt-2 text-sm leading-5 text-[#62748E]">
+                            <span className="font-bold text-[#62748E]">Add-ons:</span>{" "}
+                            <span className="font-normal">
+                              {item.addonLines.map((line, j) => (
+                                <span key={`${item.id ?? i}-addon-${j}`}>
+                                  {j > 0 ? ", " : ""}
+                                  {line.qty}x {line.name}
+                                </span>
+                              ))}
+                            </span>
                           </p>
-                        )} */}
+                        ) : item.addOns && item.addOns.length > 0 ? (
+                          <p className="mt-2 text-sm leading-5 text-[#62748E]">
+                            <span className="font-bold text-[#62748E]">Add-ons:</span>{" "}
+                            <span className="font-normal">
+                              {item.addOns.map((line, j) => (
+                                <span key={`${item.id ?? i}-legacy-${j}`}>
+                                  {j > 0 ? ", " : ""}
+                                  {line}
+                                </span>
+                              ))}
+                            </span>
+                          </p>
+                        ) : null}
                       </div>
                       <span className="shrink-0 font-['Inter'] text-base font-bold leading-6 text-[#1D293D]">
-                        {formatRs(item.qty * item.price)}
+                        {formatRs(
+                          deriveFromLines
+                            ? lineNetBeforeOrderDiscount({
+                                name: item.name,
+                                qty: item.qty,
+                                price: item.price,
+                                productDiscount: item.productDiscount,
+                                modifications: item.modifications,
+                              })
+                            : item.qty * item.price
+                        )}
                       </span>
                     </div>
                   ))}
@@ -295,16 +356,30 @@ export default function OrderDetailsViewModal({
                     <span className="font-normal text-[#45556C]">Subtotal</span>
                     <span className="font-bold text-[#1D293D]">{formatRs(subtotal)}</span>
                   </div>
-                  <div className="flex justify-between text-base leading-6 mt-3 mb-3">
-                    <span className="font-normal text-[#45556C]">Discount</span>
-                    <span className="font-bold text-[#009966]">{formatRs(discount)}</span>
-                  </div>
+                  {fromLines && taxAmount != null && (
+                    <div className="flex justify-between text-base leading-6">
+                      <span className="font-normal text-[#45556C]">
+                        Tax
+                        <span className="text-sm font-normal text-[#90A1B9]">
+                          {" "}
+                          · {taxPercentShort}
+                        </span>
+                      </span>
+                      <span className="font-bold text-[#1D293D]">{formatRs(taxAmount)}</span>
+                    </div>
+                  )}
+                  {discount > 0.02 && (
+                    <div className="flex justify-between text-base leading-6">
+                      <span className="font-normal text-[#45556C]">Discount</span>
+                      <span className="font-bold text-[#009966]">{formatRs(discount)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between border-t-2 border-[#CAD5E2] pt-3">
                     <span className="font-['Inter'] text-lg font-bold leading-7 text-[#1D293D]">
                       Total Amount
                     </span>
                     <span className="font-['Inter'] text-2xl font-bold leading-8 text-[#EA580C]">
-                      {formatRs(order.totalAmount)}
+                      {formatRs(totalAmount)}
                     </span>
                   </div>
                 </div>
@@ -323,10 +398,22 @@ export default function OrderDetailsViewModal({
             Close
           </button>
           <div className="flex items-center gap-3">
-            {order.paymentStatus === "pending" && order.status !== "cancel" && onPayNow && (
+            {order.paymentStatus === "pending" &&
+              order.status !== "cancel" &&
+              onPayNow &&
+              amountToCollect > 0.02 && (
               <button
                 type="button"
-                onClick={() => onPayNow(order)}
+                onClick={() =>
+                  onPayNow({
+                    ...order,
+                    items: order.items,
+                    subtotal,
+                    discount,
+                    totalAmount,
+                    balanceDue: order.balanceDue,
+                  })
+                }
                 className="flex items-center gap-2 rounded-[14px] bg-[#009966] px-5 py-3 font-['Inter'] text-base font-bold leading-6 text-white shadow-[0px_4px_6px_-4px_#0099664D,0px_10px_15px_-3px_#0099664D] transition-colors hover:bg-[#007A55] hover:shadow-[0px_4px_6px_-4px_#00996666,0px_10px_15px_-3px_#00996666]"
               >
                 <CreditCard className="h-5 w-5 shrink-0" />

@@ -8,6 +8,7 @@ export interface OrderItemModification {
   orderItemId: string | number;
   modificationId: string | number;
   price: number;
+  quantity?: number;
   modification?: {
     id: string | number;
     title: string;
@@ -41,6 +42,10 @@ export interface OrderItem {
     name: string;
     status: "active" | "inactive";
   };
+  variationOption?: {
+    id?: string | number;
+    name: string;
+  };
   modifications?: OrderItemModification[];
 }
 
@@ -60,7 +65,8 @@ export interface Order {
   zipcode?: string;
   deliveryInstructions?: string;
   status: OrderStatus;
-  paymentStatus: "paid" | "pending" | "refund";
+  paymentStatus: "paid" | "pending" | "refund" | "partial_refund" | string;
+  balanceDue?: number;
   userId?: string | number;
   createdAt: string;
   updatedAt: string;
@@ -105,6 +111,7 @@ export interface CreateOrderData {
 
 export interface UpdateOrderData extends Partial<CreateOrderData> {
   passcode?: string;
+  paymentStatus?: string;
 }
 
 export interface OrderSearchParams {

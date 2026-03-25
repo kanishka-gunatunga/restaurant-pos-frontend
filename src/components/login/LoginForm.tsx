@@ -33,7 +33,7 @@ export default function LoginForm() {
   const router = useRouter();
   const { status: sessionStatus } = useSession();
   const searchParams = useSearchParams();
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [employeeId, setEmployeeId] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -52,15 +52,15 @@ export default function LoginForm() {
     }
   }, [fromIdle, fromSessionExpired]);
 
-  // Redirect only when authenticated AND we have a valid mapped user.
+  // Redirect only when authenticated, we have a valid user, AND the token is available for API calls.
   // If we just came from an explicit logout, idle timeout, or session expiry, wait until a new login succeeds.
   useEffect(() => {
     if ((fromLogout || fromIdle || fromSessionExpired) && !loginSuccess) return;
-    if (sessionStatus !== "authenticated" || !user) return;
+    if (sessionStatus !== "authenticated" || !user || !token) return;
     if (user.role === "kitchen") router.replace(ROUTES.KITCHEN);
     else if (user.role === "cashier") router.replace(ROUTES.DASHBOARD_MENU);
     else router.replace(ROUTES.DASHBOARD);
-  }, [sessionStatus, user, router, fromLogout, fromIdle, fromSessionExpired, loginSuccess]);
+  }, [sessionStatus, user, token, router, fromLogout, fromIdle, fromSessionExpired, loginSuccess]);
 
 
   useEffect(() => {

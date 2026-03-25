@@ -83,7 +83,9 @@ export const useUpdateOrder = () => {
 
       if (previousOrders) {
         queryClient.setQueryData<Order[]>(ORDER_KEYS.lists(), (old) =>
-          old?.map((order) => (order.id === id ? { ...order, ...data } : order))
+          old?.map((order) =>
+            String(order.id) === String(id) ? { ...order, ...data } : order
+          )
         );
       }
 
@@ -105,8 +107,23 @@ export const useUpdateOrder = () => {
       }
     },
     onSettled: (data, error, { id }) => {
-      queryClient.invalidateQueries({ queryKey: ORDER_KEYS.lists() });
-      queryClient.invalidateQueries({ queryKey: ORDER_KEYS.detail(id) });
+      if (
+        !error &&
+        data != null &&
+        typeof data === "object" &&
+        "paymentStatus" in data &&
+        "id" in data
+      ) {
+        const updated = data as Order;
+        queryClient.setQueryData<Order[]>(ORDER_KEYS.lists(), (old) =>
+          old?.map((order) =>
+            String(order.id) === String(id) ? { ...order, ...updated } : order
+          )
+        );
+        queryClient.setQueryData<Order>(ORDER_KEYS.detail(id), updated);
+      }
+      void queryClient.invalidateQueries({ queryKey: ORDER_KEYS.lists() });
+      void queryClient.invalidateQueries({ queryKey: ORDER_KEYS.detail(id) });
     },
   });
 };

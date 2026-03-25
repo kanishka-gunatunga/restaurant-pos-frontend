@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { isInvalidManagerPasscodeError } from "@/lib/api/managerPasscodeError";
 import ManagerVerificationModal from "./ManagerVerificationModal";
 
 function parseAmount(value: string): number {
@@ -58,8 +59,7 @@ export default function EditInitialAmountModal({
       const raw =
         (err as { response?: { status?: number; data?: { message?: string } } })?.response?.data?.message ||
         (err instanceof Error ? err.message : "Verification failed.");
-      const status = (err as { response?: { status?: number } })?.response?.status;
-      if (status === 401 || /invalid passcode|invalid manager passcode|unauthorized/i.test(String(raw))) {
+      if (isInvalidManagerPasscodeError(err)) {
         setError("Wrong passcode.");
       } else if (/request failed|status code|ECONNREFUSED|ECONNRESET|ENOTFOUND/i.test(String(raw))) {
         setError("Unable to update amount. Please try again or contact support.");

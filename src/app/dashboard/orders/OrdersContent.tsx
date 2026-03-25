@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
 import NewOrderDetailsModal from "@/components/menu/NewOrderDetailsModal";
 import ProcessPaymentModal from "@/components/payments/ProcessPaymentModal";
@@ -14,7 +14,9 @@ import { useOrdersFilters } from "@/domains/orders/hooks/useOrdersFilters";
 import { mapOrderToRow } from "@/domains/orders/types";
 import { useOrderModals } from "@/domains/orders/hooks/useOrderModals";
 import { useGetOrderById } from "@/hooks/useOrder";
+import { collectibleOrderAmount } from "@/domains/orders/orderCollectionAmount";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 type ProcessingPayment = {
   orderId: number;
@@ -65,7 +67,12 @@ export default function OrdersContent() {
   } = useOrderModals({ onOrderCancelled: clearPaymentIfCancelled });
 
   const { data: viewOrderDetails } = useGetOrderById(viewOrder?.id);
-  const activeViewOrder = viewOrderDetails ? mapOrderToRow(viewOrderDetails) : viewOrder;
+  const activeViewOrder = useMemo(() => {
+    if (!viewOrder) return null;
+    if (viewOrderDetails) return mapOrderToRow(viewOrderDetails);
+    const fromList = filteredOrders.find((o) => o.id === viewOrder.id);
+    return fromList ?? viewOrder;
+  }, [viewOrder, viewOrderDetails, filteredOrders]);
 
   const openPaymentFlow = (order: {
     id: string;
@@ -73,13 +80,19 @@ export default function OrdersContent() {
     customerName: string;
     phone: string;
     totalAmount: number;
+    balanceDue?: number | null;
   }) => {
+    const total = collectibleOrderAmount(order);
+    if (total <= 0.02) {
+      toast.message("No balance due on this order.");
+      return;
+    }
     setProcessingPayment({
       orderId: Number(order.id),
       orderNo: order.orderNo,
       customerName: order.customerName,
       customerMobile: order.phone,
-      total: order.totalAmount,
+      total,
     });
   };
 
@@ -119,6 +132,7 @@ export default function OrdersContent() {
             orderNo: editOrderModal.orderNo,
             customerName: editOrderModal.customerName,
             totalAmount: editOrderModal.totalAmount,
+            orderDiscount: editOrderModal.orderDiscount ?? 0,
             items: editOrderModal.items?.map((item, index) => ({
               id: item.id ?? `line-${editOrderModal.orderNo}-${index}-${item.name}`,
               productId: item.productId,
@@ -174,8 +188,15 @@ export default function OrdersContent() {
           order={orderToView(activeViewOrder)}
           onClose={closeViewModal}
           onEditInfo={() => openEditInfoFromView(activeViewOrder)}
-          onPayNow={() => {
-            openPaymentFlow(activeViewOrder);
+          onPayNow={(details) => {
+            openPaymentFlow({
+              id: details.id,
+              orderNo: details.orderNo,
+              customerName: details.customerName,
+              phone: details.phone,
+              totalAmount: details.totalAmount,
+              balanceDue: details.balanceDue,
+            });
             closeViewModal();
           }}
           onEdit={

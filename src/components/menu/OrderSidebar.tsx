@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { User, Phone, ChefHat, Trash2, X } from "lucide-react";
 import { useOrder } from "@/contexts/OrderContext";
 import { useCreateOrder } from "@/hooks/useOrder";
+import { useUpdateCustomer } from "@/hooks/useCustomer";
 import {
   useGetAllDiscounts,
   findApplicableDiscount,
@@ -130,6 +131,7 @@ function NoteModal({
 
 export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: OrderItem) => void }) {
   const { mutateAsync: createOrder, isPending: isCreatingOrder } = useCreateOrder();
+  const { mutateAsync: updateCustomer } = useUpdateCustomer();
 
   const {
     items,
@@ -194,9 +196,37 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
   const handleSubmitOrder = async (isPayNow = false) => {
     if (!orderDetails || items.length === 0) return;
 
+    const normalizedName = orderDetails.customerName.trim();
+    const normalizedOriginalName = (orderDetails.originalCustomerName ?? "").trim();
+    const shouldUpdateExistingCustomerName =
+      !!orderDetails.customerId &&
+      !!normalizedOriginalName &&
+      normalizedName.localeCompare(normalizedOriginalName, undefined, {
+        sensitivity: "accent",
+      }) !== 0;
+
+    if (shouldUpdateExistingCustomerName) {
+      try {
+        await updateCustomer({
+          id: orderDetails.customerId!,
+          data: { name: normalizedName },
+        });
+      } catch (err) {
+        const message =
+          err instanceof AxiosError
+            ? (err.response?.data as { message?: string } | undefined)?.message
+            : err instanceof Error
+              ? err.message
+              : "Unknown error";
+        toast.error("Failed to update customer name", { description: message });
+        return null;
+      }
+    }
+
     const payload: CreateOrderData = {
-      customerName: orderDetails.customerName,
+      customerName: normalizedName,
       customerMobile: orderDetails.phone,
+      customerId: orderDetails.customerId,
       totalAmount: total,
       orderType:
         orderDetails.orderType === "Dine In"

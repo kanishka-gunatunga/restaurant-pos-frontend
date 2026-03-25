@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Check } from "lucide-react";
+import { isInvalidManagerPasscodeError } from "@/lib/api/managerPasscodeError";
 import ManagerVerificationModal from "./ManagerVerificationModal";
 
 function formatRs(n: number) {
@@ -68,8 +69,7 @@ export default function CloseDrawerSessionModal({
       const raw =
         (err as { response?: { status?: number; data?: { message?: string } } })?.response?.data?.message ||
         (err instanceof Error ? err.message : "Verification failed.");
-      const status = (err as { response?: { status?: number } })?.response?.status;
-      if (status === 401 || /invalid passcode|invalid manager passcode|unauthorized/i.test(String(raw))) {
+      if (isInvalidManagerPasscodeError(err)) {
         setError("Wrong passcode.");
       } else if (/request failed|status code|ECONNREFUSED|ECONNRESET|ENOTFOUND/i.test(String(raw))) {
         setError("Unable to close session. Please try again or contact support.");

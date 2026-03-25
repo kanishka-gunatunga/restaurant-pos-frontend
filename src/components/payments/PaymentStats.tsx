@@ -1,9 +1,26 @@
+import { useMemo } from "react";
 import { CircleCheck, History, RotateCcw, X, Loader2 } from "lucide-react";
-import { useGetPaymentStats } from "@/hooks/usePayment";
+import { useGetAllPaymentDetails, useGetPaymentStats } from "@/hooks/usePayment";
 import { formatCurrency } from "@/lib/format";
+
+function sumPendingPaymentAmount(payments: { paymentStatus: string; amount: number }[]): number {
+  return payments.reduce((sum, p) => {
+    if (String(p.paymentStatus).toLowerCase() !== "pending") return sum;
+    const n = Number(p.amount);
+    return sum + (Number.isFinite(n) ? n : 0);
+  }, 0);
+}
 
 export default function PaymentStats() {
   const { data: statsData, isLoading, isError } = useGetPaymentStats();
+  const { data: allPayments, isLoading: isPaymentsListLoading } = useGetAllPaymentDetails();
+
+  const pendingPaymentAmount = useMemo(() => {
+    if (!isPaymentsListLoading && Array.isArray(allPayments)) {
+      return sumPendingPaymentAmount(allPayments);
+    }
+    return statsData?.pendingPaymentAmount ?? 0;
+  }, [allPayments, isPaymentsListLoading, statsData?.pendingPaymentAmount]);
 
   const stats = [
     {
@@ -14,7 +31,7 @@ export default function PaymentStats() {
     },
     {
       label: "PENDING PAYMENTS",
-      value: statsData ? formatCurrency(statsData.pendingPaymentAmount) : "Rs.0.00",
+      value: formatCurrency(pendingPaymentAmount),
       icon: History,
       color: "text-[#FE9A00]",
     },

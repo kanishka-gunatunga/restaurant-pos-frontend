@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { X, Wallet, CreditCard, Calculator } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { X, Wallet, CreditCard, Calculator, Loader2 } from "lucide-react";
 import { useCreatePayment } from "@/hooks/usePayment";
+import { toast } from "sonner";
 
 const formatRs = (n: number) =>
   `Rs.${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -27,35 +28,60 @@ export default function ProcessPaymentModal({
   const [step, setStep] = useState<Step>("method");
   const [amountGiven, setAmountGiven] = useState("");
   const [changeReturned, setChangeReturned] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitGuardRef = useRef(false);
 
   const { mutateAsync: createPayment, isPending: isSavingPayment } = useCreatePayment();
+  const isBusy = isSubmitting || isSavingPayment;
 
   const amountNum = parseFloat(amountGiven.replace(/[^0-9.]/g, "")) || 0;
   const change = step === "cash" ? Math.max(0, amountNum - total) : changeReturned;
 
   const handleCompletePayment = async (method: "cash" | "card") => {
     if (method === "cash" && amountNum < total) return;
+    if (submitGuardRef.current || isSavingPayment) return;
 
-    if (orderId) {
-      try {
-        await createPayment({
-          orderId,
-          paymentMethod: method,
-          amount: total,
-          status: "paid",
-        });
-      } catch (err: any) {
-        alert("Failed to save payment: " + (err.response?.data?.message || err.message));
-        return;
+    submitGuardRef.current = true;
+    setIsSubmitting(true);
+    try {
+      if (orderId) {
+        try {
+          await createPayment({
+            orderId,
+            paymentMethod: method,
+            amount: total,
+            status: "paid",
+          });
+        } catch (err: unknown) {
+          const msg =
+            err &&
+            typeof err === "object" &&
+            "response" in err &&
+            err.response &&
+            typeof err.response === "object" &&
+            "data" in err.response &&
+            err.response.data &&
+            typeof err.response.data === "object" &&
+            "message" in err.response.data
+              ? String((err.response.data as { message?: unknown }).message)
+              : err instanceof Error
+                ? err.message
+                : "Payment could not be saved.";
+          toast.error(msg);
+          return;
+        }
       }
-    }
 
-    if (method === "cash") {
-      setChangeReturned(change);
-    } else {
-      setChangeReturned(0);
+      if (method === "cash") {
+        setChangeReturned(change);
+      } else {
+        setChangeReturned(0);
+      }
+      setStep("success");
+    } finally {
+      submitGuardRef.current = false;
+      setIsSubmitting(false);
     }
-    setStep("success");
   };
 
   const handleSuccessClose = () => {
@@ -86,8 +112,12 @@ export default function ProcessPaymentModal({
         </div>
         <button
           type="button"
-          onClick={step === "success" ? handleSuccessClose : onClose}
-          className="rounded-full p-1.5 text-[#90A1B9] hover:bg-[#F1F5F9] hover:text-[#45556C]"
+          onClick={() => {
+            if (step === "success") handleSuccessClose();
+            else if (!isBusy) onClose();
+          }}
+          disabled={isBusy && step !== "success"}
+          className="rounded-full p-1.5 text-[#90A1B9] hover:bg-[#F1F5F9] hover:text-[#45556C] disabled:pointer-events-none disabled:opacity-50"
           aria-label="Close"
         >
           <X className="h-5 w-5" />
@@ -96,10 +126,16 @@ export default function ProcessPaymentModal({
     </div>
   );
 
+  const requestBackdropClose = () => {
+    if (isBusy) return;
+    if (step === "success") handleSuccessClose();
+    else onClose();
+  };
+
   return (
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
-      onClick={step === "success" ? handleSuccessClose : onClose}
+      onClick={requestBackdropClose}
     >
       <div
         className="w-full max-w-[min(100%-2rem,28rem)] min-[1000px]:max-w-[32rem] min-[1200px]:max-w-[42rem] rounded-[32px] border border-[#FFFFFF33] bg-white p-4 shadow-[0px_25px_50px_-12px_#00000040] sm:p-6 min-[1000px]:p-8"
@@ -119,7 +155,8 @@ export default function ProcessPaymentModal({
                   setAmountGiven("");
                   setStep("cash");
                 }}
-                className="flex flex-col items-center justify-center rounded-[24px] border-2 border-[#A4F4CF] mb-2 p-4 transition-all duration-300 ease-out hover:opacity-95 sm:p-5 min-[1200px]:p-6"
+                disabled={isBusy}
+                className="flex flex-col items-center justify-center rounded-[24px] border-2 border-[#A4F4CF] mb-2 p-4 transition-all duration-300 ease-out hover:opacity-95 disabled:pointer-events-none disabled:opacity-50 sm:p-5 min-[1200px]:p-6"
                 style={{
                   background: "linear-gradient(135deg, #ECFDF5 0%, rgba(208, 250, 229, 0.5) 100%)",
                 }}
@@ -139,10 +176,9 @@ export default function ProcessPaymentModal({
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  handleCompletePayment("card");
-                }}
-                className="flex flex-col items-center justify-center rounded-[24px] border-2 border-[#BEDBFF] mb-2 p-4 transition-all duration-300 ease-out hover:opacity-95 sm:p-5 min-[1200px]:p-6"
+                onClick={() => void handleCompletePayment("card")}
+                disabled={isBusy}
+                className="flex flex-col items-center justify-center rounded-[24px] border-2 border-[#BEDBFF] mb-2 p-4 transition-all duration-300 ease-out hover:opacity-95 disabled:pointer-events-none disabled:opacity-50 sm:p-5 min-[1200px]:p-6"
                 style={{
                   background: "linear-gradient(135deg, #EFF6FF 0%, rgba(219, 234, 254, 0.5) 100%)",
                 }}
@@ -151,7 +187,11 @@ export default function ProcessPaymentModal({
                   className="flex h-16 w-16 min-h-[80px] min-w-[80px] items-center justify-center rounded-[16px] bg-[#2B7FFF] text-white shadow-[0px_4px_6px_-4px_#BEDBFF,0px_10px_15px_-3px_#BEDBFF] sm:h-20 sm:w-20 mt-3"
                   aria-hidden
                 >
-                  <CreditCard className="h-7 w-7 sm:h-8 sm:w-8" />
+                  {isBusy && step === "method" ? (
+                    <Loader2 className="h-7 w-7 animate-spin sm:h-8 sm:w-8" />
+                  ) : (
+                    <CreditCard className="h-7 w-7 sm:h-8 sm:w-8" />
+                  )}
                 </span>
                 <span className="text-center mt-3 font-['Inter'] text-xl font-bold leading-7 text-[#1D293D]">
                   Card
@@ -187,8 +227,9 @@ export default function ProcessPaymentModal({
                 type="text"
                 value={amountGiven}
                 onChange={(e) => setAmountGiven(e.target.value)}
+                disabled={isBusy}
                 placeholder="Rs.0.00"
-                className="w-full min-h-[80px] rounded-[16px] border-2 border-[#E2E8F0] bg-white py-4 pl-[27px] pr-6 font-['Inter'] text-2xl font-bold leading-[100%] text-[#1D293D] placeholder:text-[#90A1B9] focus:border-[#22C55E] focus:outline-none focus:ring-2 focus:ring-[#22C55E]/20"
+                className="w-full min-h-[80px] rounded-[16px] border-2 border-[#E2E8F0] bg-white py-4 pl-[27px] pr-6 font-['Inter'] text-2xl font-bold leading-[100%] text-[#1D293D] placeholder:text-[#90A1B9] focus:border-[#22C55E] focus:outline-none focus:ring-2 focus:ring-[#22C55E]/20 disabled:opacity-60"
               />
             </div>
             <div
@@ -216,22 +257,32 @@ export default function ProcessPaymentModal({
               <button
                 type="button"
                 onClick={() => setStep("method")}
-                className="flex-1 rounded-[16px] bg-[#E2E8F0] py-3.5 font-['Inter'] text-base font-bold leading-6 text-[#314158] transition-all duration-300 ease-out hover:opacity-90 min-[400px]:min-h-[56px]"
+                disabled={isBusy}
+                className="flex-1 rounded-[16px] bg-[#E2E8F0] py-3.5 font-['Inter'] text-base font-bold leading-6 text-[#314158] transition-all duration-300 ease-out hover:opacity-90 disabled:pointer-events-none disabled:opacity-50 min-[400px]:min-h-[56px]"
               >
                 Back
               </button>
               <button
                 type="button"
-                onClick={() => handleCompletePayment("cash")}
-                disabled={amountNum < total}
-                className="flex flex-1 items-center justify-center gap-2 rounded-[16px] bg-[#00BC7D] py-3.5 font-['Inter'] text-base font-bold leading-6 text-white shadow-[0px_4px_6px_-4px_#0000001A,0px_10px_15px_-3px_#0000001A] transition-all duration-300 ease-out hover:bg-[#00A66D] disabled:opacity-50 disabled:pointer-events-none min-[400px]:min-h-[56px]"
+                onClick={() => void handleCompletePayment("cash")}
+                disabled={amountNum < total || isBusy}
+                className="flex flex-1 items-center justify-center gap-2 rounded-[16px] bg-[#00BC7D] py-3.5 font-['Inter'] text-base font-bold leading-6 text-white shadow-[0px_4px_6px_-4px_#0000001A,0px_10px_15px_-3px_#0000001A] transition-all duration-300 ease-out hover:bg-[#00A66D] disabled:pointer-events-none disabled:opacity-50 min-[400px]:min-h-[56px]"
               >
-                Complete Payment
-                <span className="inline-block h-5 w-5 shrink-0">
-                  <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
-                    <path fillRule="evenodd" d="M3 10a.75.75 0 01.75-.75h10.638L10.23 5.29a.75.75 0 111.04-1.08l5.5 5.25a.75.75 0 010 1.08l-5.5 5.25a.75.75 0 11-1.04-1.08l4.158-3.96H3.75A.75.75 0 013 10z" clipRule="evenodd" />
-                  </svg>
-                </span>
+                {isBusy ? (
+                  <>
+                    <Loader2 className="h-5 w-5 shrink-0 animate-spin" />
+                    Processing…
+                  </>
+                ) : (
+                  <>
+                    Complete Payment
+                    <span className="inline-block h-5 w-5 shrink-0">
+                      <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
+                        <path fillRule="evenodd" d="M3 10a.75.75 0 01.75-.75h10.638L10.23 5.29a.75.75 0 111.04-1.08l5.5 5.25a.75.75 0 010 1.08l-5.5 5.25a.75.75 0 11-1.04-1.08l4.158-3.96H3.75A.75.75 0 013 10z" clipRule="evenodd" />
+                      </svg>
+                    </span>
+                  </>
+                )}
               </button>
             </div>
           </>

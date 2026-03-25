@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { User, Phone, Home, MapPin, Navigation } from "lucide-react";
 import { X } from "lucide-react";
 import type { OrderDetailsData, OrderType } from "@/contexts/OrderContext";
@@ -154,6 +154,7 @@ export default function NewOrderDetailsModal({
 }: Props) {
   const [customerName, setCustomerName] = useState(initialData?.customerName ?? "");
   const [phone, setPhone] = useState(initialData?.phone ?? "");
+  const [hasManualNameEdit, setHasManualNameEdit] = useState(false);
   const [orderType, setOrderType] = useState<OrderType>(initialData?.orderType ?? "Dine In");
   const [tableNumber, setTableNumber] = useState(initialData?.tableNumber ?? "");
   const [deliveryAddress, setDeliveryAddress] = useState(initialData?.deliveryAddress ?? "");
@@ -164,12 +165,10 @@ export default function NewOrderDetailsModal({
   );
   const [toast, setToast] = useState<string | null>(null);
   const { data: customerData } = useGetCustomerByMobile(phone.length >= 10 ? phone : "");
-
-  useEffect(() => {
-    if (customerData?.name) {
-      setCustomerName(customerData.name);
-    }
-  }, [customerData]);
+  const resolvedCustomerName =
+    !hasManualNameEdit && customerData?.name ? customerData.name : customerName;
+  const resolvedCustomerId = customerData?.id ?? initialData?.customerId;
+  const resolvedOriginalCustomerName = customerData?.name ?? initialData?.originalCustomerName ?? "";
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -177,7 +176,7 @@ export default function NewOrderDetailsModal({
   };
 
   const handleSubmit = () => {
-    if (!customerName.trim()) return showToast("Please enter customer name.");
+    if (!resolvedCustomerName.trim()) return showToast("Please enter customer name.");
     if (!phone.trim()) return showToast("Please enter mobile number.");
     if (!/^0{1}7{1}[01245678]{1}[0-9]{7}$/.test(phone.replace(/[-\s]/g, "")))
       return showToast("Invalid mobile number.");
@@ -187,8 +186,10 @@ export default function NewOrderDetailsModal({
       return showToast("Please enter delivery address.");
 
     onSubmit({
-      customerName,
+      customerName: resolvedCustomerName,
       phone,
+      customerId: resolvedCustomerId,
+      originalCustomerName: resolvedOriginalCustomerName,
       orderType,
       ...(orderType === "Dine In" && { tableNumber }),
       ...(orderType === "Delivery" && { deliveryAddress, landmark, zipCode, deliveryInstructions }),
@@ -228,8 +229,11 @@ export default function NewOrderDetailsModal({
               <User className={iconClass} />
               <input
                 type="text"
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
+                value={resolvedCustomerName}
+                onChange={(e) => {
+                  setCustomerName(e.target.value);
+                  setHasManualNameEdit(true);
+                }}
                 placeholder="Enter name"
                 className={inputClass}
               />
@@ -245,6 +249,7 @@ export default function NewOrderDetailsModal({
                 onChange={(e) => {
                   const val = e.target.value.replace(/[^\d+\-\s]/g, "");
                   setPhone(val);
+                  setHasManualNameEdit(false);
                 }}
                 pattern="^(?:0|94|\+94)?7[0-9]{8}$"
                 placeholder="07X-XXXX-XXX"

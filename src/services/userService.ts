@@ -17,7 +17,9 @@ export const getMe = async (): Promise<{ user: User }> => {
 };
 
 export const verifyPasscode = async (passcode: string): Promise<{ message: string; verified: boolean }> => {
-  const res = await axiosInstance.post("/auth/verify-passcode", { passcode });
+  const res = await axiosInstance.post("/auth/verify-passcode", { passcode }, {
+    skipAuthRedirectOn401: true,
+  });
   return res.data;
 };
 

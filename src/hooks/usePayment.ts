@@ -38,9 +38,10 @@ export const useCreatePayment = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (payload: CreatePaymentPayload) => paymentService.createPayment(payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: PAYMENT_KEYS.all });
-      queryClient.invalidateQueries({ queryKey: ORDER_KEYS.all });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: PAYMENT_KEYS.all });
+      await queryClient.invalidateQueries({ queryKey: ORDER_KEYS.all });
+      await queryClient.refetchQueries({ queryKey: ORDER_KEYS.all });
     },
   });
 };
@@ -50,8 +51,10 @@ export const useUpdatePaymentStatus = () => {
   return useMutation({
     mutationFn: ({ id, payload }: { id: number; payload: PaymentUpdatePayload }) =>
       paymentService.updatePaymentStatus(id, payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: PAYMENT_KEYS.all });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: PAYMENT_KEYS.all });
+      await queryClient.invalidateQueries({ queryKey: ORDER_KEYS.all });
+      await queryClient.refetchQueries({ queryKey: ORDER_KEYS.all });
     },
   });
 };

@@ -9,6 +9,7 @@ export interface User {
   role: UserRole;
   passcode: string | null;
   branchId: number;
+  branchName?: string | null;
   status: UserStatus;
   createdAt?: string;
   updatedAt?: string;

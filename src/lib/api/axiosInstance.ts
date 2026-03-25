@@ -8,13 +8,18 @@ function getBackendOrigin(): string {
   const raw = process.env.NEXT_PUBLIC_API_URL?.trim();
   const fallback = "http://localhost:5000";
   if (!raw) return fallback;
-
   return raw.replace(/\/+$/, "").replace(/\/api$/i, "") || fallback;
 }
 
+/**
+ * In the browser, use Next.js proxy (/api/proxy) to avoid CORS when the backend
+ * doesn't send Access-Control-Allow-Origin. Server-side (e.g. SSR) can call backend directly.
+ */
+const useProxy = typeof window !== "undefined";
+const baseURL = useProxy ? "/api/proxy" : `${getBackendOrigin()}/api`;
+
 const axiosInstance = axios.create({
-  baseURL:
-    `${getBackendOrigin()}/api`,
+  baseURL,
   headers: {
     "Content-Type": "application/json",
   },
@@ -29,7 +34,11 @@ axiosInstance.interceptors.request.use(
       token = (session?.user as { token?: string })?.token ?? null;
 
       if (token) {
-        Cookies.set("token", token, { expires: 1 });
+        Cookies.set("token", token, {
+          expires: 1,
+          sameSite: "lax",
+          secure: window.location?.protocol === "https:",
+        });
       }
     }
 
@@ -48,7 +57,10 @@ axiosInstance.interceptors.response.use(
   (res) => res,
   (error) => {
     const status = error?.response?.status;
-    if (status === 401 && typeof window !== "undefined") {
+    // Wrong passcode → 403 + INVALID_MANAGER_PASSCODE (no logout). 
+    const skipAuthRedirect =
+      error?.config?.skipAuthRedirectOn401 === true;
+    if (status === 401 && typeof window !== "undefined" && !skipAuthRedirect) {
       Cookies.remove("token");
       signOut({ callbackUrl: `${ROUTES.HOME}?from=session_expired` });
     }

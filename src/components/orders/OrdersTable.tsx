@@ -1,5 +1,6 @@
 import { Clock, Pencil, Trash2, Eye } from "lucide-react";
 import type { OrderRow } from "@/domains/orders/types";
+import { collectibleOrderAmount } from "@/domains/orders/orderCollectionAmount";
 import { StatusPill, PaymentStatusPill } from "./StatusPills";
 
 type Props = {
@@ -96,7 +97,9 @@ export default function OrdersTable({ orders, onView, onPay, onEdit, onDelete }:
                     </td>
                     <td className="w-px whitespace-nowrap p-4 text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-2">
-                        {order.paymentStatus === "pending" && order.status !== "cancel" && (
+                        {order.paymentStatus === "pending" &&
+                          order.status !== "cancel" &&
+                          collectibleOrderAmount(order) > 0.02 && (
                           <button
                             type="button"
                             onClick={(e) => {
@@ -185,7 +188,9 @@ export default function OrdersTable({ orders, onView, onPay, onEdit, onDelete }:
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
-                  {order.paymentStatus === "pending" && order.status !== "cancel" && (
+                  {order.paymentStatus === "pending" &&
+                    order.status !== "cancel" &&
+                    collectibleOrderAmount(order) > 0.02 && (
                     <button
                       type="button"
                       onClick={(e) => {
