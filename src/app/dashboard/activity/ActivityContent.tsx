@@ -148,18 +148,30 @@ function formatTime(dateStr: string) {
   });
 }
 
+/** Calendar date in the user's local timezone — matches `<input type="date">` (avoid `toISOString()` UTC drift). */
+function toLocalYmd(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/** Inclusive: today and the previous 6 days (7 calendar days). */
+function getDefaultActivityDateRange(): { from: string; to: string } {
+  const end = new Date();
+  const start = new Date(end);
+  start.setDate(start.getDate() - 6);
+  return { from: toLocalYmd(start), to: toLocalYmd(end) };
+}
+
 export default function ActivityContent() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [activityType, setActivityType] = useState("all");
   const [userRole, setUserRole] = useState("all");
   const [branch, setBranch] = useState("all");
-  const [fromDate, setFromDate] = useState(() => {
-    const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    return start.toISOString().slice(0, 10);
-  });
-  const [toDate, setToDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [fromDate, setFromDate] = useState(() => getDefaultActivityDateRange().from);
+  const [toDate, setToDate] = useState(() => getDefaultActivityDateRange().to);
   const [managerApprovalOnly, setManagerApprovalOnly] = useState(false);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [activities, setActivities] = useState<ActivityLogEntry[]>([]);
@@ -186,15 +198,18 @@ export default function ActivityContent() {
           ? undefined
           : BRANCHES.find((b) => b.name === branch)?.numericId;
 
+      const queryFrom = fromDate <= toDate ? fromDate : toDate;
+      const queryTo = fromDate <= toDate ? toDate : fromDate;
+
       const res = await getActivityLogs({
         search: debouncedSearch.trim() || undefined,
         activityType: activityTypeLabel,
         userRole: userRole === "all" ? undefined : userRole,
         branchId,
-        // Default: keep the payload bounded to current month unless user changes it.
-        fromDate: fromDate,
-        toDate: toDate,
+        fromDate: queryFrom,
+        toDate: queryTo,
         withManagerApproval: managerApprovalOnly ? true : undefined,
+        limit: 200,
       });
 
       // Ignore stale responses (fast filter changes / slow network)
