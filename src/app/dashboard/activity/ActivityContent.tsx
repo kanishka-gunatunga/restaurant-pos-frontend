@@ -54,7 +54,7 @@ function PaymentReceivedIcon({ className }: { className?: string }) {
 }
 import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
 import { ROUTES } from "@/lib/constants";
-import { BRANCHES } from "@/lib/branchData";
+import { useGetAllBranches } from "@/hooks/useBranch";
 import { getActivityLogs } from "@/services/activityLogService";
 
 export type ActivityType =
@@ -165,6 +165,7 @@ function getDefaultActivityDateRange(): { from: string; to: string } {
 }
 
 export default function ActivityContent() {
+  const { data: branches = [], isLoading: branchesLoading } = useGetAllBranches("all");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [activityType, setActivityType] = useState("all");
@@ -184,6 +185,11 @@ export default function ActivityContent() {
     return () => clearTimeout(t);
   }, [search]);
 
+  const branchSelectValue =
+    branch === "all" || branches.some((b) => String(b.id) === branch)
+      ? branch
+      : "all";
+
   const fetchActivities = useCallback(async () => {
     const requestSeq = ++requestSeqRef.current;
     setLoading(true);
@@ -194,9 +200,11 @@ export default function ActivityContent() {
           ? undefined
           : ACTIVITY_TYPES.find((t) => t.value === activityType)?.label;
       const branchId =
-        branch === "all"
+        branchSelectValue === "all"
           ? undefined
-          : BRANCHES.find((b) => b.name === branch)?.numericId;
+          : Number.parseInt(branchSelectValue, 10);
+      const branchIdParam =
+        branchId !== undefined && !Number.isNaN(branchId) ? branchId : undefined;
 
       const queryFrom = fromDate <= toDate ? fromDate : toDate;
       const queryTo = fromDate <= toDate ? toDate : fromDate;
@@ -205,7 +213,7 @@ export default function ActivityContent() {
         search: debouncedSearch.trim() || undefined,
         activityType: activityTypeLabel,
         userRole: userRole === "all" ? undefined : userRole,
-        branchId,
+        branchId: branchIdParam,
         fromDate: queryFrom,
         toDate: queryTo,
         withManagerApproval: managerApprovalOnly ? true : undefined,
@@ -228,7 +236,7 @@ export default function ActivityContent() {
     debouncedSearch,
     activityType,
     userRole,
-    branch,
+    branchSelectValue,
     fromDate,
     toDate,
     managerApprovalOnly,
@@ -318,13 +326,16 @@ export default function ActivityContent() {
                     Branch
                   </label>
                   <select
-                    value={branch}
+                    value={branchSelectValue}
                     onChange={(e) => setBranch(e.target.value)}
-                    className="h-11 w-full appearance-none rounded-[14px] border-2 border-[#E2E8F0] bg-white py-2.5 pl-4 pr-10 text-[14px] text-[#1D293D] outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10"
+                    disabled={branchesLoading}
+                    className="h-11 w-full appearance-none rounded-[14px] border-2 border-[#E2E8F0] bg-white py-2.5 pl-4 pr-10 text-[14px] text-[#1D293D] outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    <option value="all">All Branches</option>
-                    {BRANCHES.map((b) => (
-                      <option key={b.id} value={b.name}>
+                    <option value="all">
+                      {branchesLoading ? "Loading branches…" : "All Branches"}
+                    </option>
+                    {branches.map((b) => (
+                      <option key={b.id} value={String(b.id)}>
                         {b.name}
                       </option>
                     ))}

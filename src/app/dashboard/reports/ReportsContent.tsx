@@ -7,7 +7,7 @@ import {
   Building,
 } from "lucide-react";
 import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
-import { BRANCHES } from "@/lib/branchData";
+import { useGetAllBranches } from "@/hooks/useBranch";
 
 export type ReportType =
   | "sales"
@@ -31,6 +31,7 @@ const REPORT_TYPES: { id: ReportType; label: string }[] = [
 ];
 
 export default function ReportsContent() {
+  const { data: branches = [], isLoading: branchesLoading } = useGetAllBranches("all");
   const [selectedReport, setSelectedReport] = useState<ReportType>("sales");
   const [fromDate, setFromDate] = useState(() => {
     const now = new Date();
@@ -40,6 +41,11 @@ export default function ReportsContent() {
   const [toDate, setToDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [branch, setBranch] = useState("all");
   const [isGenerating, setIsGenerating] = useState(false);
+
+  const branchSelectValue =
+    branch === "all" || branches.some((b) => String(b.id) === branch)
+      ? branch
+      : "all";
 
   const handleGenerateReport = () => {
     setIsGenerating(true);
@@ -132,13 +138,16 @@ export default function ReportsContent() {
                   <div className="relative">
                     <Building className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#90A1B9]" />
                     <select
-                      value={branch}
+                      value={branchSelectValue}
                       onChange={(e) => setBranch(e.target.value)}
-                      className="h-11 w-full appearance-none rounded-[14px] border-2 border-[#E2E8F0] bg-white pl-10 pr-10 text-[14px] text-[#1D293D] outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10"
+                      disabled={branchesLoading}
+                      className="h-11 w-full appearance-none rounded-[14px] border-2 border-[#E2E8F0] bg-white pl-10 pr-10 text-[14px] text-[#1D293D] outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      <option value="all">All Branches</option>
-                      {BRANCHES.map((b) => (
-                        <option key={b.id} value={b.id}>
+                      <option value="all">
+                        {branchesLoading ? "Loading branches…" : "All Branches"}
+                      </option>
+                      {branches.map((b) => (
+                        <option key={b.id} value={String(b.id)}>
                           {b.name}
                         </option>
                       ))}

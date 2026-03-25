@@ -200,6 +200,7 @@ export default function DiscountsTab() {
       )}
 
       <AddDiscountModal
+        key={`${addDiscountOpen}-${editingDiscount?.id ?? "new"}`}
         open={addDiscountOpen}
         overlayVisible={addDiscountOverlayVisible}
         editingDiscount={editingDiscount}

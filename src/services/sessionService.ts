@@ -8,10 +8,8 @@ export interface CashActionPayload {
   description?: string;
   passcode: string;
 }
-
 export interface CloseSessionPayload {
   passcode: string;
-  closingAmount?: number;
   actualBalance?: number;
 }
 
@@ -41,15 +39,15 @@ export async function adjustInitialAmount(params: {
 
 export async function closeSession(payload: CloseSessionPayload): Promise<void> {
   const body: Record<string, unknown> = { passcode: payload.passcode };
-  if (payload.closingAmount != null) body.closingAmount = payload.closingAmount;
-  if (payload.actualBalance != null) body.actualBalance = payload.actualBalance;
-  await axiosInstance.post("/sessions/close", body, { skipAuthRedirectOn401: true });
+  if (payload.actualBalance !== undefined) {
+    body.actualBalance = payload.actualBalance;
+  }
+  await axiosInstance.post("/sessions/close", body, {
+    skipAuthRedirectOn401: true,
+    timeout: 120_000,
+  });
 }
 
-/**
- * Backend GET /sessions/active returns:
- * { id, userId, branchId, startBalance, currentBalance, status, startTime (ISO), endTime, closedBy, createdAt, updatedAt, transactions }
- */
 export interface CurrentSession {
   id?: string | number;
   startBalance?: number | string;

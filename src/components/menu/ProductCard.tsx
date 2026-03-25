@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { Plus, ChevronDown, ChevronUp, Minus } from "lucide-react";
 import { useOrder } from "@/contexts/OrderContext";
 import type { MenuItem, ProductVariant, ProductAddOn } from "./types";
 import ProductModal from "./ProductModal";
-import { getProdImage } from "./menuData";
+import MenuProductImage from "./MenuProductImage";
+import { resolveProductImageSrc } from "@/lib/productImage";
 
 type ProductCardProps = {
   item: MenuItem;
@@ -58,7 +58,7 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
       item.name,
       price,
       variantName,
-      item.image || getProdImage(item.id),
+      resolveProductImageSrc(item.image, item.id),
       variantName,
       undefined,
       variant?.variationId,
@@ -103,7 +103,7 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
   const handleAddToOrder = () => {
     const unitPrice = totalPrice / qty;
     const details = getDetailsString();
-    const image = item.image || getProdImage(item.id);
+    const image = resolveProductImageSrc(item.image, item.id);
     const variantName = selectedVariant?.name;
     const addOnsParsed = getAddOnsList();
     const modifications = selectedAddOns.map((a) => ({
@@ -160,8 +160,9 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
         className="flex min-w-0 max-w-full cursor-pointer flex-col overflow-hidden rounded-xl bg-white shadow-md ring-1 ring-zinc-200"
       >
         <div className="relative block aspect-square w-full shrink-0 overflow-hidden rounded-t-xl bg-zinc-100">
-          <Image
-            src={item.image || getProdImage(item.id)}
+          <MenuProductImage
+            productImageUrl={item.image}
+            fallbackImageId={item.id}
             alt={item.name}
             fill
             className="object-cover"
@@ -490,8 +491,9 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
           className="relative aspect-square w-full cursor-pointer overflow-hidden rounded-t-xl bg-zinc-100"
           onClick={handleImageClick}
         >
-          <Image
-            src={item.image || getProdImage(item.id)}
+          <MenuProductImage
+            productImageUrl={item.image}
+            fallbackImageId={item.id}
             alt={item.name}
             fill
             className="object-cover"
@@ -528,7 +530,6 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
           item={item}
           onClose={() => setShowModal(false)}
           onAddToOrder={addItem}
-          getProdImage={getProdImage}
         />
       )}
     </>

@@ -429,14 +429,14 @@ export default function ManagerDrawerContent() {
   };
 
   const handleCloseSession = async (actualBalance: number, passcode: string) => {
-    await sessionService.closeSession({ passcode, actualBalance, closingAmount: actualBalance });
+    await sessionService.closeSession({ passcode, actualBalance });
     setHasActiveSession(false);
     setSessionData(null);
     fetchSessionHistory().catch(() => {});
   };
 
   const handleCloseTheDrawer = async (amount: number, passcode: string) => {
-    await sessionService.closeSession({ passcode, actualBalance: amount, closingAmount: amount });
+    await sessionService.closeSession({ passcode, actualBalance: amount });
     setHasDrawerStarted(false);
     setHasActiveSession(false);
     setSessionData(null);

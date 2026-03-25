@@ -12,7 +12,7 @@ import type { MenuItem, ProductVariant, ProductAddOn } from "./types";
 import type { Product } from "@/types/product";
 import { useOrder, type OrderItem } from "@/contexts/OrderContext";
 import ProductModal from "./ProductModal";
-import { getProdImage } from "./menuData";
+import { normalizeProductImageUrl } from "@/lib/productImage";
 
 function useColumnCount() {
   const [cols, setCols] = useState(4);
@@ -110,7 +110,7 @@ export default function MenuContent({
       category: p.category?.name || "Other",
       subCategory: p.subCategory?.name || "General",
       price: basePrice,
-      image: p.image || undefined,
+      image: normalizeProductImageUrl(p.image),
       variants: variants.length > 0 ? variants : undefined,
       addOns: addOns.length > 0 ? addOns : undefined,
     };
@@ -258,7 +258,6 @@ export default function MenuContent({
                 updateItem(editingOrderItem.id, ...args);
                 onCancelEdit?.();
               }}
-              getProdImage={getProdImage}
               onAddToOrder={() => {}} // Not used in edit mode
             />
           );

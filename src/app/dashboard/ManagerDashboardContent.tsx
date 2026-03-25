@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore, useState, useEffect } from "react";
+import { useSyncExternalStore, useState, useEffect, useMemo } from "react";
 import {
   Clock,
   CheckCircle2,
@@ -22,7 +22,7 @@ import ExpiredCalendarIcon from "@/components/icons/ExpiredCalendarIcon";
 import TodayCalendarIcon from "@/components/icons/TodayCalendarIcon";
 import RevenueChartIcon from "@/components/icons/RevenueChartIcon";
 import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
-import { BRANCHES, getBranchByNumericId } from "@/lib/branchData";
+import { useGetAllBranches } from "@/hooks/useBranch";
 import { getFirstName } from "@/lib/format";
 import { getManagerDashboardStats, type ManagerDashboardData } from "@/services/dashboardService";
 
@@ -35,8 +35,16 @@ function getGreeting(): string {
 
 export default function ManagerDashboardContent() {
   const { user } = useAuth();
-  const branch =
-    user?.branchId != null ? (getBranchByNumericId(user.branchId) ?? BRANCHES[0]) : BRANCHES[0];
+  const { data: branches = [] } = useGetAllBranches("all");
+  const branchLabel = useMemo(() => {
+    if (user?.branchName) return user.branchName;
+    if (user?.branchId != null) {
+      const b = branches.find((x) => x.id === user.branchId);
+      if (b) return b.name;
+      return `Branch #${user.branchId}`;
+    }
+    return "Branch";
+  }, [user?.branchName, user?.branchId, branches]);
 
   const [data, setData] = useState<ManagerDashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -98,7 +106,7 @@ export default function ManagerDashboardContent() {
             </h1>
             <div className="mt-1 flex items-center gap-2 font-['Inter'] text-base font-normal leading-6 text-[#62748E]">
               <BranchBuildingIcon className="h-4 w-4 shrink-0 text-[#62748E]" />
-              <span>{branch?.name ?? "Branch"}</span>
+              <span>{branchLabel}</span>
             </div>
           </div>
           <button
