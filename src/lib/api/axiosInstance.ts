@@ -11,15 +11,8 @@ function getBackendOrigin(): string {
   return raw.replace(/\/+$/, "").replace(/\/api$/i, "") || fallback;
 }
 
-/**
- * In the browser, use Next.js proxy (/api/proxy) to avoid CORS when the backend
- * doesn't send Access-Control-Allow-Origin. Server-side (e.g. SSR) can call backend directly.
- */
-const useProxy = typeof window !== "undefined";
-const baseURL = useProxy ? "/api/proxy" : `${getBackendOrigin()}/api`;
-
 const axiosInstance = axios.create({
-  baseURL,
+  baseURL: `${getBackendOrigin()}/api`,
   headers: {
     "Content-Type": "application/json",
   },
