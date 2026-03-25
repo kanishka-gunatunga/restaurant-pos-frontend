@@ -54,7 +54,7 @@ function PaymentReceivedIcon({ className }: { className?: string }) {
 }
 import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
 import { ROUTES } from "@/lib/constants";
-import { BRANCHES } from "@/lib/branchData";
+import { useGetAllBranches } from "@/hooks/useBranch";
 import { getActivityLogs } from "@/services/activityLogService";
 
 export type ActivityType =
@@ -148,18 +148,31 @@ function formatTime(dateStr: string) {
   });
 }
 
+/** Calendar date in the user's local timezone — matches `<input type="date">` (avoid `toISOString()` UTC drift). */
+function toLocalYmd(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/** Inclusive: today and the previous 6 days (7 calendar days). */
+function getDefaultActivityDateRange(): { from: string; to: string } {
+  const end = new Date();
+  const start = new Date(end);
+  start.setDate(start.getDate() - 6);
+  return { from: toLocalYmd(start), to: toLocalYmd(end) };
+}
+
 export default function ActivityContent() {
+  const { data: branches = [], isLoading: branchesLoading } = useGetAllBranches("all");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [activityType, setActivityType] = useState("all");
   const [userRole, setUserRole] = useState("all");
   const [branch, setBranch] = useState("all");
-  const [fromDate, setFromDate] = useState(() => {
-    const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    return start.toISOString().slice(0, 10);
-  });
-  const [toDate, setToDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [fromDate, setFromDate] = useState(() => getDefaultActivityDateRange().from);
+  const [toDate, setToDate] = useState(() => getDefaultActivityDateRange().to);
   const [managerApprovalOnly, setManagerApprovalOnly] = useState(false);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [activities, setActivities] = useState<ActivityLogEntry[]>([]);
@@ -172,6 +185,11 @@ export default function ActivityContent() {
     return () => clearTimeout(t);
   }, [search]);
 
+  const branchSelectValue =
+    branch === "all" || branches.some((b) => String(b.id) === branch)
+      ? branch
+      : "all";
+
   const fetchActivities = useCallback(async () => {
     const requestSeq = ++requestSeqRef.current;
     setLoading(true);
@@ -182,19 +200,24 @@ export default function ActivityContent() {
           ? undefined
           : ACTIVITY_TYPES.find((t) => t.value === activityType)?.label;
       const branchId =
-        branch === "all"
+        branchSelectValue === "all"
           ? undefined
-          : BRANCHES.find((b) => b.name === branch)?.numericId;
+          : Number.parseInt(branchSelectValue, 10);
+      const branchIdParam =
+        branchId !== undefined && !Number.isNaN(branchId) ? branchId : undefined;
+
+      const queryFrom = fromDate <= toDate ? fromDate : toDate;
+      const queryTo = fromDate <= toDate ? toDate : fromDate;
 
       const res = await getActivityLogs({
         search: debouncedSearch.trim() || undefined,
         activityType: activityTypeLabel,
         userRole: userRole === "all" ? undefined : userRole,
-        branchId,
-        // Default: keep the payload bounded to current month unless user changes it.
-        fromDate: fromDate,
-        toDate: toDate,
+        branchId: branchIdParam,
+        fromDate: queryFrom,
+        toDate: queryTo,
         withManagerApproval: managerApprovalOnly ? true : undefined,
+        limit: 200,
       });
 
       // Ignore stale responses (fast filter changes / slow network)
@@ -213,7 +236,7 @@ export default function ActivityContent() {
     debouncedSearch,
     activityType,
     userRole,
-    branch,
+    branchSelectValue,
     fromDate,
     toDate,
     managerApprovalOnly,
@@ -303,13 +326,16 @@ export default function ActivityContent() {
                     Branch
                   </label>
                   <select
-                    value={branch}
+                    value={branchSelectValue}
                     onChange={(e) => setBranch(e.target.value)}
-                    className="h-11 w-full appearance-none rounded-[14px] border-2 border-[#E2E8F0] bg-white py-2.5 pl-4 pr-10 text-[14px] text-[#1D293D] outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10"
+                    disabled={branchesLoading}
+                    className="h-11 w-full appearance-none rounded-[14px] border-2 border-[#E2E8F0] bg-white py-2.5 pl-4 pr-10 text-[14px] text-[#1D293D] outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    <option value="all">All Branches</option>
-                    {BRANCHES.map((b) => (
-                      <option key={b.id} value={b.name}>
+                    <option value="all">
+                      {branchesLoading ? "Loading branches…" : "All Branches"}
+                    </option>
+                    {branches.map((b) => (
+                      <option key={b.id} value={String(b.id)}>
                         {b.name}
                       </option>
                     ))}

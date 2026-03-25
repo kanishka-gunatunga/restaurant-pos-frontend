@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import {
   X,
   Search,
@@ -49,6 +49,48 @@ function formatPrice(value: number): string {
   return `Rs.${Number(value).toFixed(2)}`;
 }
 
+function discountExpiryToInputValue(raw: string | null | undefined): string {
+  if (raw == null || String(raw).trim() === "") return "";
+  const s = String(raw).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const t = new Date(s);
+  if (Number.isNaN(t.getTime())) return "";
+  const y = t.getFullYear();
+  const m = String(t.getMonth() + 1).padStart(2, "0");
+  const day = String(t.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function buildSelectedDiscountsFromEditing(
+  editing: Discount | null | undefined,
+  products: Product[] | undefined
+): SelectedDiscount[] {
+  if (!editing?.items?.length) return [];
+  return editing.items.map((item) => {
+    const variantId = item.variationOptionId ?? undefined;
+    const branchId = item.branchId ?? undefined;
+    const product = products?.find((p) => p.id === item.productId);
+    const variant = product?.variations?.[0]?.options?.find((o) => o.id === variantId);
+    const basePrice = Number(
+      variant?.prices?.[0]?.price ||
+        product?.variations?.[0]?.options?.[0]?.prices?.[0]?.price ||
+        item.variationOption?.prices?.[0]?.price ||
+        item.product?.variations?.[0]?.options?.[0]?.prices?.[0]?.price ||
+        0
+    );
+    return {
+      productId: item.productId!,
+      variantId,
+      productName: item.product?.name || product?.name || "Product",
+      variantName: item.variationOption?.name || variant?.name,
+      basePrice,
+      type: item.discountType as DiscountType,
+      value: Number(item.discountValue),
+      branchId,
+    };
+  });
+}
+
 export default function AddDiscountModal({
   open,
   overlayVisible,
@@ -61,98 +103,52 @@ export default function AddDiscountModal({
   const updateMutation = useUpdateDiscount();
 
   const [step, setStep] = useState(1);
-  const [discountName, setDiscountName] = useState("");
-  const [expiryDate, setExpiryDate] = useState("");
-  const [isForAllBranches, setIsForAllBranches] = useState(true);
-  const [selectedBranchIds, setSelectedBranchIds] = useState<number[]>([]);
+  const [discountName, setDiscountName] = useState(() => editingDiscount?.name ?? "");
+  const [expiryDate, setExpiryDate] = useState(() =>
+    discountExpiryToInputValue(editingDiscount?.expiryDate)
+  );
+  const [isForAllBranches, setIsForAllBranches] = useState(
+    () => editingDiscount?.isForAllBranches ?? true
+  );
+  const [selectedBranchIds, setSelectedBranchIds] = useState<number[]>(
+    () => editingDiscount?.branches?.map((b) => b.branchId) ?? []
+  );
   const [activeBranchId, setActiveBranchId] = useState<number | null>(null);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedProduct, setExpandedProduct] = useState<number | null>(null);
-  const [selectedDiscounts, setSelectedDiscounts] = useState<SelectedDiscount[]>([]);
+  const [selectedDiscounts, setSelectedDiscounts] = useState<SelectedDiscount[]>(() =>
+    buildSelectedDiscountsFromEditing(editingDiscount, products)
+  );
 
   const isEditing = !!editingDiscount;
   const isLoading = createMutation.isPending || updateMutation.isPending;
 
-  useEffect(() => {
-    if (open) {
-      if (editingDiscount) {
-        setStep(1);
-        setDiscountName(editingDiscount.name);
-        setExpiryDate(editingDiscount.expiryDate || "");
-        setIsForAllBranches(editingDiscount.isForAllBranches);
-        setSelectedBranchIds(editingDiscount.branches?.map(b => b.branchId) || []);
-        setSelectedDiscounts(
-          editingDiscount.items?.map((item) => {
-            const variantId = item.variationOptionId ?? undefined;
-            const branchId = item.branchId ?? undefined;
-            
-            // Try to find the product and variant in main products list to get accurate price
-            const product = products?.find(p => p.id === item.productId);
-            const variant = product?.variations?.[0]?.options?.find(o => o.id === variantId);
-            
-            // Re-calculate base price if possible, otherwise fallback to item data
-            const basePrice = Number(
-              variant?.prices?.[0]?.price || 
-              product?.variations?.[0]?.options?.[0]?.prices?.[0]?.price || 
-              item.variationOption?.prices?.[0]?.price || 
-              item.product?.variations?.[0]?.options?.[0]?.prices?.[0]?.price || 
-              0
-            );
 
-            return {
-              productId: item.productId!,
-              variantId,
-              productName: item.product?.name || product?.name || "Product",
-              variantName: item.variationOption?.name || variant?.name,
-              basePrice,
-              type: item.discountType as DiscountType,
-              value: Number(item.discountValue),
-              branchId,
-            };
-          }) || []
-        );
-      } else {
-        setStep(1);
-        setDiscountName("");
-        setExpiryDate("");
-        setIsForAllBranches(true);
-        setSelectedBranchIds([]);
-        setSelectedDiscounts([]);
-        setActiveBranchId(null);
-      }
-    }
-  }, [open, editingDiscount]);
+  const selectedDiscountsResolved = useMemo((): SelectedDiscount[] => {
+    if (!products?.length) return selectedDiscounts;
+    return selectedDiscounts.map((item) => {
+      if (item.basePrice > 0) return item;
+      const product = products.find((p) => p.id === item.productId);
+      const variant = product?.variations?.[0]?.options?.find((o) => o.id === item.variantId);
+      const price = Number(
+        variant?.prices?.[0]?.price ||
+          product?.variations?.[0]?.options?.[0]?.prices?.[0]?.price ||
+          0
+      );
+      return price > 0 ? { ...item, basePrice: price } : item;
+    });
+  }, [products, selectedDiscounts]);
 
-  // Sync prices when products list is loaded
-  useEffect(() => {
-    if (products && products.length > 0 && selectedDiscounts.length > 0) {
-      const hasZeroPrices = selectedDiscounts.some(d => d.basePrice === 0);
-      if (hasZeroPrices) {
-        setSelectedDiscounts(prev => prev.map(item => {
-          if (item.basePrice > 0) return item;
-          
-          const product = products.find(p => p.id === item.productId);
-          const variant = product?.variations?.[0]?.options?.find(o => o.id === item.variantId);
-          const price = Number(
-            variant?.prices?.[0]?.price || 
-            product?.variations?.[0]?.options?.[0]?.prices?.[0]?.price || 
-            0
-          );
-          
-          if (price > 0) {
-            return { ...item, basePrice: price };
-          }
-          return item;
-        }));
-      }
+  const effectiveBranchId = useMemo((): number | null => {
+    if (isForAllBranches || step !== 2 || selectedBranchIds.length === 0) {
+      return activeBranchId;
     }
-  }, [products, selectedDiscounts.length]);
-
-  useEffect(() => {
-    if (step === 2 && !isForAllBranches && selectedBranchIds.length > 0 && activeBranchId === null) {
-      setActiveBranchId(selectedBranchIds[0]);
+    if (activeBranchId === -1) return -1;
+    if (activeBranchId != null && selectedBranchIds.includes(activeBranchId)) {
+      return activeBranchId;
     }
+    return selectedBranchIds[0];
   }, [step, isForAllBranches, selectedBranchIds, activeBranchId]);
 
   const filteredProducts = products?.filter((p) =>
@@ -164,7 +160,7 @@ export default function AddDiscountModal({
   };
 
   const isSelected = (productId: number, variantId?: number) => {
-    const currentBranchContext = isForAllBranches ? undefined : (activeBranchId === -1 ? null : activeBranchId);
+    const currentBranchContext = isForAllBranches ? undefined : (effectiveBranchId === -1 ? null : effectiveBranchId);
     return selectedDiscounts.some(
       (s) => s.productId === productId && s.variantId === variantId && s.branchId === (currentBranchContext || undefined)
     );
@@ -175,7 +171,7 @@ export default function AddDiscountModal({
     variant?: VariationOption
   ) => {
     const variantId = variant?.id;
-    const currentBranchContext = isForAllBranches ? undefined : (activeBranchId === -1 ? null : activeBranchId);
+    const currentBranchContext = isForAllBranches ? undefined : (effectiveBranchId === -1 ? null : effectiveBranchId);
     if (isSelected(product.id, variantId)) {
       setSelectedDiscounts((prev: SelectedDiscount[]) =>
         prev.filter(
@@ -194,14 +190,14 @@ export default function AddDiscountModal({
           basePrice,
           type: "percentage" as DiscountType,
           value: 10,
-          branchId: isForAllBranches ? undefined : (activeBranchId === -1 ? undefined : (activeBranchId || undefined)),
+          branchId: isForAllBranches ? undefined : (effectiveBranchId === -1 ? undefined : (effectiveBranchId || undefined)),
         },
       ]);
     }
   };
 
   const handleRemove = (productId: number, variantId?: number) => {
-    const currentBranchContext = isForAllBranches ? undefined : (activeBranchId === -1 ? null : activeBranchId);
+    const currentBranchContext = isForAllBranches ? undefined : (effectiveBranchId === -1 ? null : effectiveBranchId);
     setSelectedDiscounts((prev: SelectedDiscount[]) =>
       prev.filter(
         (s: SelectedDiscount) => !(s.productId === productId && s.variantId === variantId && s.branchId === (currentBranchContext || undefined))
@@ -215,7 +211,7 @@ export default function AddDiscountModal({
     field: "type" | "value",
     value: DiscountType | number
   ) => {
-    const currentBranchContext = isForAllBranches ? undefined : (activeBranchId === -1 ? null : activeBranchId);
+    const currentBranchContext = isForAllBranches ? undefined : (effectiveBranchId === -1 ? null : effectiveBranchId);
     setSelectedDiscounts((prev: SelectedDiscount[]) =>
       prev.map((s: SelectedDiscount) =>
         s.productId === productId && s.variantId === variantId && s.branchId === (currentBranchContext || undefined)
@@ -354,13 +350,15 @@ export default function AddDiscountModal({
                     Expiry Date (Optional)
                   </label>
                   <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#90A1B9]" />
+                    <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#90A1B9]" />
                     <input
-                      type="text"
+                      type="date"
                       value={expiryDate}
                       onChange={(e) => setExpiryDate(e.target.value)}
-                      placeholder="DD/MM/YYYY"
-                      className="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] py-3 pl-10 pr-4 font-['Inter'] text-sm text-[#1D293D] placeholder:text-[#90A1B9] focus:border-[#EA580C] focus:outline-none focus:ring-2 focus:ring-[#EA580C]/20"
+                      onClick={(e) => {
+                        (e.currentTarget as HTMLInputElement).showPicker?.();
+                      }}
+                      className="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] py-3 pl-10 pr-4 font-['Inter'] text-sm text-[#1D293D] focus:border-[#EA580C] focus:outline-none focus:ring-2 focus:ring-[#EA580C]/20 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
                     />
                   </div>
                 </div>
@@ -433,8 +431,10 @@ export default function AddDiscountModal({
               
               {(isForAllBranches ? [{ id: -1, name: "All Branches", location: "Global configuration" }] : selectedBranchIds.map(id => branches?.find(b => b.id === id)).filter(Boolean)).map((branch, idx) => {
                 const bId = branch?.id === -1 ? null : branch?.id;
-                const isExpanded = activeBranchId === (bId || -1); // use -1 for global in state
-                const branchDiscounts = selectedDiscounts.filter(s => isForAllBranches ? s.branchId === undefined : s.branchId === bId);
+                const isExpanded = effectiveBranchId === (bId || -1);
+                const branchDiscounts = selectedDiscountsResolved.filter((s) =>
+                  isForAllBranches ? s.branchId === undefined : s.branchId === bId
+                );
 
                 return (
                   <div key={branch?.id} className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white">

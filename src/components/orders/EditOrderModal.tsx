@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useId } from "react";
-import Image from "next/image";
+import MenuProductImage from "@/components/menu/MenuProductImage";
 import {
   X,
   ShoppingCart,
@@ -13,7 +13,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useGetAllDiscounts, findApplicableDiscount, calculateItemDiscount } from "@/hooks/useDiscount";
-import { getProdImage } from "@/components/menu/menuData";
+import { resolveProductImageSrc } from "@/lib/productImage";
 import { mapProductsToMenuItems } from "@/components/menu/menuItemMapper";
 import type { MenuItem, ProductVariant, ProductAddOn } from "@/components/menu/types";
 import { useGetAllModifications } from "@/hooks/useModification";
@@ -125,7 +125,7 @@ function AddItemCard({
       variationId: selectedVariant?.variationId != null ? String(selectedVariant.variationId) : undefined,
       name: item.name,
       price: unitPrice,
-      image: item.image || getProdImage(String(item.productId)),
+      image: resolveProductImageSrc(item.image, String(item.productId)),
       variant: variantName,
       addOns: addOnsList.length > 0 ? addOnsList : undefined,
       modifications: modifications.length > 0 ? modifications : undefined,
@@ -138,8 +138,9 @@ function AddItemCard({
     <div className="flex rounded-[12px] border border-[#E2E8F0] bg-white p-3 shadow-sm">
       {/* Left: image */}
       <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-[10px] bg-[#F1F5F9]">
-        <Image
-          src={item.image ? item.image : getProdImage(String(item.productId))}
+        <MenuProductImage
+          productImageUrl={item.image}
+          fallbackImageId={String(item.productId)}
           alt={item.name}
           fill
           className="object-cover"
@@ -290,7 +291,10 @@ export default function EditOrderModal({ order, onClose, onSubmit, onPayNow }: P
       qty: it.qty,
       price: it.price,
       productDiscount: it.productDiscount ?? 0,
-      image: it.image || matchedMenuItem?.image || getProdImage(String(it.productId ?? (i % 7) + 1)),
+      image: resolveProductImageSrc(
+        it.image || matchedMenuItem?.image,
+        String(it.productId ?? (i % 7) + 1)
+      ),
       variant: it.variant,
       addOns: it.addOns,
       modifications: it.modifications,
@@ -420,8 +424,9 @@ export default function EditOrderModal({ order, onClose, onSubmit, onPayNow }: P
                   className="flex items-center gap-4 rounded-[16px] border border-[#E2E8F0] bg-[#F8FAFC] pt-[17px] pr-[17px] pb-[17px] pl-[17px]"
                 >
                   <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-[12px] bg-[#F1F5F9]">
-                    <Image
-                      src={it.image ?? getProdImage("1")}
+                    <MenuProductImage
+                      productImageUrl={it.image}
+                      fallbackImageId={String(it.productId ?? "1")}
                       alt={it.name}
                       fill
                       className="object-cover"

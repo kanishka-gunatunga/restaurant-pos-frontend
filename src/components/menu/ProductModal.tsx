@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { X, Plus, Minus } from "lucide-react";
 import type { MenuItem, ProductVariant, ProductAddOn } from "./types";
+import MenuProductImage from "./MenuProductImage";
+import { resolveProductImageSrc } from "@/lib/productImage";
 
 type ProductModalProps = {
   item: MenuItem;
@@ -33,7 +34,6 @@ type ProductModalProps = {
     modifications?: { modificationId: number; price: number }[],
     qty?: number
   ) => void;
-  getProdImage: (id: string) => string;
   initialQty?: number;
   initialVariantId?: number;
   initialAddOns?: { modificationId: number; price: number }[];
@@ -45,7 +45,6 @@ export default function ProductModal({
   onClose,
   onAddToOrder,
   onUpdateOrder,
-  getProdImage,
   initialQty,
   initialVariantId,
   initialAddOns,
@@ -136,7 +135,7 @@ export default function ProductModal({
   const handleAction = () => {
     const unitPrice = totalPrice / qty;
     const details = getDetailsString();
-    const image = item.image || getProdImage(item.id);
+    const image = resolveProductImageSrc(item.image, item.id);
     const variantName = selectedVariant?.name;
     const addOnsParsed = getAddOnsList();
     const modifications = selectedAddOns.flatMap((a) =>
@@ -198,8 +197,9 @@ export default function ProductModal({
 
         <div className="flex h-full flex-col md:flex-row">
           <div className="relative h-48 w-full shrink-0 md:h-auto md:w-1/2">
-            <Image
-              src={item.image || getProdImage(item.id)}
+            <MenuProductImage
+              productImageUrl={item.image}
+              fallbackImageId={item.id}
               alt={item.name}
               fill
               className="object-cover"

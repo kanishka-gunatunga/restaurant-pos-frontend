@@ -244,7 +244,7 @@ export default function AddSupplierModal({
               <input
                 name="phone"
                 type="tel"
-                placeholder="+94 234-567-8900"
+                placeholder="0771234567"
                 value={phoneValue}
                 onChange={(e) => {
                   const next = e.target.value;

@@ -661,6 +661,15 @@ export default function SupplyContent() {
                               Loading suppliers...
                             </td>
                           </tr>
+                        ) : suppliers.length === 0 ? (
+                          <tr>
+                            <td colSpan={7} className="px-4 py-12 text-center font-['Inter'] text-sm text-[#62748E]">
+                              <p className="font-medium text-[#45556C]">No suppliers found</p>
+                              <p className="mt-1 text-[#90A1B9]">
+                                Try a different search or branch filter.
+                              </p>
+                            </td>
+                          </tr>
                         ) : (
                           suppliers.map((row) => (
                           <tr
@@ -831,6 +840,15 @@ export default function SupplyContent() {
                           <tr>
                             <td colSpan={6} className="px-4 py-8 text-center font-['Inter'] text-sm text-[#62748E]">
                               Loading materials...
+                            </td>
+                          </tr>
+                        ) : materials.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="px-4 py-12 text-center font-['Inter'] text-sm text-[#62748E]">
+                              <p className="font-medium text-[#45556C]">No materials found</p>
+                              <p className="mt-1 text-[#90A1B9]">
+                                Try a different search, category, or branch filter.
+                              </p>
                             </td>
                           </tr>
                         ) : (
@@ -1104,6 +1122,15 @@ export default function SupplyContent() {
                               Loading stocks...
                             </td>
                           </tr>
+                        ) : stocks.length === 0 ? (
+                          <tr>
+                            <td colSpan={8} className="px-4 py-12 text-center font-['Inter'] text-sm text-[#62748E]">
+                              <p className="font-medium text-[#45556C]">No stock records found</p>
+                              <p className="mt-1 text-[#90A1B9]">
+                                Try a different search, branch, category, or status filter.
+                              </p>
+                            </td>
+                          </tr>
                         ) : (
                           stocks.map((row) => {
                             const { showExpired, displayStatus } = getStockRowDisplay(row);
@@ -1292,6 +1319,15 @@ export default function SupplyContent() {
                           <tr>
                             <td colSpan={6} className="px-4 py-8 text-center font-['Inter'] text-sm text-[#62748E]">
                               Loading assignments...
+                            </td>
+                          </tr>
+                        ) : assignments.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="px-4 py-12 text-center font-['Inter'] text-sm text-[#62748E]">
+                              <p className="font-medium text-[#45556C]">No assignments found</p>
+                              <p className="mt-1 text-[#90A1B9]">
+                                Try a different search or branch filter.
+                              </p>
                             </td>
                           </tr>
                         ) : (

@@ -1,5 +1,6 @@
 import type { MenuItem, ProductAddOn, ProductVariant } from "./types";
 import type { Modification, Product } from "@/types/product";
+import { normalizeProductImageUrl } from "@/lib/productImage";
 
 export function mapProductToMenuItem(
   product: Product,
@@ -64,7 +65,7 @@ export function mapProductToMenuItem(
     category: product.category?.name || "Other",
     subCategory: product.subCategory?.name || "General",
     price: basePrice,
-    image: product.image || undefined,
+    image: normalizeProductImageUrl(product.image),
     variants: variants.length > 0 ? variants : undefined,
     addOns: addOns.length > 0 ? addOns : undefined,
   };

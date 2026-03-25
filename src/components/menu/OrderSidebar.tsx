@@ -2,7 +2,7 @@
 
 import { AxiosError } from "axios";
 import { useState } from "react";
-import Image from "next/image";
+import MenuProductImage from "./MenuProductImage";
 import { toast } from "sonner";
 import { User, Phone, ChefHat, Trash2, X } from "lucide-react";
 import { useOrder } from "@/contexts/OrderContext";
@@ -530,19 +530,14 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
                       className={`flex gap-4 rounded-[14px] border border-[#F1F5F9] bg-white px-3 pb-2.5 pt-3 transition-colors ${onEditItem ? "cursor-pointer hover:bg-[#F8FAFC]" : ""}`}
                     >
                       <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-zinc-200">
-                        {item.image ? (
-                          <Image
-                            src={item.image}
-                            alt={item.name}
-                            fill
-                            className="object-cover"
-                            sizes="64px"
-                          />
-                        ) : (
-                          <span className="flex h-full w-full items-center justify-center text-lg">
-                            🍽️
-                          </span>
-                        )}
+                        <MenuProductImage
+                          productImageUrl={item.image}
+                          fallbackImageId={String(item.productId)}
+                          alt={item.name}
+                          fill
+                          className="object-cover"
+                          sizes="64px"
+                        />
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-1">

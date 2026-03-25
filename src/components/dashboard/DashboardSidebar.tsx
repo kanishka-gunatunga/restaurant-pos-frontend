@@ -114,7 +114,7 @@ export default function DashboardSidebar() {
   };
 
   const handleCloseSessionAndLogout = async (actualBalance: number, passcode: string) => {
-    await sessionService.closeSession({ passcode, closingAmount: actualBalance, actualBalance });
+    await sessionService.closeSession({ passcode, actualBalance });
     if (typeof window !== "undefined") {
       sessionStorage.removeItem(ORDER_STORAGE_KEY);
       sessionStorage.removeItem(ACTIVE_ORDER_ID_KEY);
