@@ -1,9 +1,11 @@
 "use client";
 
-import { createContext, useContext, useCallback, useLayoutEffect, type ReactNode } from "react";
+import { createContext, useContext, useCallback, useLayoutEffect, useMemo, type ReactNode } from "react";
 import { useSession, signOut } from "next-auth/react";
+import { useQuery } from "@tanstack/react-query";
 import Cookies from "js-cookie";
 import { ROUTES } from "@/lib/constants";
+import { getMe } from "@/services/userService";
 
 export type UserRole = "cashier" | "manager" | "admin" | "kitchen";
 
@@ -14,6 +16,7 @@ export type AuthUser = {
   employeeId?: string;
   email?: string | null;
   branchId?: number | null;
+  branchName?: string | null;
 };
 
 const ALLOWED_ROLES: UserRole[] = ["admin", "manager", "cashier", "kitchen"];
@@ -53,8 +56,22 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession();
   const isReady = status !== "loading";
-  const user = sessionUserToAuthUser(session?.user ?? null);
   const token = (session?.user as { token?: string } | undefined)?.token ?? null;
+
+  const meQuery = useQuery({
+    queryKey: ["auth", "me", token],
+    queryFn: () => getMe(),
+    enabled: isReady && status === "authenticated" && !!token,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const user = useMemo((): AuthUser | null => {
+    const base = sessionUserToAuthUser(session?.user ?? null);
+    if (!base) return null;
+    if (status !== "authenticated") return base;
+    if (meQuery.isPending) return { ...base, branchName: undefined };
+    return { ...base, branchName: meQuery.data?.user?.branchName ?? null };
+  }, [session?.user, status, meQuery.isPending, meQuery.data?.user?.branchName]);
 
   // useLayoutEffect runs before paint so the cookie is set before any child component's effects (e.g. dashboard fetch)
   useLayoutEffect(() => {

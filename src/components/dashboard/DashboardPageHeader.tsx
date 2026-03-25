@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Calendar, Clock } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 function getFormattedDate() {
   const now = new Date();
@@ -33,6 +34,8 @@ function useRealTimeClock() {
 
 export default function DashboardPageHeader() {
   const currentTime = useRealTimeClock();
+  const { user } = useAuth();
+  const branchLine = user?.branchName?.trim();
 
   return (
     <header className="relative z-50 flex shrink-0 items-center justify-between border-b border-zinc-200 bg-white px-6 py-4">
@@ -56,9 +59,11 @@ export default function DashboardPageHeader() {
             <h1 className="text-lg font-bold leading-[22.5px] tracking-normal text-[#1D293D]">
               Savory Delights Bistro
             </h1>
-            <p className="mt-1 text-[10px] font-bold leading-[15px] tracking-[1px] uppercase text-[#90A1B9]">
-              MAHARAGAMA BRANCH
-            </p>
+            {branchLine ? (
+              <p className="mt-1 text-[10px] font-bold leading-[15px] tracking-[1px] uppercase text-[#90A1B9]">
+                {branchLine}
+              </p>
+            ) : null}
           </div>
         </div>
       </div>
