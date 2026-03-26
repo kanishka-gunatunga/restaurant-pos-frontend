@@ -12,6 +12,7 @@ export interface Payment {
   refundedAmount?: number;
   /** Server: `sale` | `balance_due` */
   paymentRole?: string;
+  isAdditionalCharge?: boolean;
 }
 
 export interface PaymentUpdatePayload {
@@ -27,6 +28,7 @@ export interface CreatePaymentPayload {
   amount: number;
   transactionId?: string;
   status?: PaymentStatus;
+  paymentRole?: "sale" | "balance_due";
 }
 
 export interface PaymentStats {

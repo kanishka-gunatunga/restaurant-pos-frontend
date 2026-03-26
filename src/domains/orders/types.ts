@@ -5,13 +5,33 @@ import type {
 } from "@/types/order";
 import { formatDate, formatTime } from "@/lib/format";
 import { totalsFromOrderLineItems } from "./orderLineTotals";
-import { buildOrderRefundSummary } from "./orderRefundSummary";
+import {
+  buildOrderRefundSummary,
+  deriveDisplayPaymentStatus,
+  reconcileBalanceDueWithPaymentRows,
+} from "./orderRefundSummary";
 
-function readBalanceDueFromApi(o: ApiOrder & Record<string, unknown>): number | undefined {
+export function readBalanceDueFromOrderPayload(
+  o: Record<string, unknown> | null | undefined
+): number | undefined {
+  if (!o || typeof o !== "object") return undefined;
   const v = o.balanceDue ?? o.balance_due;
   if (v == null || v === "") return undefined;
   const n = Number(v);
   return Number.isFinite(n) ? n : undefined;
+}
+
+function readBalanceDueFromApi(o: ApiOrder & Record<string, unknown>): number | undefined {
+  return readBalanceDueFromOrderPayload(o as Record<string, unknown>);
+}
+
+function readRequiresAdditionalPaymentFromApi(
+  o: ApiOrder & Record<string, unknown>
+): boolean | undefined {
+  const v: unknown = o.requiresAdditionalPayment ?? o.requires_additional_payment;
+  if (v === true || v === 1 || String(v).toLowerCase() === "true") return true;
+  if (v === false || v === 0 || String(v).toLowerCase() === "false") return false;
+  return undefined;
 }
 
 export type OrderStatus = "pending" | "preparing" | "ready" | "hold" | "complete" | "cancel";
@@ -71,6 +91,7 @@ export type OrderDetailsView = {
   discount?: number;
   orderDiscount?: number;
   balanceDue?: number;
+  requiresAdditionalPayment?: boolean;
   totalRefunded?: number;
   outstandingRefund?: number;
   totalPaidForOrder?: number;
@@ -98,6 +119,7 @@ export type OrderRow = {
   discount?: number;
   orderDiscount?: number;
   balanceDue?: number;
+  requiresAdditionalPayment?: boolean;
   totalRefunded?: number;
   outstandingRefund?: number;
   totalPaidForOrder?: number;
@@ -105,7 +127,8 @@ export type OrderRow = {
 
 export function mapOrderToRow(apiOrder: ApiOrder): OrderRow {
   const raw = apiOrder as ApiOrder & Record<string, unknown>;
-  const balanceDue = readBalanceDueFromApi(raw);
+  const apiBalanceDue = readBalanceDueFromApi(raw);
+  const apiRequiresAdditionalPayment = readRequiresAdditionalPaymentFromApi(raw);
 
   const orderType =
     apiOrder.orderType === "dining"
@@ -133,6 +156,14 @@ export function mapOrderToRow(apiOrder: ApiOrder): OrderRow {
 
   const currentTotal = fromLines?.totalAmount ?? Number(apiOrder.totalAmount);
   const refundSummary = buildOrderRefundSummary(apiOrder, raw, currentTotal);
+  const basePaymentStatus = readPaymentStatusFromApi(raw);
+
+  const { balanceDue, requiresAdditionalPayment } = reconcileBalanceDueWithPaymentRows(
+    apiOrder,
+    currentTotal,
+    apiBalanceDue,
+    apiRequiresAdditionalPayment
+  );
 
   return {
     id: String(apiOrder.id),
@@ -144,7 +175,12 @@ export function mapOrderToRow(apiOrder: ApiOrder): OrderRow {
     customerId: apiOrder.customerId || apiOrder.customer?.id,
     totalAmount: fromLines?.totalAmount ?? Number(apiOrder.totalAmount),
     status: apiOrder.status || "pending",
-    paymentStatus: readPaymentStatusFromApi(raw),
+    paymentStatus: deriveDisplayPaymentStatus(
+      basePaymentStatus,
+      refundSummary.totalRefunded,
+      refundSummary.totalPaidForOrder,
+      { balanceDue, requiresAdditionalPayment }
+    ) as PaymentStatus,
     orderType,
     tableNumber: apiOrder.tableNumber,
     deliveryAddress: apiOrder.deliveryAddress,
@@ -156,6 +192,7 @@ export function mapOrderToRow(apiOrder: ApiOrder): OrderRow {
     discount: fromLines?.totalDiscountAmount ?? aggregateDiscount,
     orderDiscount,
     balanceDue,
+    ...(requiresAdditionalPayment !== undefined ? { requiresAdditionalPayment } : {}),
     totalRefunded: refundSummary.totalRefunded,
     outstandingRefund: refundSummary.outstandingRefund,
     totalPaidForOrder: refundSummary.totalPaidForOrder,

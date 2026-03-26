@@ -18,7 +18,10 @@ import {
   lineNetBeforeOrderDiscount,
   totalsFromOrderLineItems,
 } from "@/domains/orders/orderLineTotals";
-import { collectibleOrderAmount } from "@/domains/orders/orderCollectionAmount";
+import {
+  collectibleOrderAmount,
+  orderNeedsPaymentCollection,
+} from "@/domains/orders/orderCollectionAmount";
 
 import {
   STATUS_STYLES,
@@ -432,10 +435,10 @@ export default function OrderDetailsViewModal({
             Close
           </button>
           <div className="flex items-center gap-3">
-            {order.paymentStatus === "pending" &&
-              order.status !== "cancel" &&
+            {order.status !== "cancel" &&
               onPayNow &&
-              amountToCollect > 0.02 && (
+              orderNeedsPaymentCollection(order) &&
+              (amountToCollect > MONEY_EPS || order.requiresAdditionalPayment === true) && (
                 <button
                   type="button"
                   onClick={() =>

@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as paymentService from "@/services/paymentService";
-import { CreatePaymentPayload, PaymentUpdatePayload } from "@/types/payment";
+import type { CreatePaymentPayload, PaymentUpdatePayload } from "@/types/payment";
 import { ORDER_KEYS } from "@/hooks/useOrder";
 import {
   patchOrderPaymentInQueryCache,
   readOrderPaymentFieldsFromRefundResponse,
+  readOrderSnapshotFromPaymentResponse,
 } from "@/domains/orders/patchOrderPaymentInCache";
 
 export const PAYMENT_KEYS = {
@@ -42,10 +43,32 @@ export const useCreatePayment = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (payload: CreatePaymentPayload) => paymentService.createPayment(payload),
-    onSuccess: async () => {
+    onSuccess: async (data, variables) => {
+      const fields = readOrderPaymentFieldsFromRefundResponse(data);
+      const { orderPaymentStatus, balanceDue, totalRefunded, requiresAdditionalPayment } = fields;
+      const resolvedOrderId = fields.orderId ?? variables?.orderId;
+      const patchedOrder =
+        orderPaymentStatus != null &&
+        orderPaymentStatus !== "" &&
+        resolvedOrderId != null &&
+        String(resolvedOrderId) !== "";
+      if (patchedOrder) {
+        patchOrderPaymentInQueryCache(
+          queryClient,
+          resolvedOrderId,
+          orderPaymentStatus,
+          balanceDue,
+          totalRefunded,
+          requiresAdditionalPayment,
+          readOrderSnapshotFromPaymentResponse(data)
+        );
+      }
       await queryClient.invalidateQueries({ queryKey: PAYMENT_KEYS.all });
-      await queryClient.invalidateQueries({ queryKey: ORDER_KEYS.all });
-      await queryClient.refetchQueries({ queryKey: ORDER_KEYS.all });
+
+      await queryClient.invalidateQueries({
+        queryKey: ORDER_KEYS.all,
+        refetchType: "active",
+      });
     },
   });
 };
@@ -56,20 +79,32 @@ export const useUpdatePaymentStatus = () => {
     mutationFn: ({ id, payload }: { id: number; payload: PaymentUpdatePayload }) =>
       paymentService.updatePaymentStatus(id, payload),
     onSuccess: async (data) => {
-      const { orderPaymentStatus, balanceDue, orderId, totalRefunded } =
-        readOrderPaymentFieldsFromRefundResponse(data);
-      if (orderPaymentStatus && orderId != null && String(orderId) !== "") {
+      const {
+        orderPaymentStatus,
+        balanceDue,
+        orderId,
+        totalRefunded,
+        requiresAdditionalPayment,
+      } = readOrderPaymentFieldsFromRefundResponse(data);
+      const patchedOrder =
+        orderPaymentStatus && orderId != null && String(orderId) !== "";
+      if (patchedOrder) {
         patchOrderPaymentInQueryCache(
           queryClient,
           orderId,
           orderPaymentStatus,
           balanceDue,
-          totalRefunded
+          totalRefunded,
+          requiresAdditionalPayment,
+          readOrderSnapshotFromPaymentResponse(data)
         );
       }
       await queryClient.invalidateQueries({ queryKey: PAYMENT_KEYS.all });
-      await queryClient.invalidateQueries({ queryKey: ORDER_KEYS.all });
-      await queryClient.refetchQueries({ queryKey: ORDER_KEYS.all });
+
+      await queryClient.invalidateQueries({
+        queryKey: ORDER_KEYS.all,
+        refetchType: "active",
+      });
     },
   });
 };

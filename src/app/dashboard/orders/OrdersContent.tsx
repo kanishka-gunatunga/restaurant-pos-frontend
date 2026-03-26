@@ -12,7 +12,10 @@ import OrdersFilterSection from "@/components/orders/OrdersFilterSection";
 import OrdersTable from "@/components/orders/OrdersTable";
 import { useOrdersFilters } from "@/domains/orders/hooks/useOrdersFilters";
 import { mapOrderToRow } from "@/domains/orders/types";
-import { useOrderModals } from "@/domains/orders/hooks/useOrderModals";
+import {
+  useOrderModals,
+  type OrderNeedsPaymentAfterEditPayload,
+} from "@/domains/orders/hooks/useOrderModals";
 import { useGetOrderById } from "@/hooks/useOrder";
 import { collectibleOrderAmount } from "@/domains/orders/orderCollectionAmount";
 import { Loader2 } from "lucide-react";
@@ -24,6 +27,7 @@ type ProcessingPayment = {
   customerName: string;
   customerMobile: string;
   total: number;
+  isAdditionalPayment?: boolean;
 };
 
 export default function OrdersContent() {
@@ -44,6 +48,20 @@ export default function OrdersContent() {
     setProcessingPayment((prev) => (prev?.orderNo === orderNo ? null : prev));
   }, []);
 
+  const handleOrderNeedsPaymentAfterEdit = useCallback(
+    (ctx: OrderNeedsPaymentAfterEditPayload) => {
+      setProcessingPayment({
+        orderId: Number(ctx.orderId),
+        orderNo: ctx.orderNo,
+        customerName: ctx.customerName,
+        customerMobile: ctx.phone,
+        total: ctx.amount,
+        isAdditionalPayment: true,
+      });
+    },
+    []
+  );
+
   const {
     authModal,
     editOrderModal,
@@ -56,6 +74,7 @@ export default function OrdersContent() {
     handleViewOrder,
     handleEditClick,
     handleEditOrderSubmit,
+    handleEditOrderAndPay,
     handleEditOrderInfoSubmit,
     closeEditModal,
     closeEditInfoModal,
@@ -64,7 +83,10 @@ export default function OrdersContent() {
     openEditInfoFromView,
     openCancelFromView,
     isUpdatingOrder,
-  } = useOrderModals({ onOrderCancelled: clearPaymentIfCancelled });
+  } = useOrderModals({
+    onOrderCancelled: clearPaymentIfCancelled,
+    onOrderNeedsPaymentAfterEdit: handleOrderNeedsPaymentAfterEdit,
+  });
 
   const { data: viewOrderDetails } = useGetOrderById(viewOrder?.id);
   const activeViewOrder = useMemo(() => {
@@ -127,6 +149,7 @@ export default function OrdersContent() {
 
       {editOrderModal && (
         <EditOrderModal
+          isSubmitting={isUpdatingOrder}
           order={{
             id: editOrderModal.id,
             orderNo: editOrderModal.orderNo,
@@ -149,16 +172,21 @@ export default function OrdersContent() {
           }}
           onSubmit={handleEditOrderSubmit}
           onClose={closeEditModal}
-          onPayNow={(totalAmount) => {
-            if (editOrderModal) {
+          onOrderAndPay={async ({ items }) => {
+            const row = editOrderModal;
+            if (!row) return null;
+            const additional = await handleEditOrderAndPay({ items });
+            if (additional != null && additional > 0.02) {
               setProcessingPayment({
-                orderId: Number(editOrderModal.id),
-                orderNo: editOrderModal.orderNo,
-                customerName: editOrderModal.customerName,
-                customerMobile: editOrderModal.phone,
-                total: totalAmount,
+                orderId: Number(row.id),
+                orderNo: row.orderNo,
+                customerName: row.customerName,
+                customerMobile: row.phone,
+                total: additional,
+                isAdditionalPayment: true,
               });
             }
+            return additional;
           }}
         />
       )}
@@ -219,7 +247,11 @@ export default function OrdersContent() {
             method: null,
             paymentStatus: "pending",
             amount: processingPayment.total,
+            isAdditionalCharge: processingPayment.isAdditionalPayment,
           }}
+          amountCaption={
+            processingPayment.isAdditionalPayment ? "Amount to collect" : "Total"
+          }
           onClose={() => setProcessingPayment(null)}
         />
       )}
