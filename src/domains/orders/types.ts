@@ -5,6 +5,7 @@ import type {
 } from "@/types/order";
 import { formatDate, formatTime } from "@/lib/format";
 import { totalsFromOrderLineItems } from "./orderLineTotals";
+import { buildOrderRefundSummary } from "./orderRefundSummary";
 
 function readBalanceDueFromApi(o: ApiOrder & Record<string, unknown>): number | undefined {
   const v = o.balanceDue ?? o.balance_due;
@@ -70,6 +71,9 @@ export type OrderDetailsView = {
   discount?: number;
   orderDiscount?: number;
   balanceDue?: number;
+  totalRefunded?: number;
+  outstandingRefund?: number;
+  totalPaidForOrder?: number;
 };
 
 export type OrderRow = {
@@ -94,6 +98,9 @@ export type OrderRow = {
   discount?: number;
   orderDiscount?: number;
   balanceDue?: number;
+  totalRefunded?: number;
+  outstandingRefund?: number;
+  totalPaidForOrder?: number;
 };
 
 export function mapOrderToRow(apiOrder: ApiOrder): OrderRow {
@@ -124,6 +131,9 @@ export function mapOrderToRow(apiOrder: ApiOrder): OrderRow {
     Number(apiOrder.orderDiscount || 0) +
     itemDiscountSum;
 
+  const currentTotal = fromLines?.totalAmount ?? Number(apiOrder.totalAmount);
+  const refundSummary = buildOrderRefundSummary(apiOrder, raw, currentTotal);
+
   return {
     id: String(apiOrder.id),
     orderNo: String(apiOrder.id),
@@ -146,6 +156,9 @@ export function mapOrderToRow(apiOrder: ApiOrder): OrderRow {
     discount: fromLines?.totalDiscountAmount ?? aggregateDiscount,
     orderDiscount,
     balanceDue,
+    totalRefunded: refundSummary.totalRefunded,
+    outstandingRefund: refundSummary.outstandingRefund,
+    totalPaidForOrder: refundSummary.totalPaidForOrder,
   };
 }
 
@@ -175,23 +188,32 @@ function isPlaceholderVariantLabel(label: string | undefined): boolean {
   return VARIANT_LABEL_PLACEHOLDERS.has(normalizeVariantLabelForCompare(label));
 }
 
-function readOrderItemVariantLabel(item: ApiOrderItem & Record<string, unknown>): string | undefined {
-  const vo =
-    item.variationOption ??
-    (item.variation_option as { name?: string } | undefined);
+function readOrderItemVariantLabel(
+  item: ApiOrderItem & Record<string, unknown>
+): string | undefined {
+  const vo = item.variationOption ?? (item.variation_option as { name?: string } | undefined);
   if (vo && typeof vo === "object" && vo.name != null && String(vo.name).trim() !== "") {
     const name = String(vo.name).trim();
     if (!isPlaceholderVariantLabel(name)) return name;
   }
   const v = item.variation;
-  if (v && typeof v === "object" && "name" in v && String((v as { name?: string }).name || "").trim() !== "") {
+  if (
+    v &&
+    typeof v === "object" &&
+    "name" in v &&
+    String((v as { name?: string }).name || "").trim() !== ""
+  ) {
     const name = String((v as { name: string }).name).trim();
     if (!isPlaceholderVariantLabel(name)) return name;
   }
   return undefined;
 }
 
-const MODIFICATION_ARRAY_KEYS = ["modifications", "order_modifications", "orderModifications"] as const;
+const MODIFICATION_ARRAY_KEYS = [
+  "modifications",
+  "order_modifications",
+  "orderModifications",
+] as const;
 
 /** Prefer first array with at least one row (`[]` must not block `order_modifications`). */
 function firstNonEmptyModificationsArray(item: Record<string, unknown>): unknown[] {
@@ -202,7 +224,9 @@ function firstNonEmptyModificationsArray(item: Record<string, unknown>): unknown
   return [];
 }
 
-function readNestedModificationRow(r: Record<string, unknown>): Record<string, unknown> | undefined {
+function readNestedModificationRow(
+  r: Record<string, unknown>
+): Record<string, unknown> | undefined {
   const n = r.modification ?? r.Modification ?? r.modification_item ?? r.modificationItem;
   if (n != null && typeof n === "object") return n as Record<string, unknown>;
   return undefined;
@@ -211,13 +235,7 @@ function readNestedModificationRow(r: Record<string, unknown>): Record<string, u
 function titleFromModificationRecord(nested: Record<string, unknown> | undefined): string {
   if (!nested) return "";
   return String(
-    nested.title ??
-      nested.name ??
-      nested.label ??
-      nested.Title ??
-      nested.Name ??
-      nested.Label ??
-      ""
+    nested.title ?? nested.name ?? nested.label ?? nested.Title ?? nested.Name ?? nested.Label ?? ""
   ).trim();
 }
 
@@ -248,7 +266,9 @@ function parseOrderItemModificationRow(r: Record<string, unknown>): OrderItemMod
     modification:
       title || nested
         ? {
-            id: (nested?.id ?? nested?.modificationId ?? nested?.modification_id ?? modId) as string | number,
+            id: (nested?.id ?? nested?.modificationId ?? nested?.modification_id ?? modId) as
+              | string
+              | number,
             title: title || "Add-on",
             price: unitPrice,
             modificationId: modId,
@@ -258,7 +278,9 @@ function parseOrderItemModificationRow(r: Record<string, unknown>): OrderItemMod
 }
 
 /** Normalize order line modifications from API (camelCase / snake_case / nested / row-level title). */
-function normalizeModificationsFromOrderItem(item: Record<string, unknown>): OrderItemModification[] {
+function normalizeModificationsFromOrderItem(
+  item: Record<string, unknown>
+): OrderItemModification[] {
   const raw = firstNonEmptyModificationsArray(item);
   const out: OrderItemModification[] = [];
   for (const row of raw) {

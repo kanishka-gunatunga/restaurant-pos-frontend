@@ -23,6 +23,24 @@ export const PAYMENT_STATUS_STYLES: Record<
 
 export const DEFAULT_PAYMENT_STATUS_STYLE = { bg: "#F1F5F9", border: "#CAD5E2", text: "#45556C" };
 
+export function formatPaymentStatusLabel(status: PaymentStatus | string): string {
+  const s = String(status).toLowerCase().replace(/\s+/g, "_");
+  switch (s) {
+    case "pending":
+      return "Pending";
+    case "paid":
+      return "Paid";
+    case "refund":
+      return "Full refund";
+    case "partial_refund":
+      return "Partial refund";
+    default:
+      return String(status)
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+}
+
 export const ORDER_STATUS_OPTIONS: (OrderStatus | "All")[] = [
   "All",
   "pending",
