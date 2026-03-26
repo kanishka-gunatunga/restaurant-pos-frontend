@@ -1,19 +1,72 @@
 import { useState, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { OrderRow, OrderDetailsView } from "../types";
 import { EditOrderLineItem } from "@/components/orders/EditOrderModal";
 import { useUpdateOrderStatus, useUpdateOrder } from "@/hooks/useOrder";
 import { useUpdateCustomer } from "@/hooks/useCustomer";
-import { useUpdatePaymentStatus, useGetPaymentsByOrder } from "@/hooks/usePayment";
+import { useUpdatePaymentStatus, PAYMENT_KEYS } from "@/hooks/usePayment";
+import { getPaymentsByOrder } from "@/services/paymentService";
 import type { OrderDetailsData } from "@/contexts/OrderContext";
 import { totalsFromOrderLineItems } from "@/domains/orders/orderLineTotals";
+import {
+  patchOrderPaymentInQueryCache,
+  readOrderPaymentFieldsFromRefundResponse,
+} from "@/domains/orders/patchOrderPaymentInCache";
 import { isInvalidManagerPasscodeError } from "@/lib/api/managerPasscodeError";
 
 const MONEY_EPS = 0.02;
 
+function axiosErrorMessage(err: unknown): string {
+  if (err && typeof err === "object" && "response" in err) {
+    const data = (err as { response?: { data?: { message?: string } } }).response?.data;
+    const m = data?.message;
+    if (typeof m === "string" && m.trim()) return m;
+  }
+  if (err instanceof Error && err.message) return err.message;
+  return "Payment update failed";
+}
+
 function paymentRowAmount(p: { amount?: unknown }): number {
   const n = Number(p.amount);
   return Number.isFinite(n) ? n : 0;
+}
+
+/** API may return a bare array or a wrapped payload. */
+function normalizePaymentsResponse(raw: unknown): unknown[] {
+  if (Array.isArray(raw)) return raw;
+  if (raw && typeof raw === "object" && Array.isArray((raw as { data?: unknown[] }).data)) {
+    return (raw as { data: unknown[] }).data;
+  }
+  return [];
+}
+
+function pickRefundTargetPayment(
+  rows: unknown[]
+): { id: number; remainingCollectible: number } | undefined {
+  type Cand = { id: number; gross: number; remainingCollectible: number };
+  const candidates: Cand[] = [];
+  for (const raw of rows) {
+    if (raw == null || typeof raw !== "object") continue;
+    const r = raw as Record<string, unknown>;
+    const id = Number(r.id);
+    if (!Number.isFinite(id)) continue;
+    const status = String(r.paymentStatus ?? r.payment_status ?? "").toLowerCase();
+    if (status !== "paid" && status !== "partial_refund") continue;
+    const role = String(r.paymentRole ?? r.payment_role ?? "sale").toLowerCase();
+    if (role === "balance_due") continue;
+    const gross = paymentRowAmount({ amount: r.amount });
+    const refunded = paymentRowAmount({
+      amount: r.refundedAmount ?? r.refunded_amount,
+    });
+    const remainingCollectible = Math.max(0, gross - refunded);
+    if (remainingCollectible <= MONEY_EPS) continue;
+    candidates.push({ id, gross, remainingCollectible });
+  }
+  if (candidates.length === 0) return undefined;
+  candidates.sort((a, b) => b.gross - a.gross);
+  const best = candidates[0];
+  return { id: best.id, remainingCollectible: best.remainingCollectible };
 }
 
 function mapOrderTypeToApi(orderType: OrderDetailsData["orderType"]) {
@@ -28,6 +81,7 @@ type UseOrderModalsOptions = {
 
 export function useOrderModals(options?: UseOrderModalsOptions) {
   const { onOrderCancelled } = options ?? {};
+  const queryClient = useQueryClient();
   const [authModal, setAuthModal] = useState<{ isOpen: boolean; orderNo: string | null }>({
     isOpen: false,
     orderNo: null,
@@ -36,71 +90,77 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
   const [editOrderInfoModal, setEditOrderInfoModal] = useState<OrderRow | null>(null);
   const [viewOrder, setViewOrder] = useState<OrderRow | null>(null);
 
-  const orderToView = useCallback((order: OrderRow): OrderDetailsView => ({
-    id: order.id,
-    orderNo: order.orderNo,
-    date: order.date,
-    time: order.time,
-    status: order.status,
-    paymentStatus: order.paymentStatus,
-    customerName: order.customerName,
-    phone: order.phone,
-    customerId: order.customerId,
-    totalAmount: order.totalAmount,
-    orderType: order.orderType,
-    tableNumber: order.tableNumber,
-    deliveryAddress: order.deliveryAddress,
-    landmark: order.landmark,
-    zipCode: order.zipCode,
-    deliveryInstructions: order.deliveryInstructions,
-    items: order.items,
-    subtotal: order.subtotal,
-    discount: order.discount,
-    orderDiscount: order.orderDiscount ?? 0,
-    balanceDue: order.balanceDue,
-  }), []);
+  const orderToView = useCallback(
+    (order: OrderRow): OrderDetailsView => ({
+      id: order.id,
+      orderNo: order.orderNo,
+      date: order.date,
+      time: order.time,
+      status: order.status,
+      paymentStatus: order.paymentStatus,
+      customerName: order.customerName,
+      phone: order.phone,
+      customerId: order.customerId,
+      totalAmount: order.totalAmount,
+      orderType: order.orderType,
+      tableNumber: order.tableNumber,
+      deliveryAddress: order.deliveryAddress,
+      landmark: order.landmark,
+      zipCode: order.zipCode,
+      deliveryInstructions: order.deliveryInstructions,
+      items: order.items,
+      subtotal: order.subtotal,
+      discount: order.discount,
+      orderDiscount: order.orderDiscount ?? 0,
+      balanceDue: order.balanceDue,
+      totalRefunded: order.totalRefunded,
+      outstandingRefund: order.outstandingRefund,
+      totalPaidForOrder: order.totalPaidForOrder,
+    }),
+    []
+  );
 
   const updateStatusMutation = useUpdateOrderStatus();
   const updateOrderMutation = useUpdateOrder();
   const updateCustomerMutation = useUpdateCustomer();
   const updatePaymentStatusMutation = useUpdatePaymentStatus();
 
-  // We'll fetch payments for the current edit order to handle refunds
-  const { data: payments = [] } = useGetPaymentsByOrder(Number(editOrderModal?.id || 0));
-
   const handleDeleteClick = useCallback((orderNo: string) => {
     setAuthModal({ isOpen: true, orderNo });
   }, []);
 
-  const handleVerify = useCallback(async (passcode: string) => {
-    if (!authModal.orderNo) return;
-    const cancelledOrderNo = authModal.orderNo;
+  const handleVerify = useCallback(
+    async (passcode: string) => {
+      if (!authModal.orderNo) return;
+      const cancelledOrderNo = authModal.orderNo;
 
-    try {
-      await updateStatusMutation.mutateAsync({
-        id: cancelledOrderNo,
-        data: {
-          status: "cancel",
-          passcode,
-        },
-      });
+      try {
+        await updateStatusMutation.mutateAsync({
+          id: cancelledOrderNo,
+          data: {
+            status: "cancel",
+            passcode,
+          },
+        });
 
-      toast.success("Order cancelled successfully");
-      setAuthModal({ isOpen: false, orderNo: null });
-      onOrderCancelled?.(cancelledOrderNo);
-    } catch (error: unknown) {
-      console.error("Cancellation process failed:", error);
-      if (!isInvalidManagerPasscodeError(error)) {
-        const ax = error as { response?: { data?: { message?: string } }; message?: string };
-        toast.error(
-          ax?.response?.data?.message ||
-            (error instanceof Error ? error.message : null) ||
-            "Failed to cancel order"
-        );
+        toast.success("Order cancelled successfully");
+        setAuthModal({ isOpen: false, orderNo: null });
+        onOrderCancelled?.(cancelledOrderNo);
+      } catch (error: unknown) {
+        console.error("Cancellation process failed:", error);
+        if (!isInvalidManagerPasscodeError(error)) {
+          const ax = error as { response?: { data?: { message?: string } }; message?: string };
+          toast.error(
+            ax?.response?.data?.message ||
+              (error instanceof Error ? error.message : null) ||
+              "Failed to cancel order"
+          );
+        }
+        throw error;
       }
-      throw error;
-    }
-  }, [authModal.orderNo, updateStatusMutation, onOrderCancelled]);
+    },
+    [authModal.orderNo, updateStatusMutation, onOrderCancelled]
+  );
 
   const handleCloseAuthModal = useCallback(() => {
     setAuthModal({ isOpen: false, orderNo: null });
@@ -157,18 +217,47 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
           {
             onSuccess: async () => {
               try {
-                if (refundAmount > MONEY_EPS && payments.length > 0) {
-                  const payment = payments[0] as { id: number; amount?: number };
-                  const isFullRefund = refundAmount >= paymentRowAmount(payment);
-                  await updatePaymentStatusMutation.mutateAsync({
-                    id: payment.id,
-                    payload: {
-                      is_refund: 1,
-                      refund_type: isFullRefund ? "full" : "partial",
-                      refund_amount: refundAmount,
-                      status: isFullRefund ? "refund" : "partial_refund",
-                    },
+                if (refundAmount > MONEY_EPS) {
+                  const orderId = Number(editOrderModal.id);
+                  const rawRows = await queryClient.fetchQuery({
+                    queryKey: PAYMENT_KEYS.byOrder(orderId),
+                    queryFn: () => getPaymentsByOrder(orderId),
                   });
+                  const rows = normalizePaymentsResponse(rawRows);
+                  const payment = pickRefundTargetPayment(rows);
+                  if (payment) {
+                    const isFullRefund =
+                      refundAmount >= payment.remainingCollectible - MONEY_EPS;
+                    const refundResponse = await updatePaymentStatusMutation.mutateAsync({
+                      id: payment.id,
+                      payload: {
+                        is_refund: 1,
+                        refund_type: isFullRefund ? "full" : "partial",
+                        refund_amount: refundAmount,
+                        status: isFullRefund ? "refund" : "partial_refund",
+                      },
+                    });
+                    const fromApi = readOrderPaymentFieldsFromRefundResponse(refundResponse);
+                    const oid = fromApi.orderId ?? editOrderModal.id;
+                    if (fromApi.orderPaymentStatus) {
+                      patchOrderPaymentInQueryCache(
+                        queryClient,
+                        oid,
+                        fromApi.orderPaymentStatus,
+                        fromApi.balanceDue,
+                        fromApi.totalRefunded
+                      );
+                    }
+                    toast.success(
+                      isFullRefund
+                        ? "Order updated and payment marked as refunded."
+                        : "Order updated and payment marked as partial refund."
+                    );
+                  } else {
+                    toast.error(
+                      "Order was updated but no paid sale payment was found to record the refund. Check the Payments API for this order or fix the backend."
+                    );
+                  }
                 }
                 if (notifyBalanceAfterEdit) {
                   toast.success(
@@ -176,11 +265,7 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
                   );
                 }
               } catch (err: unknown) {
-                const msg =
-                  err && typeof err === "object" && "message" in err
-                    ? String((err as { message?: string }).message)
-                    : "Payment update failed";
-                toast.error(msg);
+                toast.error(axiosErrorMessage(err));
               } finally {
                 setEditOrderModal(null);
               }
@@ -189,7 +274,7 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
         );
       }
     },
-    [editOrderModal, updateOrderMutation, updatePaymentStatusMutation, payments]
+    [editOrderModal, updateOrderMutation, updatePaymentStatusMutation, queryClient]
   );
 
   const closeEditModal = useCallback(() => setEditOrderModal(null), []);
@@ -220,7 +305,8 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
               deliveryAddress: data.orderType === "Delivery" ? data.deliveryAddress : undefined,
               landmark: data.orderType === "Delivery" ? data.landmark : undefined,
               zipcode: data.orderType === "Delivery" ? data.zipCode : undefined,
-              deliveryInstructions: data.orderType === "Delivery" ? data.deliveryInstructions : undefined,
+              deliveryInstructions:
+                data.orderType === "Delivery" ? data.deliveryInstructions : undefined,
             },
           },
           {

@@ -20,7 +20,13 @@ import {
 } from "@/domains/orders/orderLineTotals";
 import { collectibleOrderAmount } from "@/domains/orders/orderCollectionAmount";
 
-import { STATUS_STYLES, DEFAULT_STATUS_STYLE } from "@/domains/orders/constants";
+import {
+  STATUS_STYLES,
+  DEFAULT_STATUS_STYLE,
+  formatPaymentStatusLabel,
+} from "@/domains/orders/constants";
+
+const MONEY_EPS = 0.02;
 
 const formatRs = (n: number) =>
   `Rs.${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -56,20 +62,12 @@ export default function OrderDetailsViewModal({
   const taxPercentShort =
     taxRateForLabel > 0 ? `${Math.round(taxRateForLabel * 1000) / 10}%` : "0%";
   const subtotal = fromLines?.grossSubtotal ?? order.subtotal ?? order.totalAmount;
-  const discount =
-    fromLines?.totalDiscountAmount ?? order.discount ?? 0;
+  const discount = fromLines?.totalDiscountAmount ?? order.discount ?? 0;
   const taxAmount = fromLines?.taxAmount;
   const totalAmount = fromLines?.totalAmount ?? order.totalAmount;
   const itemCount = items.reduce((sum, i) => sum + i.qty, 0);
   const orderTypeLabel = order.orderType ?? "Dine In";
-  const paymentStatusLabel =
-    order.paymentStatus === "paid"
-      ? "Paid"
-      : order.paymentStatus === "pending"
-        ? "Pending"
-        : order.paymentStatus === "refund"
-          ? "Refund"
-          : "Partial Refund";
+  const paymentStatusLabel = formatPaymentStatusLabel(order.paymentStatus);
   const tableLabel = order.tableNumber ? `Table ${order.tableNumber}` : "";
   const amountToCollect = collectibleOrderAmount(order);
 
@@ -264,13 +262,49 @@ export default function OrderDetailsViewModal({
                     Payment Status: {paymentStatusLabel}
                   </span>
                 </div>
-                {order.balanceDue != null && order.balanceDue > 0.02 && (
+                {order.balanceDue != null && order.balanceDue > MONEY_EPS && (
                   <div className="rounded-[14px] border-2 border-[#A4F4CF] bg-[#ECFDF5] px-4 py-3">
                     <p className="font-['Inter'] text-xs font-bold uppercase leading-4 text-[#007A55]">
                       Balance due
                     </p>
                     <p className="mt-1 font-['Inter'] text-xl font-bold leading-7 text-[#007A55]">
                       {formatRs(order.balanceDue)}
+                    </p>
+                  </div>
+                )}
+                {(order.paymentStatus === "partial_refund" || order.paymentStatus === "refund") &&
+                  order.totalPaidForOrder != null &&
+                  order.totalPaidForOrder > MONEY_EPS && (
+                    <div className="rounded-[14px] border border-[#E2E8F0] bg-white px-4 py-2">
+                      <p className="font-['Inter'] text-xs font-bold uppercase leading-4 text-[#62748E]">
+                        Payment collected
+                      </p>
+                      <p className="mt-0.5 font-['Inter'] text-base font-bold leading-6 text-[#1D293D]">
+                        {formatRs(order.totalPaidForOrder)}
+                      </p>
+                    </div>
+                  )}
+                {order.totalRefunded != null && order.totalRefunded > MONEY_EPS && (
+                  <div className="rounded-[14px] border-2 border-[#FECACA] bg-[#FEF2F2] px-4 py-3">
+                    <p className="font-['Inter'] text-xs font-bold uppercase leading-4 text-[#B91C1C]">
+                      Refunded (recorded)
+                    </p>
+                    <p className="mt-1 font-['Inter'] text-xl font-bold leading-7 text-[#B91C1C]">
+                      {formatRs(order.totalRefunded)}
+                    </p>
+                  </div>
+                )}
+                {order.outstandingRefund != null && order.outstandingRefund > MONEY_EPS && (
+                  <div className="rounded-[14px] border-2 border-[#FCD34D] bg-[#FFFBEB] px-4 py-3">
+                    <p className="font-['Inter'] text-xs font-bold uppercase leading-4 text-[#B45309]">
+                      Still to return to customer
+                    </p>
+                    <p className="mt-1 font-['Inter'] text-xl font-bold leading-7 text-[#B45309]">
+                      {formatRs(order.outstandingRefund)}
+                    </p>
+                    <p className="mt-1 font-['Inter'] text-[11px] leading-4 text-[#92400E]">
+                      Difference between amount collected and current order total, after recorded
+                      refunds. Process this amount at the register if not yet returned.
                     </p>
                   </div>
                 )}
@@ -402,24 +436,24 @@ export default function OrderDetailsViewModal({
               order.status !== "cancel" &&
               onPayNow &&
               amountToCollect > 0.02 && (
-              <button
-                type="button"
-                onClick={() =>
-                  onPayNow({
-                    ...order,
-                    items: order.items,
-                    subtotal,
-                    discount,
-                    totalAmount,
-                    balanceDue: order.balanceDue,
-                  })
-                }
-                className="flex items-center gap-2 rounded-[14px] bg-[#009966] px-5 py-3 font-['Inter'] text-base font-bold leading-6 text-white shadow-[0px_4px_6px_-4px_#0099664D,0px_10px_15px_-3px_#0099664D] transition-colors hover:bg-[#007A55] hover:shadow-[0px_4px_6px_-4px_#00996666,0px_10px_15px_-3px_#00996666]"
-              >
-                <CreditCard className="h-5 w-5 shrink-0" />
-                Pay Now
-              </button>
-            )}
+                <button
+                  type="button"
+                  onClick={() =>
+                    onPayNow({
+                      ...order,
+                      items: order.items,
+                      subtotal,
+                      discount,
+                      totalAmount,
+                      balanceDue: order.balanceDue,
+                    })
+                  }
+                  className="flex items-center gap-2 rounded-[14px] bg-[#009966] px-5 py-3 font-['Inter'] text-base font-bold leading-6 text-white shadow-[0px_4px_6px_-4px_#0099664D,0px_10px_15px_-3px_#0099664D] transition-colors hover:bg-[#007A55] hover:shadow-[0px_4px_6px_-4px_#00996666,0px_10px_15px_-3px_#00996666]"
+                >
+                  <CreditCard className="h-5 w-5 shrink-0" />
+                  Pay Now
+                </button>
+              )}
             {onEdit && (
               <button
                 type="button"

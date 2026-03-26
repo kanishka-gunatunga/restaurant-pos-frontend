@@ -192,8 +192,7 @@ export default function KitchenPage() {
 
     const channel = pusher.subscribe("orders-channel");
 
-    channel.bind("new-order", (data: any) => {
-      console.log("New order detected from Pusher:", data);
+    channel.bind("new-order", () => {
       queryClient.invalidateQueries({ queryKey: ORDER_KEYS.all });
     });
 

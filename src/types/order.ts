@@ -67,6 +67,8 @@ export interface Order {
   status: OrderStatus;
   paymentStatus: "paid" | "pending" | "refund" | "partial_refund" | string;
   balanceDue?: number;
+  totalRefunded?: number;
+  refundedAmount?: number;
   userId?: string | number;
   createdAt: string;
   updatedAt: string;
