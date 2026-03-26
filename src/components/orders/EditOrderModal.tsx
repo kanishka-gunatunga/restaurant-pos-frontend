@@ -60,7 +60,8 @@ type Props = {
   order: OrderForEdit;
   onClose: () => void;
   onSubmit: (data: { items: EditOrderLineItem[] }) => void;
-  onPayNow?: (totalAmount: number) => void;
+  onOrderAndPay?: (data: { items: EditOrderLineItem[] }) => Promise<number | null>;
+  isSubmitting?: boolean;
 };
 
 const formatRs = (n: number) =>
@@ -258,7 +259,7 @@ function AddItemCard({
   );
 }
 
-export default function EditOrderModal({ order, onClose, onSubmit, onPayNow }: Props) {
+export default function EditOrderModal({ order, onClose, onSubmit, onOrderAndPay, isSubmitting }: Props) {
   const { user } = useAuth();
   const branchId = user?.branchId || 1;
   const { data: products = [], isLoading: isLoadingProducts } = useGetProductsByBranch(branchId, {
@@ -303,6 +304,7 @@ export default function EditOrderModal({ order, onClose, onSubmit, onPayNow }: P
 
   const [lineItems, setLineItems] = useState<EditOrderLineItem[]>(initialItems);
   const [showAddItems, setShowAddItems] = useState(false);
+  const [orderAndPayBusy, setOrderAndPayBusy] = useState(false);
   const refundClipId = useId();
 
   const originalAmount = order.totalAmount;
@@ -357,14 +359,21 @@ export default function EditOrderModal({ order, onClose, onSubmit, onPayNow }: P
   };
 
   const handleSubmit = () => {
+    if (isSubmitting) return;
     onSubmit({ items: lineItems });
-    onClose();
   };
 
-  const handleOrderAndPay = () => {
-    onSubmit({ items: lineItems });
-    onPayNow?.(updatedAmount);
-    onClose();
+  const handleOrderAndPay = async () => {
+    if (!hasAdditionalPayment || !onOrderAndPay || isSubmitting) return;
+    setOrderAndPayBusy(true);
+    try {
+      const additional = await onOrderAndPay({ items: lineItems });
+      if (additional != null && additional > 0.02) {
+        onClose();
+      }
+    } finally {
+      setOrderAndPayBusy(false);
+    }
   };
 
   return (
@@ -613,16 +622,18 @@ export default function EditOrderModal({ order, onClose, onSubmit, onPayNow }: P
               <button
                 type="button"
                 onClick={handleSubmit}
-                className="h-14 w-[274px] rounded-[14px] border-2 border-[#EA580C] bg-white font-['Arial'] text-base font-bold leading-6 text-[#EA580C] text-center hover:bg-[#FFF7ED]"
+                disabled={isSubmitting}
+                className="h-14 w-[274px] rounded-[14px] border-2 border-[#EA580C] bg-white font-['Arial'] text-base font-bold leading-6 text-[#EA580C] text-center hover:bg-[#FFF7ED] disabled:opacity-50 disabled:pointer-events-none"
               >
-                Order Now
+                {isSubmitting ? "Saving…" : "Save order"}
               </button>
               <button
                 type="button"
-                onClick={handleOrderAndPay}
-                className="h-14 w-[274px] rounded-[16px] bg-[#EA580C] font-['Inter'] text-base font-bold leading-6 text-white text-center shadow-[0px_4px_6px_-4px_#0000001A,0px_10px_15px_-3px_#0000001A] hover:bg-[#DC4C04]"
+                onClick={() => void handleOrderAndPay()}
+                disabled={orderAndPayBusy || isSubmitting}
+                className="h-14 w-[274px] rounded-[16px] bg-[#EA580C] font-['Inter'] text-base font-bold leading-6 text-white text-center shadow-[0px_4px_6px_-4px_#0000001A,0px_10px_15px_-3px_#0000001A] hover:bg-[#DC4C04] disabled:opacity-50 disabled:pointer-events-none"
               >
-                Order & Pay
+                {orderAndPayBusy || isSubmitting ? "Saving…" : "Order & Pay"}
               </button>
             </>
           ) : (
@@ -637,9 +648,10 @@ export default function EditOrderModal({ order, onClose, onSubmit, onPayNow }: P
               <button
                 type="button"
                 onClick={handleSubmit}
-                className="h-14 min-w-0 flex-1 rounded-[16px] bg-[#EA580C] font-['Inter'] text-base font-bold leading-6 text-white text-center shadow-[0px_4px_6px_-4px_#0000001A,0px_10px_15px_-3px_#0000001A] hover:bg-[#DC4C04]"
+                disabled={isSubmitting}
+                className="h-14 min-w-0 flex-1 rounded-[16px] bg-[#EA580C] font-['Inter'] text-base font-bold leading-6 text-white text-center shadow-[0px_4px_6px_-4px_#0000001A,0px_10px_15px_-3px_#0000001A] hover:bg-[#DC4C04] disabled:opacity-50 disabled:pointer-events-none"
               >
-                Save Changes
+                {isSubmitting ? "Saving…" : "Save Changes"}
               </button>
             </>
           )}

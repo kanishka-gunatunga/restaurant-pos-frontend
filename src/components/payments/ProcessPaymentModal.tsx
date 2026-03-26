@@ -9,11 +9,16 @@ import { toast } from "sonner";
 interface ProcessPaymentModalProps {
     payment: Payment;
     onClose: () => void;
+    amountCaption?: string;
 }
 
 type Step = "METHOD" | "INPUT" | "SUCCESS";
 
-export default function ProcessPaymentModal({ payment, onClose }: ProcessPaymentModalProps) {
+export default function ProcessPaymentModal({
+    payment,
+    onClose,
+    amountCaption = "Total",
+}: ProcessPaymentModalProps) {
     const [step, setStep] = useState<Step>("METHOD");
     const [method, setMethod] = useState<"cash" | "card" | null>(null);
     const [amountGiven, setAmountGiven] = useState<string>(payment.amount.toString());
@@ -37,10 +42,11 @@ export default function ProcessPaymentModal({ payment, onClose }: ProcessPayment
         setIsSubmitting(true);
         try {
             await createPaymentMutation.mutateAsync({
-                orderId: payment.orderNo as number,
+                orderId: Number(payment.id),
                 paymentMethod: payMethod,
                 amount: payment.amount,
-                status: "paid"
+                status: "paid",
+                ...(payment.isAdditionalCharge ? { paymentRole: "balance_due" as const } : {}),
             });
             setStep("SUCCESS");
         } catch (error: unknown) {
@@ -84,7 +90,9 @@ export default function ProcessPaymentModal({ payment, onClose }: ProcessPayment
                         <div className="flex items-center gap-2 mt-1">
                             <span className="text-[14px] text-[#62748E] font-normal">{payment.customerName}</span>
                             <span className="text-[#90A1B9]">•</span>
-                            <span className="text-[14px] text-[#62748E] font-normal">Total: Rs.{payment.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                            <span className="text-[14px] text-[#62748E] font-normal">
+                                {amountCaption}: Rs.{payment.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            </span>
                         </div>
                     </div>
                     <button

@@ -1,7 +1,11 @@
 import { useState, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import type { OrderRow, OrderDetailsView } from "../types";
+import {
+  readBalanceDueFromOrderPayload,
+  type OrderDetailsView,
+  type OrderRow,
+} from "../types";
 import { EditOrderLineItem } from "@/components/orders/EditOrderModal";
 import { useUpdateOrderStatus, useUpdateOrder } from "@/hooks/useOrder";
 import { useUpdateCustomer } from "@/hooks/useCustomer";
@@ -12,8 +16,11 @@ import { totalsFromOrderLineItems } from "@/domains/orders/orderLineTotals";
 import {
   patchOrderPaymentInQueryCache,
   readOrderPaymentFieldsFromRefundResponse,
+  readOrderSnapshotFromPaymentResponse,
 } from "@/domains/orders/patchOrderPaymentInCache";
 import { isInvalidManagerPasscodeError } from "@/lib/api/managerPasscodeError";
+import type { Order } from "@/types/order";
+import { getOrderById } from "@/services/orderService";
 
 const MONEY_EPS = 0.02;
 
@@ -75,12 +82,47 @@ function mapOrderTypeToApi(orderType: OrderDetailsData["orderType"]) {
   return "delivery";
 }
 
-type UseOrderModalsOptions = {
-  onOrderCancelled?: (orderNo: string) => void;
+export type OrderNeedsPaymentAfterEditPayload = {
+  orderId: string;
+  orderNo: string;
+  customerName: string;
+  phone: string;
+  amount: number;
 };
 
+type UseOrderModalsOptions = {
+  onOrderCancelled?: (orderNo: string) => void;
+  onOrderNeedsPaymentAfterEdit?: (p: OrderNeedsPaymentAfterEditPayload) => void;
+};
+
+async function resolveCollectAmountAfterPut(
+  updated: Order,
+  fallbackBasketDelta: number,
+  orderId: string
+): Promise<number> {
+  let serverBalance = readBalanceDueFromOrderPayload(
+    updated as unknown as Record<string, unknown>
+  );
+  if (
+    (serverBalance == null || serverBalance <= MONEY_EPS) &&
+    fallbackBasketDelta > MONEY_EPS
+  ) {
+    try {
+      const fresh = await getOrderById(orderId);
+      serverBalance = readBalanceDueFromOrderPayload(
+        fresh as unknown as Record<string, unknown>
+      );
+    } catch {
+      /* keep */
+    }
+  }
+  return serverBalance != null && serverBalance > MONEY_EPS
+    ? serverBalance
+    : fallbackBasketDelta;
+}
+
 export function useOrderModals(options?: UseOrderModalsOptions) {
-  const { onOrderCancelled } = options ?? {};
+  const { onOrderCancelled, onOrderNeedsPaymentAfterEdit } = options ?? {};
   const queryClient = useQueryClient();
   const [authModal, setAuthModal] = useState<{ isOpen: boolean; orderNo: string | null }>({
     isOpen: false,
@@ -113,6 +155,7 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
       discount: order.discount,
       orderDiscount: order.orderDiscount ?? 0,
       balanceDue: order.balanceDue,
+      requiresAdditionalPayment: order.requiresAdditionalPayment,
       totalRefunded: order.totalRefunded,
       outstandingRefund: order.outstandingRefund,
       totalPaidForOrder: order.totalPaidForOrder,
@@ -194,10 +237,8 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
         const refundAmount = originalTotal - newTotal;
         const additionalDue = newTotal - originalTotal;
 
-        const paySt = String(editOrderModal.paymentStatus).toLowerCase();
-        const notifyBalanceAfterEdit =
-          additionalDue > MONEY_EPS &&
-          (paySt === "paid" || paySt === "partial_refund" || paySt === "pending");
+        const shouldRecordRefund =
+          refundAmount > MONEY_EPS && additionalDue <= MONEY_EPS;
 
         updateOrderMutation.mutate(
           {
@@ -215,9 +256,9 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
             },
           },
           {
-            onSuccess: async () => {
+            onSuccess: async (updatedOrder: Order) => {
               try {
-                if (refundAmount > MONEY_EPS) {
+                if (shouldRecordRefund) {
                   const orderId = Number(editOrderModal.id);
                   const rawRows = await queryClient.fetchQuery({
                     queryKey: PAYMENT_KEYS.byOrder(orderId),
@@ -245,7 +286,9 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
                         oid,
                         fromApi.orderPaymentStatus,
                         fromApi.balanceDue,
-                        fromApi.totalRefunded
+                        fromApi.totalRefunded,
+                        fromApi.requiresAdditionalPayment,
+                        readOrderSnapshotFromPaymentResponse(refundResponse)
                       );
                     }
                     toast.success(
@@ -259,10 +302,30 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
                     );
                   }
                 }
-                if (notifyBalanceAfterEdit) {
-                  toast.success(
-                    "Order updated. Use Pay to collect the balance due when the customer is ready."
+                if (additionalDue > MONEY_EPS) {
+                  const collect = await resolveCollectAmountAfterPut(
+                    updatedOrder,
+                    additionalDue,
+                    String(editOrderModal.id)
                   );
+                  if (collect > MONEY_EPS) {
+                    onOrderNeedsPaymentAfterEdit?.({
+                      orderId: String(editOrderModal.id),
+                      orderNo: editOrderModal.orderNo,
+                      customerName: editOrderModal.customerName,
+                      phone: editOrderModal.phone,
+                      amount: collect,
+                    });
+                    if (!onOrderNeedsPaymentAfterEdit) {
+                      toast.success(
+                        "Order updated. Use Pay to collect the balance due when the customer is ready."
+                      );
+                    }
+                  } else {
+                    toast.message(
+                      "Order saved. If a balance is still due, use Pay on the orders list after refresh."
+                    );
+                  }
                 }
               } catch (err: unknown) {
                 toast.error(axiosErrorMessage(err));
@@ -270,11 +333,91 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
                 setEditOrderModal(null);
               }
             },
+            onError: (err: unknown) => {
+              toast.error(axiosErrorMessage(err));
+            },
           }
         );
       }
     },
-    [editOrderModal, updateOrderMutation, updatePaymentStatusMutation, queryClient]
+    [
+      editOrderModal,
+      updateOrderMutation,
+      updatePaymentStatusMutation,
+      queryClient,
+      onOrderNeedsPaymentAfterEdit,
+    ]
+  );
+
+  /**
+   * Save edited lines first, then caller opens payment for **additionalDue only** (new total − previous).
+   * Avoids POSTing the full order total on an already-paid order (backend "over-cover" error).
+   */
+  const handleEditOrderAndPay = useCallback(
+    async (data: { items: EditOrderLineItem[] }): Promise<number | null> => {
+      if (!editOrderModal) return null;
+
+      const computed = totalsFromOrderLineItems(
+        data.items.map((it) => ({
+          name: it.name,
+          qty: it.qty,
+          price: it.price,
+          productDiscount: it.productDiscount,
+          modifications: it.modifications?.map((m) => ({ price: m.price })),
+        })),
+        editOrderModal.orderDiscount ?? 0
+      );
+      const newTotal = computed?.totalAmount ?? 0;
+      const originalTotal = editOrderModal.totalAmount;
+      const additionalDue = newTotal - originalTotal;
+
+      if (additionalDue <= MONEY_EPS) {
+        toast.error("No additional payment is due for this basket.");
+        return null;
+      }
+
+      const order_products = data.items.map((item) => ({
+        productId: Number(item.productId || item.id),
+        variationId: item.variationId ? Number(item.variationId) : undefined,
+        quantity: item.qty,
+        unitPrice: item.price,
+        productDiscount: item.productDiscount ?? 0,
+        modifications: item.modifications,
+      }));
+
+      let updated: Order;
+      try {
+        updated = await updateOrderMutation.mutateAsync({
+          id: editOrderModal.id,
+          data: {
+            order_products,
+          },
+        });
+      } catch (err: unknown) {
+        toast.error(axiosErrorMessage(err));
+        throw err;
+      }
+
+      const collectAmount = await resolveCollectAmountAfterPut(
+        updated,
+        additionalDue,
+        String(editOrderModal.id)
+      );
+      const serverBalance = readBalanceDueFromOrderPayload(
+        updated as unknown as Record<string, unknown>
+      );
+      const amountDiffers =
+        serverBalance != null &&
+        serverBalance > MONEY_EPS &&
+        Math.abs(serverBalance - additionalDue) > MONEY_EPS;
+      toast.success(
+        amountDiffers
+          ? `Order updated. Pay Rs.${collectAmount.toFixed(2)} (invoice amount) to finish.`
+          : "Order updated. Complete payment for the additional amount."
+      );
+      return collectAmount;
+    },
+    [editOrderModal, updateOrderMutation]
   );
 
   const closeEditModal = useCallback(() => setEditOrderModal(null), []);
@@ -347,6 +490,7 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
     handleViewOrder,
     handleEditClick,
     handleEditOrderSubmit,
+    handleEditOrderAndPay,
     handleEditOrderInfoSubmit,
     closeEditModal,
     closeEditInfoModal,

@@ -107,13 +107,7 @@ export const useUpdateOrder = () => {
       }
     },
     onSettled: (data, error, { id }) => {
-      if (
-        !error &&
-        data != null &&
-        typeof data === "object" &&
-        "paymentStatus" in data &&
-        "id" in data
-      ) {
+      if (!error && data != null && typeof data === "object" && "id" in data) {
         const updated = data as Order;
         queryClient.setQueryData<Order[]>(ORDER_KEYS.lists(), (old) =>
           old?.map((order) =>
