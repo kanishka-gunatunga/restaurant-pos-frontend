@@ -1,13 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as orderService from "@/services/orderService";
-import { 
-  Order, 
-  CreateOrderData, 
-  UpdateOrderData, 
-  OrderSearchParams, 
+import {
+  Order,
+  CreateOrderData,
+  UpdateOrderData,
+  OrderSearchParams,
   OrderFilterParams,
-  OrderStatus 
+  OrderStatus
 } from "@/types/order";
+import { DASHBOARD_KEYS } from "./useDashboard";
+import { KitchenDashboardData } from "@/services/dashboardService";
 
 export const ORDER_KEYS = {
   all: ["orders"] as const,
@@ -131,16 +133,66 @@ export const useUpdateOrder = () => {
 export const useUpdateOrderStatus = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ 
-      id, 
-      data 
-    }: { 
-      id: string | number; 
-      data: { status: OrderStatus; rejectReason?: string; passcode?: string } 
+    mutationFn: ({
+      id,
+      data
+    }: {
+      id: string | number;
+      data: { status: OrderStatus; rejectReason?: string; passcode?: string }
     }) => orderService.updateOrderStatus(id, data),
-    onSuccess: (data, { id }) => {
+    onMutate: async ({ id, data }) => {
+
+      await queryClient.cancelQueries({ queryKey: ORDER_KEYS.lists() });
+      await queryClient.cancelQueries({ queryKey: DASHBOARD_KEYS.kitchen() });
+
+      const previousOrders = queryClient.getQueryData(ORDER_KEYS.lists());
+      const previousKitchenData = queryClient.getQueryData<KitchenDashboardData>(DASHBOARD_KEYS.kitchen());
+
+      if (previousOrders) {
+        queryClient.setQueryData(ORDER_KEYS.lists(), (old: any) =>
+          old?.map((order: any) =>
+            String(order.id) === String(id) ? { ...order, status: data.status } : order
+          )
+        );
+      }
+
+      if (previousKitchenData) {
+        queryClient.setQueryData<KitchenDashboardData>(DASHBOARD_KEYS.kitchen(), (old) => {
+          if (!old) return old;
+
+          const newOrders = old.orders.map((order) => {
+            if (String(order.id) === String(id)) {
+              return { ...order, status: data.status.toLowerCase() };
+            }
+            return order;
+          });
+
+          const metrics = {
+            allOrdersCount: newOrders.length,
+            pendingOrdersCount: newOrders.filter(o => o.status === "pending").length,
+            preparingOrdersCount: newOrders.filter(o => o.status === "preparing").length,
+            readyOrdersCount: newOrders.filter(o => o.status === "ready").length,
+            holdOrdersCount: newOrders.filter(o => o.status === "hold").length,
+          };
+
+          return { ...old, orders: newOrders, metrics };
+        });
+      }
+
+      return { previousOrders, previousKitchenData };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousOrders) {
+        queryClient.setQueryData(ORDER_KEYS.lists(), context.previousOrders);
+      }
+      if (context?.previousKitchenData) {
+        queryClient.setQueryData(DASHBOARD_KEYS.kitchen(), context.previousKitchenData);
+      }
+    },
+    onSettled: (data, error, { id }) => {
       queryClient.invalidateQueries({ queryKey: ORDER_KEYS.lists() });
       queryClient.invalidateQueries({ queryKey: ORDER_KEYS.detail(id) });
+      queryClient.invalidateQueries({ queryKey: DASHBOARD_KEYS.kitchen() });
     },
   });
 };
@@ -148,15 +200,46 @@ export const useUpdateOrderStatus = () => {
 export const useUpdateOrderItemStatus = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ 
-      itemId, 
-      status 
-    }: { 
-      itemId: string | number; 
-      status: "pending" | "complete" 
+    mutationFn: ({
+      itemId,
+      status
+    }: {
+      itemId: string | number;
+      status: "pending" | "complete"
     }) => orderService.updateOrderItemStatus(itemId, status as any),
-    onSuccess: (data) => {
+    onMutate: async ({ itemId, status }) => {
+      await queryClient.cancelQueries({ queryKey: DASHBOARD_KEYS.kitchen() });
+
+      const previousKitchenData = queryClient.getQueryData<KitchenDashboardData>(DASHBOARD_KEYS.kitchen());
+
+      if (previousKitchenData) {
+        queryClient.setQueryData<KitchenDashboardData>(DASHBOARD_KEYS.kitchen(), (old) => {
+          if (!old) return old;
+
+          const newOrders = old.orders.map((order) => {
+            const itemIndex = order.items.findIndex(i => String(i.id) === String(itemId));
+            if (itemIndex !== -1) {
+              const newItems = [...order.items];
+              newItems[itemIndex] = { ...newItems[itemIndex], status: status as any };
+              return { ...order, items: newItems };
+            }
+            return order;
+          });
+
+          return { ...old, orders: newOrders };
+        });
+      }
+
+      return { previousKitchenData };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousKitchenData) {
+        queryClient.setQueryData(DASHBOARD_KEYS.kitchen(), context.previousKitchenData);
+      }
+    },
+    onSettled: (data) => {
       queryClient.invalidateQueries({ queryKey: ORDER_KEYS.all });
+      queryClient.invalidateQueries({ queryKey: DASHBOARD_KEYS.kitchen() });
     },
   });
 };

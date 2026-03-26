@@ -21,7 +21,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { useGetOrdersExcludeStatus, useUpdateOrderItemStatus, useUpdateOrderStatus, ORDER_KEYS } from "@/hooks/useOrder";
+import { useUpdateOrderItemStatus, useUpdateOrderStatus, ORDER_KEYS } from "@/hooks/useOrder";
+import { useGetKitchenDashboard, DASHBOARD_KEYS } from "@/hooks/useDashboard";
 import Pusher from "pusher-js";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -96,7 +97,7 @@ const mapBackendOrderToOrder = (backendOrder: any): Order => {
     status: mappedStatus,
     time: createdAt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
     minutesAgo: minutesAgo,
-    customerName: backendOrder.customer?.name || "Walk-in Customer",
+    customerName: backendOrder.customerName || backendOrder.customer?.name || "Walk-in Customer",
     type: type,
     table:
       backendOrder.tableNumber ||
@@ -104,30 +105,22 @@ const mapBackendOrderToOrder = (backendOrder: any): Order => {
         ? `Table ${backendOrder.tableNumber || backendOrder.tableId}`
         : undefined),
     items: (backendOrder.items || []).map((item: any) => {
-      const addonMap: Record<string, { id: string; quantity: number }> = {};
-      (item.modifications || []).forEach((mod: any) => {
-        const title = mod.modification?.title;
-        const modId = mod.modification?.id?.toString() || mod.id?.toString();
-        if (title) {
-          if (addonMap[title]) {
-            addonMap[title].quantity += 1;
-          } else {
-            addonMap[title] = { id: modId, quantity: 1 };
-          }
+      const addons: Addon[] = (item.modifications || []).map((mod: any, index: number) => {
+        if (typeof mod === "string") {
+          return { id: `mod-${index}`, name: mod, quantity: 1 };
         }
+        return {
+          id: mod.modification?.id?.toString() || mod.id?.toString(),
+          name: mod.modification?.title || mod.name || "Unknown Modification",
+          quantity: 1,
+        };
       });
-
-      const addons: Addon[] = Object.entries(addonMap).map(([name, data]) => ({
-        id: data.id,
-        name,
-        quantity: data.quantity,
-      }));
 
       return {
         id: item.id?.toString() || Math.random().toString(),
         quantity: item.quantity || 1,
-        name: item.product?.name || item.name || "Unknown Item",
-        size: item.variation?.name || item.size,
+        name: item.productName || item.product?.name || item.name || "Unknown Item",
+        size: item.variationName || item.variation?.name || item.size,
         addons: addons.length > 0 ? addons : undefined,
         completed: item.status === "complete" || false,
       };
@@ -139,7 +132,7 @@ const mapBackendOrderToOrder = (backendOrder: any): Order => {
 };
 
 export default function KitchenPage() {
-  const { data: backendOrders, isLoading: isQueryLoading } = useGetOrdersExcludeStatus("cancel");
+  const { data: dashboardData, isLoading: isQueryLoading } = useGetKitchenDashboard();
   const updateItemStatus = useUpdateOrderItemStatus();
   const updateOrderStatus = useUpdateOrderStatus();
   const { logout } = useAuth();
@@ -153,22 +146,22 @@ export default function KitchenPage() {
   );
 
   const orders = useMemo(() => {
-    if (!backendOrders || !Array.isArray(backendOrders)) {
+    if (!dashboardData?.orders || !Array.isArray(dashboardData.orders)) {
       return [];
     }
 
-    return backendOrders
+    return dashboardData.orders
       .filter((o: any) => {
         const status = (o.status || "").toLowerCase();
         return status !== "complete" && status !== "completed" && status !== "delivered" && status !== "cancel";
       })
       .map(mapBackendOrderToOrder)
-      .sort((a, b) => {
+      .sort((a: Order, b: Order) => {
         if (a.status === "Ready" && b.status !== "Ready") return 1;
         if (a.status !== "Ready" && b.status === "Ready") return -1;
         return b.minutesAgo - a.minutesAgo;
       });
-  }, [backendOrders]);
+  }, [dashboardData]);
 
   const isLoading = isQueryLoading;
 
@@ -194,6 +187,7 @@ export default function KitchenPage() {
 
     channel.bind("new-order", () => {
       queryClient.invalidateQueries({ queryKey: ORDER_KEYS.all });
+      queryClient.invalidateQueries({ queryKey: DASHBOARD_KEYS.kitchen() });
     });
 
     return () => {
@@ -203,15 +197,15 @@ export default function KitchenPage() {
   }, [queryClient]);
 
   const counts = {
-    "All Orders": orders.length,
-    Pending: orders.filter((o) => o.status === "Pending").length,
-    Preparing: orders.filter((o) => o.status === "Preparing").length,
-    Ready: orders.filter((o) => o.status === "Ready").length,
-    Hold: orders.filter((o) => o.status === "Hold").length,
+    "All Orders": dashboardData?.metrics?.allOrdersCount || 0,
+    Pending: dashboardData?.metrics?.pendingOrdersCount || 0,
+    Preparing: dashboardData?.metrics?.preparingOrdersCount || 0,
+    Ready: dashboardData?.metrics?.readyOrdersCount || 0,
+    Hold: dashboardData?.metrics?.holdOrdersCount || 0,
   };
 
   const filteredOrders =
-    filter === "All Orders" ? orders : orders.filter((o) => o.status === filter);
+    filter === "All Orders" ? orders : orders.filter((o: Order) => o.status === filter);
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
@@ -230,14 +224,19 @@ export default function KitchenPage() {
 
     const newStatus = item.completed ? "pending" : "complete";
 
-    updateItemStatus.mutate({ itemId, status: newStatus as any });
+    toast.success(`${item.name} marked as ${newStatus}`);
+    updateItemStatus.mutate({ itemId, status: newStatus as any }, {
+      onError: (err: any) => {
+        toast.error(err?.response?.data?.message || `Failed to update ${item.name}`);
+      }
+    });
   };
 
   const handleUpdateStatus = (id: string | number, status: string) => {
     if (status === "cancel") {
-      const order = orders.find((o) => o.id === String(id));
+      const order = orders.find((o: Order) => o.id === String(id));
       if (order) {
-        const hasStarted = order.items.some((i) => i.completed);
+        const hasStarted = order.items.some((i: OrderItem) => i.completed);
         if (hasStarted) {
           alert("Cannot cancel an order that has already been started.");
           return;
@@ -247,17 +246,13 @@ export default function KitchenPage() {
       }
       return;
     }
-    updateOrderStatus.mutate(
-      { id, data: { status: status as any } },
-      {
-        onSuccess: () => {
-          toast.success(`Order ${status === "complete" ? "served" : status} successfully`);
-        },
-        onError: (err: any) => {
-          toast.error(err?.response?.data?.message || "Failed to update order status");
-        },
+    const statusText = status === "complete" ? "served" : status;
+    toast.success(`Order ${statusText} successfully`);
+    updateOrderStatus.mutate({ id, data: { status: status as any } }, {
+      onError: (err: any) => {
+        toast.error(err?.response?.data?.message || `Failed to update order to ${statusText}`);
       }
-    );
+    });
   };
 
   const handleVerifyCancel = async (passcode: string) => {
@@ -367,7 +362,7 @@ export default function KitchenPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
-            {filteredOrders.map((order) => (
+            {filteredOrders.map((order: Order) => (
               <OrderCard
                 key={order.id}
                 order={order}

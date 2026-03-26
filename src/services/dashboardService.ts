@@ -112,3 +112,38 @@ export const getCashierDashboardStats = async (): Promise<CashierDashboardData> 
   const res = await axiosInstance.get("/dashboard/cashier");
   return res.data;
 };
+
+export interface KitchenDashboardOrder {
+  id: number;
+  status: string;
+  orderType: string;
+  tableNumber: string | null;
+  createdAt: string;
+  customerName: string;
+  kitchenNote: string | null;
+  orderNote: string | null;
+  items: {
+    id: number;
+    status: string;
+    quantity: number;
+    productName: string;
+    variationName: string | null;
+    modifications: string[];
+  }[];
+}
+
+export interface KitchenDashboardData {
+  metrics: {
+    allOrdersCount: number;
+    pendingOrdersCount: number;
+    preparingOrdersCount: number;
+    readyOrdersCount: number;
+    holdOrdersCount: number;
+  };
+  orders: KitchenDashboardOrder[];
+}
+
+export const getKitchenDashboardStats = async (): Promise<KitchenDashboardData> => {
+  const res = await axiosInstance.get("/dashboard/kitchen");
+  return res.data;
+};
