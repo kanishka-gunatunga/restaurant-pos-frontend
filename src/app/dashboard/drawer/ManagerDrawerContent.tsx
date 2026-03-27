@@ -305,23 +305,20 @@ export default function ManagerDrawerContent() {
     ? [activeSessionCard, ...closedTodaySessions]
     : todaysSessions;
 
-  // Summary cards: today's closed sessions + live active session (totals were 0 while only an open session existed)
-  const activeSummary =
-    hasActiveSession && activeSessionDetail
-      ? {
-          expectedBalance: activeSessionDetail.currentBalance,
-          cashSales: activeSessionDetail.cashSalesAmount,
-          cashOuts: activeSessionDetail.cashOutsAmount,
-        }
-      : { expectedBalance: 0, cashSales: 0, cashOuts: 0 };
-  const totalExpectedBalance =
-    todaysSessions.reduce((sum, s) => sum + (s.actualBalance ?? 0), 0) + activeSummary.expectedBalance;
-  const totalCashSales =
-    todaysSessions.reduce((sum, s) => sum + (Number.isFinite(s.cashSales) ? s.cashSales : 0), 0) +
-    activeSummary.cashSales;
-  const totalCashOuts =
-    todaysSessions.reduce((sum, s) => sum + (Number.isFinite(s.cashOuts) ? s.cashOuts : 0), 0) +
-    activeSummary.cashOuts;
+  const totalExpectedBalance = sessionsToDisplay.reduce((sum, s) => {
+    if (s.isActive) {
+      return sum + (Number.isFinite(s.expectedBalance) ? s.expectedBalance : 0);
+    }
+    return sum + (s.actualBalance ?? 0);
+  }, 0);
+  const totalCashSales = sessionsToDisplay.reduce(
+    (sum, s) => sum + (Number.isFinite(s.cashSales) ? s.cashSales : 0),
+    0
+  );
+  const totalCashOuts = sessionsToDisplay.reduce(
+    (sum, s) => sum + (Number.isFinite(s.cashOuts) ? s.cashOuts : 0),
+    0
+  );
 
   const cashOutHistory = useMemo((): CashOutEntry[] => {
     return activeCashOutLedger.map((e) => ({

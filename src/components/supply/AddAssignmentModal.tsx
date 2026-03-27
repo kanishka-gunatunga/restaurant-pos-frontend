@@ -29,7 +29,14 @@ interface AddAssignmentModalProps {
   isSaving?: boolean;
 }
 
-type MaterialRow = { id: string; materialId: number; materialName: string; qtyValue: number; qtyUnit: string };
+type MaterialRow = {
+  id: string;
+  materialId: number;
+  stockId?: number;
+  materialName: string;
+  qtyValue: number;
+  qtyUnit: string;
+};
 
 function toDateInputFormat(dateStr: string | null | undefined): string {
   if (!dateStr) return "";
@@ -97,6 +104,7 @@ export default function AddAssignmentModal({
     return arr.map((m, i) => ({
       id: `m-${i}-${Date.now()}`,
       materialId: m.materialId,
+      stockId: m.stockId,
       materialName: m.materialName ?? "Material",
       qtyValue: m.qtyValue,
       qtyUnit: m.qtyUnit,
@@ -134,6 +142,7 @@ export default function AddAssignmentModal({
       {
         id: `m-${Date.now()}-${Math.random().toString(36).slice(2)}`,
         materialId: stock.materialId,
+        stockId: stock.id,
         materialName: stock.materialName,
         qtyValue: materialQty,
         qtyUnit: stock.quantityUnit,
@@ -156,8 +165,20 @@ export default function AddAssignmentModal({
       return;
     }
 
+    if (
+      !isEditing &&
+      materialsList.length > 0 &&
+      materialsList.some((m) => m.stockId == null || !Number.isFinite(m.stockId))
+    ) {
+      toast.error(
+        "Each material must be chosen from the stock list (a specific batch). Remove empty rows or pick stock again."
+      );
+      return;
+    }
+
     const materialsUsed: AssignmentMaterialUsed[] = materialsList.map((m) => ({
       materialId: m.materialId,
+      ...(m.stockId != null ? { stockId: m.stockId } : {}),
       qtyValue: m.qtyValue,
       qtyUnit: m.qtyUnit,
     }));

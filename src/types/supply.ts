@@ -144,9 +144,12 @@ export interface ImportStocksResponse {
 // --- Product Assignment ---
 export interface AssignmentMaterialUsed {
   materialId: number;
+  stockId?: number;
   materialName?: string;
   qtyValue: number;
   qtyUnit: string;
+  stockBatchNo?: string | null;
+  stockExpiryDate?: string | null;
 }
 
 export interface ProductAssignment {
@@ -179,6 +182,7 @@ export interface CreateAssignmentBody {
   quantityUnit?: string;
   materialsUsed?: Array<{
     materialId: number;
+    stockId?: number;
     materialName?: string;
     qtyValue: number;
     qtyUnit: string;
