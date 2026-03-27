@@ -680,7 +680,7 @@ export default function SupplyContent() {
                               {row.name}
                             </td>
                             <td className="px-4 py-3">
-                              <span className="inline-flex h-[22px] w-[93px] items-center justify-center gap-1 rounded-[8px] border border-[#0000001A] bg-[#F8FAFC] px-2 py-0.5 font-['Inter'] text-xs font-medium leading-4 text-[#0A0A0A]">
+                              <span className="inline-flex items-center justify-center gap-1 rounded-[8px] border border-[#0000001A] bg-[#F8FAFC] px-2 py-1 font-['Inter'] text-xs font-medium leading-4 text-[#0A0A0A]">
                                 {row.branch?.name ?? String(row.branchId)}
                               </span>
                             </td>
