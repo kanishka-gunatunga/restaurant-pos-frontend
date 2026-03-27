@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Restaurant POS",
+  title: "Ahas Gawwa POS",
   description: "Point of Sale system for restaurant operations",
   icons: {
     icon: "/favicon.svg",
