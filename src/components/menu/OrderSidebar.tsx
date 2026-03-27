@@ -1,7 +1,7 @@
 "use client";
 
 import { AxiosError } from "axios";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import MenuProductImage from "./MenuProductImage";
 import { toast } from "sonner";
 import { User, Phone, ChefHat, Trash2, X } from "lucide-react";
@@ -25,6 +25,7 @@ type PaymentFlowState = {
   customerName: string;
   total: number;
   orderId: number;
+  localOrderId?: string;
 };
 const PENDING_PAYMENT_STORAGE_KEY = "pos_pending_payment_flow";
 
@@ -43,6 +44,9 @@ function loadPendingPaymentFlow(): PaymentFlowState | null {
         customerName: parsed.customerName,
         total: parsed.total,
         orderId: parsed.orderId,
+        ...(typeof parsed.localOrderId === "string" && parsed.localOrderId
+          ? { localOrderId: parsed.localOrderId }
+          : {}),
       };
     }
   } catch {
@@ -134,6 +138,7 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
   const { mutateAsync: updateCustomer } = useUpdateCustomer();
 
   const {
+    orders,
     items,
     updateQty,
     removeItem,
@@ -145,6 +150,8 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
     setActiveKitchenNote,
     setActiveOrderNote,
     clearActiveOrder,
+    clearOrderById,
+    setCheckoutLockedOrderSlotId,
   } = useOrder();
 
   const [editOrderId, setEditOrderId] = useState<string | null>(null);
@@ -154,6 +161,11 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
     loadPendingPaymentFlow()
   );
   const [isOrderAndPaySubmitting, setIsOrderAndPaySubmitting] = useState(false);
+
+  useEffect(() => {
+    const p = loadPendingPaymentFlow();
+    if (p?.localOrderId) setCheckoutLockedOrderSlotId(p.localOrderId);
+  }, [setCheckoutLockedOrderSlotId]);
 
   const { data: discountsData } = useGetAllDiscounts({ status: "active" });
   const discounts = discountsData || [];
@@ -193,8 +205,15 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
   const tax = subtotal * TAX_RATE;
   const total = subtotal + tax;
 
-  const handleSubmitOrder = async (isPayNow = false) => {
-    if (!orderDetails || items.length === 0) return;
+  const handleSubmitOrder = async (
+    isPayNow = false
+  ): Promise<{ serverOrderId: number; localSlotId: string } | null> => {
+    if (!orderDetails || items.length === 0) return null;
+
+    const localSlotId = activeOrderId ?? orders[0]?.id;
+    if (!localSlotId) return null;
+
+    setCheckoutLockedOrderSlotId(localSlotId);
 
     const normalizedName = orderDetails.customerName.trim();
     const normalizedOriginalName = (orderDetails.originalCustomerName ?? "").trim();
@@ -212,6 +231,7 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
           data: { name: normalizedName },
         });
       } catch (err) {
+        setCheckoutLockedOrderSlotId(null);
         const message =
           err instanceof AxiosError
             ? (err.response?.data as { message?: string } | undefined)?.message
@@ -259,12 +279,16 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
 
     try {
       const result = await createOrder(payload);
+      const serverOrderId = Number(result.id);
       if (!isPayNow) {
-        clearActiveOrder();
+        clearOrderById(localSlotId);
         toast.success("Order submitted successfully");
+        setCheckoutLockedOrderSlotId(null);
+        return { serverOrderId, localSlotId };
       }
-      return result.id;
+      return { serverOrderId, localSlotId };
     } catch (err) {
+      setCheckoutLockedOrderSlotId(null);
       const message =
         err instanceof AxiosError
           ? (err.response?.data as { message?: string } | undefined)?.message
@@ -281,6 +305,9 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
 
     if (pendingPaymentOrder) {
       setPaymentFlow(pendingPaymentOrder);
+      if (pendingPaymentOrder.localOrderId) {
+        setCheckoutLockedOrderSlotId(pendingPaymentOrder.localOrderId);
+      }
       return;
     }
 
@@ -294,12 +321,13 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
     setIsOrderAndPaySubmitting(true);
 
     try {
-      const orderId = await handleSubmitOrder(true);
-      if (orderId) {
-        const nextPaymentFlow = {
+      const submitted = await handleSubmitOrder(true);
+      if (submitted) {
+        const nextPaymentFlow: PaymentFlowState = {
           customerName: paymentSnapshot.customerName,
           total: paymentSnapshot.total,
-          orderId: Number(orderId),
+          orderId: submitted.serverOrderId,
+          localOrderId: submitted.localSlotId,
         };
         setPendingPaymentOrder(nextPaymentFlow);
         savePendingPaymentFlow(nextPaymentFlow);
@@ -802,12 +830,18 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
           customerName={paymentFlow.customerName}
           total={paymentFlow.total}
           orderId={paymentFlow.orderId}
-          onClose={() => setPaymentFlow(null)}
+          onClose={() => {
+            setPaymentFlow(null);
+            setCheckoutLockedOrderSlotId(null);
+          }}
           onComplete={() => {
-            clearActiveOrder();
+            const slot = paymentFlow.localOrderId;
+            if (slot) clearOrderById(slot);
+            else clearActiveOrder();
             setPaymentFlow(null);
             setPendingPaymentOrder(null);
             savePendingPaymentFlow(null);
+            setCheckoutLockedOrderSlotId(null);
           }}
         />
       )}

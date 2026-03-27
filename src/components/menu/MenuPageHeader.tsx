@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Calendar, Clock, Layers, X } from "lucide-react";
 import NewOrderIcon from "@/components/icons/NewOrderIcon";
+import { toast } from "sonner";
 import { useOrder } from "@/contexts/OrderContext";
 
 function getFormattedDate() {
@@ -42,7 +43,10 @@ export default function MenuPageHeader() {
     closeOrder,
     canAddOrder,
     canCloseOrder,
+    checkoutLockedOrderSlotId,
   } = useOrder();
+
+  const checkoutLockActive = checkoutLockedOrderSlotId != null;
 
   const currentTime = useRealTimeClock();
 
@@ -86,7 +90,13 @@ export default function MenuPageHeader() {
             >
               <button
                 type="button"
-                onClick={() => setActiveOrderId(order.id)}
+                onClick={() => {
+                  if (checkoutLockActive && order.id !== checkoutLockedOrderSlotId) {
+                    toast.message("Finish or cancel checkout on the other order before switching tabs.");
+                    return;
+                  }
+                  setActiveOrderId(order.id);
+                }}
                 className="flex h-7 min-w-0 items-center gap-1.5"
               >
                 <Layers
@@ -107,6 +117,10 @@ export default function MenuPageHeader() {
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
+                    if (checkoutLockActive) {
+                      toast.message("Finish or cancel checkout before closing an order tab.");
+                      return;
+                    }
                     closeOrder(order.id);
                   }}
                   className="shrink-0 rounded-full p-0.5 text-zinc-400 transition-colors hover:bg-zinc-200 hover:text-zinc-700"
@@ -120,7 +134,13 @@ export default function MenuPageHeader() {
           {canAddOrder && (
             <button
               type="button"
-              onClick={addOrder}
+              onClick={() => {
+                if (checkoutLockActive) {
+                  toast.message("Finish or cancel checkout before starting another order tab.");
+                  return;
+                }
+                addOrder();
+              }}
               className="flex items-center gap-1.5 rounded-[14px] px-2.5 py-1 text-sm font-medium text-[#62748E] transition-colors hover:bg-white/50"
             >
               <NewOrderIcon className="h-[18px] w-[18px] shrink-0" />
