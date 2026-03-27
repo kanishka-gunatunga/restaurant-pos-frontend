@@ -210,6 +210,7 @@ export function useCreateAssignment() {
     mutationFn: (body: CreateAssignmentBody) => supplyService.createAssignment(body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: SUPPLY_KEYS.assignments.all });
+      queryClient.invalidateQueries({ queryKey: SUPPLY_KEYS.stocks.all });
     },
   });
 }
@@ -221,6 +222,7 @@ export function useUpdateAssignment() {
       supplyService.updateAssignment(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: SUPPLY_KEYS.assignments.all });
+      queryClient.invalidateQueries({ queryKey: SUPPLY_KEYS.stocks.all });
     },
   });
 }
@@ -231,6 +233,7 @@ export function useDeleteAssignment() {
     mutationFn: (id: number) => supplyService.deleteAssignment(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: SUPPLY_KEYS.assignments.all });
+      queryClient.invalidateQueries({ queryKey: SUPPLY_KEYS.stocks.all });
     },
   });
 }
