@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Wallet, ArrowUpCircle, Clock, Lock, Pencil, Loader2 } from "lucide-react";
 import * as sessionService from "@/services/sessionService";
 import { useDrawerSession } from "@/contexts/DrawerSessionContext";
+import { useAuth } from "@/contexts/AuthContext";
 import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
 import StartDrawerModal from "@/components/drawer/StartDrawerModal";
 import CreateDrawerSessionModal from "@/components/drawer/CreateDrawerSessionModal";
@@ -31,6 +32,7 @@ interface CashOutEntry {
 }
 
 export default function DrawerContent() {
+  const { user } = useAuth();
   const drawerSession = useDrawerSession();
   if (!drawerSession) throw new Error("DrawerContent must be used within DrawerSessionProvider");
 
@@ -52,6 +54,7 @@ export default function DrawerContent() {
   const [isCloseDrawerModalOpen, setIsCloseDrawerModalOpen] = useState(false);
   const [previousSessions, setPreviousSessions] = useState<PreviousSessionSummary[]>([]);
   const [activeSessionDetail, setActiveSessionDetail] = useState<sessionService.ActiveSessionDetail | null>(null);
+  const [cashOutLedger, setCashOutLedger] = useState<sessionService.CashOutLedgerRow[]>([]);
 
   useEffect(() => {
     sessionService
@@ -77,39 +80,54 @@ export default function DrawerContent() {
 
   useEffect(() => {
     if (!hasActiveSession) {
-      queueMicrotask(() => setActiveSessionDetail(null));
+      queueMicrotask(() => {
+        setActiveSessionDetail(null);
+        setCashOutLedger([]);
+      });
       return;
     }
 
     let cancelled = false;
+    const fallbackName = user?.name ?? "Current user";
 
     const fetchActive = async () => {
       try {
-        const detail = await sessionService.getActiveSessionDetail();
+        const session = await sessionService.getCurrentSession();
         if (!cancelled) {
-          setActiveSessionDetail(detail);
+          setActiveSessionDetail(sessionService.parseActiveSessionDetail(session));
+          setCashOutLedger(sessionService.extractCashOutLedgerFromSession(session, fallbackName));
         }
       } catch {
         if (!cancelled) {
           setActiveSessionDetail(null);
+          setCashOutLedger([]);
         }
       }
     };
 
-    fetchActive();
+    void fetchActive();
 
     const handleFocus = () => {
-      fetchActive().catch(() => {});
+      void fetchActive();
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") void fetchActive();
     };
 
     window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", onVisibility);
     return () => {
       cancelled = true;
       window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [hasActiveSession]);
+  }, [hasActiveSession, user?.name]);
 
-  const cashOutHistory: CashOutEntry[] = [];
+  const cashOutHistory: CashOutEntry[] = cashOutLedger.map((e) => ({
+    dateTime: e.dateTime,
+    by: e.by,
+    amount: e.amount,
+  }));
 
   const expectedBalance =
     activeSessionDetail?.currentBalance ?? sessionData?.initialAmount ?? 0;
@@ -140,12 +158,20 @@ export default function DrawerContent() {
   };
 
   const handleCashOut = async (amount: number, reason: string, passcode: string) => {
-    await sessionService.cashAction({ type: "remove", amount, description: reason, passcode });
+    const fallbackName = user?.name ?? "Current user";
+    const result = await sessionService.cashAction({ type: "remove", amount, description: reason, passcode });
+    if (result.session) {
+      setActiveSessionDetail(sessionService.parseActiveSessionDetail(result.session));
+      setCashOutLedger(sessionService.extractCashOutLedgerFromSession(result.session, fallbackName));
+      return;
+    }
     try {
-      const detail = await sessionService.getActiveSessionDetail();
-      setActiveSessionDetail(detail);
+      const session = await sessionService.getCurrentSession();
+      setActiveSessionDetail(sessionService.parseActiveSessionDetail(session));
+      setCashOutLedger(sessionService.extractCashOutLedgerFromSession(session, fallbackName));
     } catch {
       setActiveSessionDetail(null);
+      setCashOutLedger([]);
     }
   };
 
@@ -474,26 +500,32 @@ export default function DrawerContent() {
                     </h3>
                   </div>
                   <div className="space-y-3">
-                    {cashOutHistory.map((entry, i) => (
-                      <div
-                        key={i}
-                        className="flex h-[78px] w-full max-w-[399px] items-center justify-between rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] px-4"
-                      >
-                        <div>
-                          <p className="font-['Inter'] text-base font-bold leading-6 text-[#1D293D]">
-                            {entry.dateTime}
-                          </p>
-                          <p className="font-['Inter'] text-sm font-normal leading-5 text-[#62748E]">
-                            Cash Out by {entry.by}
-                          </p>
+                    {cashOutHistory.length === 0 ? (
+                      <p className="rounded-2xl border border-dashed border-[#E2E8F0] bg-[#F8FAFC] px-4 py-6 text-center font-['Inter'] text-sm text-[#62748E]">
+                        No cash outs in this session yet.
+                      </p>
+                    ) : (
+                      cashOutHistory.map((entry, i) => (
+                        <div
+                          key={`${entry.dateTime}-${entry.amount}-${i}`}
+                          className="flex min-h-[78px] w-full max-w-[399px] items-center justify-between gap-2 rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3"
+                        >
+                          <div className="min-w-0">
+                            <p className="font-['Inter'] text-base font-bold leading-6 text-[#1D293D]">
+                              {entry.dateTime}
+                            </p>
+                            <p className="font-['Inter'] text-sm font-normal leading-5 text-[#62748E]">
+                              Cash Out by {entry.by}
+                            </p>
+                          </div>
+                          <div className="scrollbar-subtle min-w-0 shrink-0 overflow-x-auto text-right">
+                            <p className="whitespace-nowrap font-['Inter'] text-[18px] font-bold leading-[28px] text-[#1D293D]">
+                              {formatRs(entry.amount)}
+                            </p>
+                          </div>
                         </div>
-                        <div className="scrollbar-subtle min-w-0 overflow-x-auto text-right">
-                          <p className="whitespace-nowrap font-['Inter'] text-[18px] font-bold leading-[28px] text-[#1D293D]">
-                            {formatRs(entry.amount)}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
                 </div>
               </div>
