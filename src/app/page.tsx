@@ -12,7 +12,7 @@ export default function LoginPage() {
           <LoginForm />
         </Suspense>
         <footer className="flex flex-col items-center gap-1 text-center font-[Arial] text-[10px] font-normal leading-[15px] tracking-[2px] uppercase text-[#FFFFFF66]">
-          <span>Powered by Kode tech (pvt) ltd</span>
+          <span>Powered by SLTMobitel</span>
           <span>• Secure Connection Enabled</span>
         </footer>
       </div>

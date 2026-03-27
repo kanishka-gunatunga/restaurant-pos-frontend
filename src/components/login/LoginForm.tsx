@@ -124,7 +124,7 @@ export default function LoginForm() {
       </div>
 
       <h1 className="text-center font-[Arial] text-[28px] font-black leading-[36px] tracking-[-0.75px] text-[#1D293D]">
-        Savory Delights Bistro
+        Ahas Gawwa POS
       </h1>
       <p className="mb-8 mt-4 font-[Arial] text-[10px] font-normal leading-[15px] tracking-[1px] uppercase text-[#62748E]">
         Login Here
@@ -193,7 +193,7 @@ export default function LoginForm() {
       </button>
 
       {/* Forgot credentials */}
-      <p className="mt-10 text-center font-[Arial] text-[12px] font-normal leading-[16px] text-[#90A1B9]">
+      {/* <p className="mt-10 text-center font-[Arial] text-[12px] font-normal leading-[16px] text-[#90A1B9]">
         Forgot your credentials?{" "}
         <a
           href="#"
@@ -201,7 +201,7 @@ export default function LoginForm() {
         >
           Contact Manager
         </a>
-      </p>
+      </p> */}
     </form>
   );
 }
