@@ -13,30 +13,6 @@ export interface CloseSessionPayload {
   actualBalance?: number;
 }
 
-/** Add or remove cash from the current drawer session. */
-export async function cashAction(payload: CashActionPayload): Promise<void> {
-  await axiosInstance.post("/sessions/cash-action", payload, {
-    skipAuthRedirectOn401: true,
-  });
-}
-
-export async function adjustInitialAmount(params: {
-  currentAmount: number;
-  newAmount: number;
-  reason: string;
-  passcode: string;
-}): Promise<void> {
-  const { currentAmount, newAmount, reason, passcode } = params;
-  const diff = newAmount - currentAmount;
-  if (Math.abs(diff) < 0.01) return;
-  const description = reason.trim() ? `Initial amount correction: ${reason.trim()}` : "Initial amount correction";
-  if (diff > 0) {
-    await cashAction({ type: "add", amount: diff, description, passcode });
-  } else {
-    await cashAction({ type: "remove", amount: Math.abs(diff), description, passcode });
-  }
-}
-
 export async function closeSession(payload: CloseSessionPayload): Promise<void> {
   const body: Record<string, unknown> = { passcode: payload.passcode };
   if (payload.actualBalance !== undefined) {
@@ -60,6 +36,46 @@ export interface CurrentSession {
   [key: string]: unknown;
 }
 
+export interface CashActionResponse {
+  session?: CurrentSession;
+  transaction?: unknown;
+}
+
+/** Add or remove cash from the current drawer session. */
+export async function cashAction(payload: CashActionPayload): Promise<CashActionResponse> {
+  const res = await axiosInstance.post<
+    CashActionResponse | { data?: CashActionResponse; session?: CurrentSession }
+  >("/sessions/cash-action", payload, {
+    skipAuthRedirectOn401: true,
+  });
+  let body: unknown = res.data;
+  if (body && typeof body === "object" && "data" in body && (body as { data?: unknown }).data != null) {
+    body = (body as { data: CashActionResponse }).data;
+  }
+  const b = body as CashActionResponse & { session?: CurrentSession };
+  return {
+    session: b?.session,
+    transaction: b?.transaction,
+  };
+}
+
+export async function adjustInitialAmount(params: {
+  currentAmount: number;
+  newAmount: number;
+  reason: string;
+  passcode: string;
+}): Promise<void> {
+  const { currentAmount, newAmount, reason, passcode } = params;
+  const diff = newAmount - currentAmount;
+  if (Math.abs(diff) < 0.01) return;
+  const description = reason.trim() ? `Initial amount correction: ${reason.trim()}` : "Initial amount correction";
+  if (diff > 0) {
+    await cashAction({ type: "add", amount: diff, description, passcode });
+  } else {
+    await cashAction({ type: "remove", amount: Math.abs(diff), description, passcode });
+  }
+}
+
 function parseBalance(value: unknown): number {
   if (typeof value === "number" && !Number.isNaN(value)) return value;
   if (typeof value === "string") {
@@ -71,7 +87,9 @@ function parseBalance(value: unknown): number {
 
 export async function getCurrentSession(): Promise<CurrentSession | null> {
   try {
-    const res = await axiosInstance.get<CurrentSession | { data?: CurrentSession; session?: CurrentSession }>("/sessions/active");
+    const res = await axiosInstance.get<CurrentSession | { data?: CurrentSession; session?: CurrentSession }>(
+      "/sessions/active"
+    );
     let data = res.data;
     if (data && typeof data === "object" && "data" in data && (data as { data?: unknown }).data != null) {
       data = (data as { data: CurrentSession }).data;
@@ -244,6 +262,7 @@ export function extractCashOutLedgerFromSession(
   const txList = raw.transactions ?? raw.Transactions;
   if (!Array.isArray(txList)) return [];
   const rows: CashOutLedgerRow[] = [];
+  const seen = new Set<string>();
   for (const t of txList) {
     if (!t || typeof t !== "object") continue;
     const row = t as Record<string, unknown>;
@@ -254,9 +273,18 @@ export function extractCashOutLedgerFromSession(
     const when = sortKey ? new Date(sortKey) : new Date();
     const datePart = when.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
     const timePart = when.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
+    const by = transactionActorName(row, fallbackCashierName);
+    const dedupeId = row.id ?? row.transactionId ?? row.uuid ?? row._id ?? row.ledgerEntryId;
+    const desc = String(row.description ?? row.reason ?? "").slice(0, 120);
+    const key =
+      dedupeId != null && String(dedupeId).trim() !== ""
+        ? `id:${String(dedupeId)}`
+        : `f:${sortKey}:${amount}:${by}:${desc}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
     rows.push({
       dateTime: `${datePart} • ${timePart}`,
-      by: transactionActorName(row, fallbackCashierName),
+      by,
       amount,
       sortKey: sortKey || when.getTime(),
     });

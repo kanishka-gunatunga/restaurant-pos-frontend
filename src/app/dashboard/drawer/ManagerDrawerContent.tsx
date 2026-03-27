@@ -164,6 +164,11 @@ export default function ManagerDrawerContent() {
     fetchSessionHistory();
   }, [fetchSessionHistory]);
 
+  const uniqueCashiers = useMemo(
+    () => [...new Set(historyRows.map((r) => r.cashier).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+    [historyRows]
+  );
+
   const fetchActiveSessionDetail = useCallback(async () => {
     try {
       const session = await sessionService.getCurrentSession();
@@ -210,11 +215,6 @@ export default function ManagerDrawerContent() {
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [hasActiveSession, fetchActiveSessionDetail, refreshSession]);
-
-  const uniqueCashiers = useMemo(
-    () => [...new Set(historyRows.map((r) => r.cashier).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
-    [historyRows]
-  );
 
   const filteredRows = historyRows.filter((row) => {
     const matchesSearch =
@@ -324,32 +324,12 @@ export default function ManagerDrawerContent() {
     activeSummary.cashOuts;
 
   const cashOutHistory = useMemo((): CashOutEntry[] => {
-    const todayOnly = new Date();
-    todayOnly.setHours(0, 0, 0, 0);
-    const fromClosed = filteredRows
-      .filter((row) => row.cashOuts > 0 && row.closedAtRaw)
-      .filter((row) => {
-        const d = new Date(row.closedAtRaw!);
-        d.setHours(0, 0, 0, 0);
-        return d.getTime() === todayOnly.getTime();
-      })
-      .map((row) => ({
-        dateTime: row.endTime ? `${row.date} • ${row.endTime}` : row.date,
-        by: row.cashier,
-        amount: row.cashOuts,
-        sortKey: new Date(row.closedAtRaw!).getTime(),
-      }));
-    const fromLive = activeCashOutLedger.map((e) => ({
+    return activeCashOutLedger.map((e) => ({
       dateTime: e.dateTime,
       by: e.by,
       amount: e.amount,
-      sortKey: e.sortKey,
     }));
-    return [...fromLive, ...fromClosed]
-      .sort((a, b) => b.sortKey - a.sortKey)
-      .slice(0, 5)
-      .map((row) => ({ dateTime: row.dateTime, by: row.by, amount: row.amount }));
-  }, [filteredRows, activeCashOutLedger]);
+  }, [activeCashOutLedger]);
 
   const [previousSessions, setPreviousSessions] = useState<{
     closedAt: string;
@@ -421,10 +401,16 @@ export default function ManagerDrawerContent() {
   };
 
   const handleCashOut = async (amount: number, reason: string, passcode: string) => {
-    // Cash out from drawer: backend models this as cash-action remove.
-    await sessionService.cashAction({ type: "remove", amount, description: reason, passcode });
-    // Refresh live session detail and history so summary cards/table reflect latest cash out
-    fetchActiveSessionDetail().catch(() => {});
+    const fallback = user?.name ?? "Current user";
+    const result = await sessionService.cashAction({ type: "remove", amount, description: reason, passcode });
+    if (result.session) {
+      setActiveSessionDetail(sessionService.parseActiveSessionDetail(result.session));
+      setActiveCashOutLedger(
+        sessionService.extractCashOutLedgerFromSession(result.session, fallback)
+      );
+    } else {
+      fetchActiveSessionDetail().catch(() => {});
+    }
     fetchSessionHistory().catch(() => {});
   };
 
@@ -979,7 +965,7 @@ export default function ManagerDrawerContent() {
                     Session Started
                   </span>
                   <span className="font-['Inter'] text-base font-bold leading-6 text-[#1D293D]">
-                    {sessionData?.startedAt ?? "—"}
+                    {sessionData?.startedAt ?? activeSessionDetail?.startedAt ?? "—"}
                   </span>
                 </div>
                 <div className="flex h-14 w-full max-w-[399px] items-center justify-between gap-2 rounded-2xl bg-[#F8FAFC] px-4">
@@ -989,7 +975,11 @@ export default function ManagerDrawerContent() {
                   <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5">
                     <div className="scrollbar-subtle overflow-x-auto text-right">
                       <span className="whitespace-nowrap font-['Inter'] text-base font-bold leading-6 text-[#1D293D]">
-                        {sessionData ? formatRs(sessionData.initialAmount) : "—"}
+                        {sessionData
+                          ? formatRs(sessionData.initialAmount)
+                          : activeSessionDetail
+                            ? formatRs(activeSessionDetail.initialAmount)
+                            : "—"}
                       </span>
                     </div>
                     <button
@@ -1178,33 +1168,68 @@ export default function ManagerDrawerContent() {
             <div className="flex flex-col gap-6 rounded-[24px] border border-[#E2E8F0] bg-white p-[25px] shadow-[0px_1px_2px_-1px_#0000001A,0px_1px_3px_0px_#0000001A]">
               <div className="flex items-center gap-2 font-['Inter']">
                 <div className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-[#F1F5F9]">
-                  <TrendingUp className="h-5 w-5 text-[#45556C]" />
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    aria-hidden
+                  >
+                    <g clipPath="url(#clip0_mgr_cashout_hist)">
+                      <path
+                        d="M18.3334 14.1663L11.25 7.08301L7.08335 11.2497L1.66669 5.83301"
+                        stroke="#45556C"
+                        strokeWidth="1.66667"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M13.3333 14.167H18.3333V9.16699"
+                        stroke="#45556C"
+                        strokeWidth="1.66667"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </g>
+                    <defs>
+                      <clipPath id="clip0_mgr_cashout_hist">
+                        <rect width="20" height="20" fill="white" />
+                      </clipPath>
+                    </defs>
+                  </svg>
                 </div>
                 <h3 className="font-['Inter'] text-[18px] font-bold leading-[28px] text-[#1D293D]">
                   Cash Out History
                 </h3>
               </div>
               <div className="space-y-3">
-                {cashOutHistory.map((entry, i) => (
-                  <div
-                    key={i}
-                    className="flex h-[78px] w-full max-w-[399px] items-center justify-between gap-2 rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] px-4"
-                  >
-                    <div>
-                      <p className="font-['Inter'] text-base font-bold leading-6 text-[#1D293D]">
-                        {entry.dateTime}
-                      </p>
-                      <p className="font-['Inter'] text-sm font-normal leading-5 text-[#62748E]">
-                        Cash Out by {entry.by}
-                      </p>
+                {cashOutHistory.length === 0 ? (
+                  <p className="rounded-2xl border border-dashed border-[#E2E8F0] bg-[#F8FAFC] px-4 py-6 text-center font-['Inter'] text-sm text-[#62748E]">
+                    No cash outs in this session yet.
+                  </p>
+                ) : (
+                  cashOutHistory.map((entry, i) => (
+                    <div
+                      key={`${entry.dateTime}-${entry.amount}-${i}`}
+                      className="flex min-h-[78px] w-full max-w-[399px] items-center justify-between gap-2 rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-['Inter'] text-base font-bold leading-6 text-[#1D293D]">
+                          {entry.dateTime}
+                        </p>
+                        <p className="font-['Inter'] text-sm font-normal leading-5 text-[#62748E]">
+                          Cash Out by {entry.by}
+                        </p>
+                      </div>
+                      <div className="scrollbar-subtle min-w-0 shrink-0 overflow-x-auto text-right">
+                        <p className="whitespace-nowrap font-['Inter'] text-[18px] font-bold leading-[28px] text-[#1D293D]">
+                          {formatRs(entry.amount)}
+                        </p>
+                      </div>
                     </div>
-                    <div className="scrollbar-subtle min-w-0 overflow-x-auto text-right">
-                      <p className="whitespace-nowrap font-['Inter'] text-[18px] font-bold leading-[28px] text-[#1D293D]">
-                        {formatRs(entry.amount)}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
           </div>
