@@ -53,7 +53,10 @@ type OrderContextType = {
   addOrder: () => void;
   closeOrder: (orderId: string) => void;
   clearActiveOrder: () => void;
+  clearOrderById: (orderId: string) => void;
   getActiveOrder: () => Order | null;
+  checkoutLockedOrderSlotId: string | null;
+  setCheckoutLockedOrderSlotId: (orderId: string | null) => void;
   items: OrderItem[];
   activeOrderDetails: OrderDetailsData | null;
   setActiveOrderDetails: (data: OrderDetailsData) => void;
@@ -355,10 +358,7 @@ export function OrderProvider({
     });
   }, []);
 
-  const clearActiveOrder = useCallback(() => {
-    const orderId = activeOrderId;
-    if (!orderId) return;
-
+  const clearOrderById = useCallback((orderId: string) => {
     setOrders((prev) => {
       const clearedOrder = prev.find((o) => o.id === orderId);
       if (!clearedOrder) return prev;
@@ -378,7 +378,13 @@ export function OrderProvider({
       saveOrdersToStorage(finalOrders);
       return finalOrders;
     });
-  }, [activeOrderId]);
+  }, []);
+
+  const clearActiveOrder = useCallback(() => {
+    const orderId = activeOrderId;
+    if (!orderId) return;
+    clearOrderById(orderId);
+  }, [activeOrderId, clearOrderById]);
 
   const addItem = useCallback(
     (
@@ -616,6 +622,8 @@ export function OrderProvider({
   const canAddOrder = orders.length < 2;
   const canCloseOrder = orders.length > 1;
 
+  const [checkoutLockedOrderSlotId, setCheckoutLockedOrderSlotId] = useState<string | null>(null);
+
   return (
     <OrderContext.Provider
       value={{
@@ -625,6 +633,9 @@ export function OrderProvider({
         addOrder,
         closeOrder,
         clearActiveOrder,
+        clearOrderById,
+        checkoutLockedOrderSlotId,
+        setCheckoutLockedOrderSlotId,
         getActiveOrder,
         items,
         activeOrderDetails,
