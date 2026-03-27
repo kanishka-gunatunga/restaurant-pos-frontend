@@ -93,9 +93,13 @@ export function reconcileBalanceDueWithPaymentRows(
     };
   }
 
+  const apiTotalRaw = Number(apiOrder.totalAmount);
+  const totalForShortfall =
+    Number.isFinite(apiTotalRaw) && apiTotalRaw > EPS ? apiTotalRaw : orderTotal;
+
   const netCollected = sumNetCollectedTowardOrder(pay);
   const pendingLines = sumPendingBalanceDueAmount(pay);
-  const shortfall = Math.max(0, orderTotal - netCollected);
+  const shortfall = Math.max(0, totalForShortfall - netCollected);
   const owedFromRows = Math.max(pendingLines, shortfall);
   const apiBal = apiBalanceDue ?? 0;
 
