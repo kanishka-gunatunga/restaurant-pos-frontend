@@ -1,5 +1,22 @@
-/** `ORDER_MONEY_TOLERANCE` (default 0.02). */
-const COLLECT_EPS = 0.02;
+
+export const ORDER_MONEY_EPS = 0.02;
+
+const COLLECT_EPS = ORDER_MONEY_EPS;
+
+export function resolvePaymentSettlementAmount(
+  order: Partial<{ totalAmount: unknown; balanceDue: unknown | null }> &
+    Record<string, unknown>
+): number {
+  const bdRaw = order.balanceDue ?? order.balance_due;
+  const bd = Number(bdRaw);
+  if (Number.isFinite(bd) && bd > COLLECT_EPS) return bd;
+
+  const taRaw = order.totalAmount ?? order.total_amount;
+  const ta = Number(taRaw);
+  if (Number.isFinite(ta) && ta >= 0) return ta;
+
+  return 0;
+}
 
 export function collectibleOrderAmount(order: {
   totalAmount: number;

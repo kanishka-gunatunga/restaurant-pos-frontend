@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { X, Wallet, CreditCard, Calculator, Loader2 } from "lucide-react";
 import { useCreatePayment } from "@/hooks/usePayment";
 import { toast } from "sonner";
+import { ORDER_MONEY_EPS } from "@/domains/orders/orderCollectionAmount";
 
 const formatRs = (n: number) =>
   `Rs.${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -12,7 +13,7 @@ type Step = "method" | "cash" | "success";
 
 type ProcessPaymentModalProps = {
   customerName: string;
-  total: number;
+  amountDue: number;
   orderId?: number;
   onClose: () => void;
   onComplete: () => void;
@@ -20,7 +21,7 @@ type ProcessPaymentModalProps = {
 
 export default function ProcessPaymentModal({
   customerName,
-  total,
+  amountDue,
   orderId,
   onClose,
   onComplete,
@@ -35,10 +36,11 @@ export default function ProcessPaymentModal({
   const isBusy = isSubmitting || isSavingPayment;
 
   const amountNum = parseFloat(amountGiven.replace(/[^0-9.]/g, "")) || 0;
-  const change = step === "cash" ? Math.max(0, amountNum - total) : changeReturned;
+  const change = step === "cash" ? Math.max(0, amountNum - amountDue) : changeReturned;
+  const cashCoversDue = amountNum + ORDER_MONEY_EPS >= amountDue;
 
   const handleCompletePayment = async (method: "cash" | "card") => {
-    if (method === "cash" && amountNum < total) return;
+    if (method === "cash" && !cashCoversDue) return;
     if (submitGuardRef.current || isSavingPayment) return;
 
     submitGuardRef.current = true;
@@ -49,7 +51,7 @@ export default function ProcessPaymentModal({
           await createPayment({
             orderId,
             paymentMethod: method,
-            amount: total,
+            amount: amountDue,
             status: "paid",
           });
         } catch (err: unknown) {
@@ -107,7 +109,7 @@ export default function ProcessPaymentModal({
             Process Payment
           </h2>
           <p className="mt-1 font-['Inter'] text-sm font-normal leading-5 text-[#62748E]">
-            {customerName} • Total: {formatRs(total)}
+            {customerName} • Amount due: {formatRs(amountDue)}
           </p>
         </div>
         <button
@@ -208,10 +210,10 @@ export default function ProcessPaymentModal({
           <>
             <div className="mt-4 flex w-full items-center justify-between rounded-[16px] border border-[#E2E8F0] bg-[#F8FAFC] px-6 py-4 sm:px-[25px]">
               <span className="font-['Inter'] text-sm font-bold uppercase leading-5 tracking-[0.7px] text-[#62748E]">
-                Order Total
+                Amount due
               </span>
               <span className="font-['Inter'] text-2xl font-bold leading-9 text-[#1D293D] sm:text-[30px] sm:leading-[36px]">
-                {formatRs(total)}
+                {formatRs(amountDue)}
               </span>
             </div>
             <div className="mt-4">
@@ -221,7 +223,7 @@ export default function ProcessPaymentModal({
                   <path d="M9 10.5C9.82843 10.5 10.5 9.82843 10.5 9C10.5 8.17157 9.82843 7.5 9 7.5C8.17157 7.5 7.5 8.17157 7.5 9C7.5 9.82843 8.17157 10.5 9 10.5Z" stroke="#009966" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   <path d="M4.5 9H4.5075M13.5 9H13.5075" stroke="#009966" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                Amount Given by Customer
+                Cash received
               </label>
               <input
                 type="text"
@@ -265,7 +267,7 @@ export default function ProcessPaymentModal({
               <button
                 type="button"
                 onClick={() => void handleCompletePayment("cash")}
-                disabled={amountNum < total || isBusy}
+                disabled={!cashCoversDue || isBusy}
                 className="flex flex-1 items-center justify-center gap-2 rounded-[16px] bg-[#00BC7D] py-3.5 font-['Inter'] text-base font-bold leading-6 text-white shadow-[0px_4px_6px_-4px_#0000001A,0px_10px_15px_-3px_#0000001A] transition-all duration-300 ease-out hover:bg-[#00A66D] disabled:pointer-events-none disabled:opacity-50 min-[400px]:min-h-[56px]"
               >
                 {isBusy ? (

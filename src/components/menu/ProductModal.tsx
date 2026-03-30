@@ -52,47 +52,42 @@ export default function ProductModal({
 }: ProductModalProps) {
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
     initialVariantId
-      ? (item.variants?.find(v => v.id === initialVariantId) ?? item.variants?.[0] ?? null)
+      ? (item.variants?.find((v) => v.id === initialVariantId) ?? item.variants?.[0] ?? null)
       : (item.variants?.[0] ?? null)
   );
-  const [selectedAddOns, setSelectedAddOns] = useState<
-    { addOn: ProductAddOn; qty: number }[]
-  >(() => {
-    if (initialAddOns && item.addOns) {
-      // Group by modificationId and count occurrences (or use the price if unique)
-      // Actually, myOrderItem modifications is a list of {modificationId, price}
-      // ProductModal selectedAddOns is {addOn, qty}
-      const mapped: { addOn: ProductAddOn; qty: number }[] = [];
-      initialAddOns.forEach(mod => {
-        const addOn = item.addOns?.find(a => Number(a.id) === mod.modificationId);
-        if (addOn) {
-          const existing = mapped.find(m => m.addOn.id === addOn.id);
-          if (existing) {
-            existing.qty += 1;
-          } else {
-            mapped.push({ addOn, qty: 1 });
+  const [selectedAddOns, setSelectedAddOns] = useState<{ addOn: ProductAddOn; qty: number }[]>(
+    () => {
+      if (initialAddOns && item.addOns) {
+        // Group by modificationId and count occurrences (or use the price if unique)
+        // Actually, myOrderItem modifications is a list of {modificationId, price}
+        // ProductModal selectedAddOns is {addOn, qty}
+        const mapped: { addOn: ProductAddOn; qty: number }[] = [];
+        initialAddOns.forEach((mod) => {
+          const addOn = item.addOns?.find((a) => Number(a.id) === mod.modificationId);
+          if (addOn) {
+            const existing = mapped.find((m) => m.addOn.id === addOn.id);
+            if (existing) {
+              existing.qty += 1;
+            } else {
+              mapped.push({ addOn, qty: 1 });
+            }
           }
-        }
-      });
-      return mapped;
+        });
+        return mapped;
+      }
+      return [];
     }
-    return [];
-  });
+  );
   const [qty, setQty] = useState(initialQty ?? 1);
   const [addOnSearch, setAddOnSearch] = useState("");
 
   const hasVariants = item.variants && item.variants.length > 0;
   const basePrice = selectedVariant?.price ?? item.price;
-  const addOnsTotal = selectedAddOns.reduce(
-    (sum, { addOn, qty: n }) => sum + addOn.price * n,
-    0
-  );
+  const addOnsTotal = selectedAddOns.reduce((sum, { addOn, qty: n }) => sum + addOn.price * n, 0);
   const totalPrice = (basePrice + addOnsTotal) * qty;
 
   const filteredAddOns =
-    item.addOns?.filter((a) =>
-      a.name.toLowerCase().includes(addOnSearch.toLowerCase())
-    ) ?? [];
+    item.addOns?.filter((a) => a.name.toLowerCase().includes(addOnSearch.toLowerCase())) ?? [];
 
   const toggleAddOn = (addOn: ProductAddOn) => {
     setSelectedAddOns((prev) => {
@@ -107,11 +102,7 @@ export default function ProductModal({
   const updateAddOnQty = (addOnId: string, delta: number) => {
     setSelectedAddOns((prev) =>
       prev
-        .map((p) =>
-          p.addOn.id === addOnId
-            ? { ...p, qty: Math.max(0, p.qty + delta) }
-            : p
-        )
+        .map((p) => (p.addOn.id === addOnId ? { ...p, qty: Math.max(0, p.qty + delta) } : p))
         .filter((p) => p.qty > 0)
     );
   };
@@ -216,9 +207,7 @@ export default function ProductModal({
             </div>
           </div>
 
-          <div
-            className="min-h-0 w-full max-h-[calc(90dvh-12rem)] overflow-y-auto bg-[#F8FAFC] p-5 [scrollbar-width:thin] [scrollbar-color:#CBD5E1_#F1F5F9] md:max-h-[90dvh] md:w-1/2 md:flex-1 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#F1F5F9] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#CBD5E1] hover:[&::-webkit-scrollbar-thumb]:bg-[#94A3B8]"
-          >
+          <div className="min-h-0 w-full max-h-[calc(90dvh-12rem)] overflow-y-auto bg-[#F8FAFC] p-5 [scrollbar-width:thin] [scrollbar-color:#CBD5E1_#F1F5F9] md:max-h-[90dvh] md:w-1/2 md:flex-1 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#F1F5F9] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#CBD5E1] hover:[&::-webkit-scrollbar-thumb]:bg-[#94A3B8]">
             {hasVariants && (
               <div>
                 <p className="mb-2 font-['Arial'] text-[10px] font-black uppercase leading-[15px] tracking-[1px] text-[#90A1B9]">
@@ -230,14 +219,16 @@ export default function ProductModal({
                       key={v.id}
                       type="button"
                       onClick={() => setSelectedVariant(v)}
-                      className={`rounded-[14px] px-3 py-2 text-left transition-colors ${selectedVariant?.name === v.name
-                        ? "border-2 border-primary bg-primary-muted"
-                        : "border border-[#E2E8F0] bg-white text-zinc-700 hover:bg-zinc-50"
-                        }`}
+                      className={`rounded-[14px] px-3 py-2 text-left transition-colors ${
+                        selectedVariant?.name === v.name
+                          ? "border-2 border-primary bg-primary-muted"
+                          : "border border-[#E2E8F0] bg-white text-zinc-700 hover:bg-zinc-50"
+                      }`}
                     >
                       <span
-                        className={`block text-sm font-semibold ${selectedVariant?.name === v.name ? "text-primary" : ""
-                          }`}
+                        className={`block text-sm font-semibold ${
+                          selectedVariant?.name === v.name ? "text-primary" : ""
+                        }`}
                       >
                         {v.name}
                       </span>
@@ -281,16 +272,13 @@ export default function ProductModal({
                 </div>
                 <div className="space-y-1.5">
                   {filteredAddOns.map((addOn) => {
-                    const selected = selectedAddOns.find(
-                      (p) => p.addOn.id === addOn.id
-                    );
+                    const selected = selectedAddOns.find((p) => p.addOn.id === addOn.id);
                     return (
                       <div
                         key={addOn.id}
-                        className={`flex items-center justify-between gap-2 rounded-md border p-2.5 ${selected
-                          ? "border-primary bg-primary-muted"
-                          : "border-[#E2E8F0] bg-white"
-                          }`}
+                        className={`flex items-center justify-between gap-2 rounded-md border p-2.5 ${
+                          selected ? "border-primary bg-primary-muted" : "border-[#E2E8F0] bg-white"
+                        }`}
                       >
                         <button
                           type="button"
@@ -298,8 +286,9 @@ export default function ProductModal({
                           className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
                         >
                           <div
-                            className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${selected ? "border-primary bg-primary" : "border-zinc-300"
-                              }`}
+                            className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                              selected ? "border-primary bg-primary" : "border-zinc-300"
+                            }`}
                           >
                             {selected && (
                               <svg
@@ -316,11 +305,10 @@ export default function ProductModal({
                             )}
                           </div>
                           <div className="flex min-w-0 flex-col">
-                            <span className="text-sm font-medium text-zinc-800">
-                              {addOn.name}
-                            </span>
+                            <span className="text-sm font-medium text-zinc-800">{addOn.name}</span>
                             <span className="text-xs text-zinc-600">
-                              +{addOn.price.toLocaleString("en-US", { minimumFractionDigits: 2 })} LKR
+                              +{addOn.price.toLocaleString("en-US", { minimumFractionDigits: 2 })}{" "}
+                              LKR
                             </span>
                           </div>
                         </button>
@@ -387,12 +375,7 @@ export default function ProductModal({
               onClick={handleAction}
               className="mt-4 flex w-full items-center justify-center gap-2 rounded-[14px] bg-[#EA580C] py-3 font-['Arial'] text-sm font-bold leading-4 text-white shadow-[0px_4px_6px_-4px_#EA580C33,0px_10px_15px_-3px_#EA580C33] transition-all duration-300 ease-out hover:bg-[#DC4C04] active:scale-95"
             >
-              <svg
-                className="h-5 w-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"

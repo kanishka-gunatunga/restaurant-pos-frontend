@@ -16,14 +16,15 @@ import {
 import NewOrderDetailsModal from "./NewOrderDetailsModal";
 import ProcessPaymentModal from "./ProcessPaymentModal";
 import type { OrderDetailsData, OrderItem } from "@/contexts/OrderContext";
-import type { CreateOrderData } from "@/types/order";
+import type { CreateOrderData, Order } from "@/types/order";
+import { resolvePaymentSettlementAmount, ORDER_MONEY_EPS } from "@/domains/orders/orderCollectionAmount";
 
 const TAX_RATE = 0.1;
 
 type NoteModalType = "kitchen" | "order" | null;
 type PaymentFlowState = {
   customerName: string;
-  total: number;
+  settlementAmount: number;
   orderId: number;
   localOrderId?: string;
 };
@@ -34,15 +35,17 @@ function loadPendingPaymentFlow(): PaymentFlowState | null {
   try {
     const stored = sessionStorage.getItem(PENDING_PAYMENT_STORAGE_KEY);
     if (!stored) return null;
-    const parsed = JSON.parse(stored) as Partial<PaymentFlowState>;
-    if (
-      typeof parsed.customerName === "string" &&
-      typeof parsed.total === "number" &&
-      typeof parsed.orderId === "number"
-    ) {
+    const parsed = JSON.parse(stored) as Partial<PaymentFlowState> & { total?: number };
+    const settlement =
+      typeof parsed.settlementAmount === "number" && Number.isFinite(parsed.settlementAmount)
+        ? parsed.settlementAmount
+        : typeof parsed.total === "number" && Number.isFinite(parsed.total)
+          ? parsed.total
+          : null;
+    if (typeof parsed.customerName === "string" && settlement != null && typeof parsed.orderId === "number") {
       return {
         customerName: parsed.customerName,
-        total: parsed.total,
+        settlementAmount: settlement,
         orderId: parsed.orderId,
         ...(typeof parsed.localOrderId === "string" && parsed.localOrderId
           ? { localOrderId: parsed.localOrderId }
@@ -207,7 +210,7 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
 
   const handleSubmitOrder = async (
     isPayNow = false
-  ): Promise<{ serverOrderId: number; localSlotId: string } | null> => {
+  ): Promise<{ serverOrderId: number; localSlotId: string; order: Order } | null> => {
     if (!orderDetails || items.length === 0) return null;
 
     const localSlotId = activeOrderId ?? orders[0]?.id;
@@ -284,9 +287,9 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
         clearOrderById(localSlotId);
         toast.success("Order submitted successfully");
         setCheckoutLockedOrderSlotId(null);
-        return { serverOrderId, localSlotId };
+        return { serverOrderId, localSlotId, order: result };
       }
-      return { serverOrderId, localSlotId };
+      return { serverOrderId, localSlotId, order: result };
     } catch (err) {
       setCheckoutLockedOrderSlotId(null);
       const message =
@@ -313,19 +316,23 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
 
     if (isOrderAndPaySubmitting || !orderDetails || items.length === 0) return;
 
-    const paymentSnapshot = {
-      customerName: orderDetails.customerName,
-      total,
-    };
+    const paymentSnapshot = { customerName: orderDetails.customerName };
 
     setIsOrderAndPaySubmitting(true);
 
     try {
       const submitted = await handleSubmitOrder(true);
       if (submitted) {
+        const settlementAmount = resolvePaymentSettlementAmount(
+          submitted.order as Order & Record<string, unknown>
+        );
+        if (settlementAmount <= ORDER_MONEY_EPS) {
+          toast.error("Could not read amount due from server. Open Orders and use Pay, or try again.");
+          return;
+        }
         const nextPaymentFlow: PaymentFlowState = {
           customerName: paymentSnapshot.customerName,
-          total: paymentSnapshot.total,
+          settlementAmount,
           orderId: submitted.serverOrderId,
           localOrderId: submitted.localSlotId,
         };
@@ -828,7 +835,7 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
       {paymentFlow && (
         <ProcessPaymentModal
           customerName={paymentFlow.customerName}
-          total={paymentFlow.total}
+          amountDue={paymentFlow.settlementAmount}
           orderId={paymentFlow.orderId}
           onClose={() => {
             setPaymentFlow(null);
