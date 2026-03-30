@@ -6,57 +6,78 @@ import {
   UpdateOrderData,
   OrderSearchParams,
   OrderFilterParams,
-  OrderStatus
+  OrderStatus,
+  OrdersListQueryParams,
 } from "@/types/order";
+import { useAuth } from "@/contexts/AuthContext";
 import { DASHBOARD_KEYS } from "./useDashboard";
 import { KitchenDashboardData } from "@/services/dashboardService";
+
+function useOrdersQueryEnabled(requiresParams = false, paramsReady = true): boolean {
+  const { isReady, token } = useAuth();
+  return isReady && !!token && (!requiresParams || paramsReady);
+}
 
 export const ORDER_KEYS = {
   all: ["orders"] as const,
   lists: () => [...ORDER_KEYS.all, "list"] as const,
-  list: (params: OrderSearchParams | OrderFilterParams) => [...ORDER_KEYS.lists(), params] as const,
+  listAll: (p: OrdersListQueryParams) => [...ORDER_KEYS.lists(), "all", p] as const,
+  listSearch: (p: OrderSearchParams) => [...ORDER_KEYS.lists(), "search", p] as const,
+  listFilter: (p: OrderFilterParams) => [...ORDER_KEYS.lists(), "filter", p] as const,
+  listExclude: (status: string, p: OrdersListQueryParams) =>
+    [...ORDER_KEYS.lists(), "exclude", status, p] as const,
   details: () => [...ORDER_KEYS.all, "detail"] as const,
   detail: (id: string | number) => [...ORDER_KEYS.details(), id] as const,
 };
 
-
-export const useGetAllOrders = () => {
+export const useGetAllOrders = (
+  listQuery: OrdersListQueryParams,
+  scopeEnabled: boolean = true
+) => {
+  const enabled = useOrdersQueryEnabled() && scopeEnabled;
   return useQuery({
-    queryKey: ORDER_KEYS.lists(),
-    queryFn: orderService.getAllOrders,
-    // staleTime: 0.5 * 60 * 1000,
+    queryKey: ORDER_KEYS.listAll(listQuery),
+    queryFn: () => orderService.getAllOrders(listQuery),
+    enabled,
   });
 };
 
-export const useGetOrdersExcludeStatus = (status: string) => {
+export const useGetOrdersExcludeStatus = (status: string, listQuery?: OrdersListQueryParams) => {
+  const enabled = useOrdersQueryEnabled(true, !!status);
+  const q = listQuery ?? { page: 1, pageSize: 25, placedByMe: false };
   return useQuery({
-    queryKey: [...ORDER_KEYS.lists(), "exclude", status],
-    queryFn: () => orderService.getOrdersExcludeStatus(status),
-    // staleTime: 0.5 * 60 * 1000,
+    queryKey: ORDER_KEYS.listExclude(status, q),
+    queryFn: () => orderService.getOrdersExcludeStatus(status, q),
+    enabled,
   });
 };
 
 export const useSearchOrders = (params: OrderSearchParams) => {
+  const hasParams = !!(params.q || params.orderId || params.customerName || params.phone);
+  const enabled = useOrdersQueryEnabled(true, hasParams);
   return useQuery({
-    queryKey: ORDER_KEYS.list(params),
+    queryKey: ORDER_KEYS.listSearch(params),
     queryFn: () => orderService.searchOrders(params),
-    enabled: !!(params.q || params.orderId || params.customerName || params.phone),
+    enabled,
   });
 };
 
 export const useFilterOrders = (params: OrderFilterParams) => {
+  const hasParams = !!(params.status || params.paymentStatus);
+  const enabled = useOrdersQueryEnabled(true, hasParams);
   return useQuery({
-    queryKey: ORDER_KEYS.list(params),
+    queryKey: ORDER_KEYS.listFilter(params),
     queryFn: () => orderService.filterOrders(params),
-    enabled: !!(params.status || params.paymentStatus),
+    enabled,
   });
 };
 
 export const useGetOrderById = (id: string | number | undefined) => {
+  const enabled = useOrdersQueryEnabled(true, !!id);
   return useQuery({
     queryKey: ORDER_KEYS.detail(id!),
     queryFn: () => orderService.getOrderById(id!),
-    enabled: !!id,
+    enabled,
   });
 };
 
@@ -80,16 +101,7 @@ export const useUpdateOrder = () => {
       await queryClient.cancelQueries({ queryKey: ORDER_KEYS.lists() });
       await queryClient.cancelQueries({ queryKey: ORDER_KEYS.detail(id) });
 
-      const previousOrders = queryClient.getQueryData<Order[]>(ORDER_KEYS.lists());
       const previousOrder = queryClient.getQueryData<Order>(ORDER_KEYS.detail(id));
-
-      if (previousOrders) {
-        queryClient.setQueryData<Order[]>(ORDER_KEYS.lists(), (old) =>
-          old?.map((order) =>
-            String(order.id) === String(id) ? { ...order, ...data } : order
-          )
-        );
-      }
 
       if (previousOrder) {
         queryClient.setQueryData<Order>(ORDER_KEYS.detail(id), {
@@ -98,12 +110,9 @@ export const useUpdateOrder = () => {
         });
       }
 
-      return { previousOrders, previousOrder };
+      return { previousOrder };
     },
     onError: (err, { id }, context) => {
-      if (context?.previousOrders) {
-        queryClient.setQueryData(ORDER_KEYS.lists(), context.previousOrders);
-      }
       if (context?.previousOrder) {
         queryClient.setQueryData(ORDER_KEYS.detail(id), context.previousOrder);
       }
@@ -111,11 +120,6 @@ export const useUpdateOrder = () => {
     onSettled: (data, error, { id }) => {
       if (!error && data != null && typeof data === "object" && "id" in data) {
         const updated = data as Order;
-        queryClient.setQueryData<Order[]>(ORDER_KEYS.lists(), (old) =>
-          old?.map((order) =>
-            String(order.id) === String(id) ? { ...order, ...updated } : order
-          )
-        );
         queryClient.setQueryData<Order>(ORDER_KEYS.detail(id), updated);
       }
       void queryClient.invalidateQueries({ queryKey: ORDER_KEYS.lists() });
@@ -135,20 +139,10 @@ export const useUpdateOrderStatus = () => {
       data: { status: OrderStatus; rejectReason?: string; passcode?: string }
     }) => orderService.updateOrderStatus(id, data),
     onMutate: async ({ id, data }) => {
-
       await queryClient.cancelQueries({ queryKey: ORDER_KEYS.lists() });
       await queryClient.cancelQueries({ queryKey: DASHBOARD_KEYS.kitchen() });
 
-      const previousOrders = queryClient.getQueryData(ORDER_KEYS.lists());
       const previousKitchenData = queryClient.getQueryData<KitchenDashboardData>(DASHBOARD_KEYS.kitchen());
-
-      if (previousOrders) {
-        queryClient.setQueryData(ORDER_KEYS.lists(), (old: any) =>
-          old?.map((order: any) =>
-            String(order.id) === String(id) ? { ...order, status: data.status } : order
-          )
-        );
-      }
 
       if (previousKitchenData) {
         queryClient.setQueryData<KitchenDashboardData>(DASHBOARD_KEYS.kitchen(), (old) => {
@@ -173,12 +167,9 @@ export const useUpdateOrderStatus = () => {
         });
       }
 
-      return { previousOrders, previousKitchenData };
+      return { previousKitchenData };
     },
     onError: (err, variables, context) => {
-      if (context?.previousOrders) {
-        queryClient.setQueryData(ORDER_KEYS.lists(), context.previousOrders);
-      }
       if (context?.previousKitchenData) {
         queryClient.setQueryData(DASHBOARD_KEYS.kitchen(), context.previousKitchenData);
       }
@@ -200,7 +191,7 @@ export const useUpdateOrderItemStatus = () => {
     }: {
       itemId: string | number;
       status: "pending" | "complete"
-    }) => orderService.updateOrderItemStatus(itemId, status as any),
+    }) => orderService.updateOrderItemStatus(itemId, status as OrderStatus),
     onMutate: async ({ itemId, status }) => {
       await queryClient.cancelQueries({ queryKey: DASHBOARD_KEYS.kitchen() });
 
@@ -214,7 +205,7 @@ export const useUpdateOrderItemStatus = () => {
             const itemIndex = order.items.findIndex(i => String(i.id) === String(itemId));
             if (itemIndex !== -1) {
               const newItems = [...order.items];
-              newItems[itemIndex] = { ...newItems[itemIndex], status: status as any };
+              newItems[itemIndex] = { ...newItems[itemIndex], status };
               return { ...order, items: newItems };
             }
             return order;
@@ -231,7 +222,7 @@ export const useUpdateOrderItemStatus = () => {
         queryClient.setQueryData(DASHBOARD_KEYS.kitchen(), context.previousKitchenData);
       }
     },
-    onSettled: (data) => {
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ORDER_KEYS.all });
       queryClient.invalidateQueries({ queryKey: DASHBOARD_KEYS.kitchen() });
     },

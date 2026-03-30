@@ -13,10 +13,18 @@ type Props = {
   onView: (order: OrderRow) => void;
   onPay: (order: OrderRow) => void;
   onEdit: (order: OrderRow) => void;
-  onDelete: (orderNo: string) => void;
+  emptyMessage?: string;
 };
 
-export default function OrdersTable({ orders, onView, onPay, onEdit, onDelete }: Props) {
+export default function OrdersTable({
+  orders,
+  onView,
+  onPay,
+  onEdit,
+  onDelete,
+  emptyMessage,
+}: Props) {
+  const emptyLabel = emptyMessage ?? "No orders match your search.";
   return (
     <div className="mt-5 rounded-[24px] border border-[#E2E8F0] bg-white shadow-[0px_1px_2px_-1px_#0000001A,0px_1px_3px_0px_#0000001A]">
       <div className="overflow-hidden">
@@ -55,7 +63,7 @@ export default function OrdersTable({ orders, onView, onPay, onEdit, onDelete }:
                     colSpan={7}
                     className="py-12 text-center font-['Arial'] text-sm text-[#62748E]"
                   >
-                    No orders match your search.
+                    {emptyLabel}
                   </td>
                 </tr>
               ) : (
@@ -270,7 +278,7 @@ export default function OrdersTable({ orders, onView, onPay, onEdit, onDelete }:
           ))}
           {orders.length === 0 && (
             <p className="py-8 text-center font-['Arial'] text-sm text-[#62748E]">
-              No orders match your search.
+              {emptyLabel}
             </p>
           )}
         </div>

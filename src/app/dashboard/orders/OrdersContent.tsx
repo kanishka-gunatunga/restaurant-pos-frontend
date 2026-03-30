@@ -40,9 +40,32 @@ export default function OrdersContent() {
     setOrderStatusFilter,
     paymentStatusFilter,
     setPaymentStatusFilter,
+    page,
+    setPage,
+    pageSize,
+    setPageSize,
+    onlyMyOrders,
+    setOnlyMyOrders,
+    listMeta,
     filteredOrders,
     isLoading,
   } = useOrdersFilters();
+
+  const emptyTableMessage = useMemo(() => {
+    if (filteredOrders.length > 0) return undefined;
+    if (onlyMyOrders) return "You haven't placed any orders in this view yet.";
+    if (search.trim()) return "No orders match your search.";
+    if (orderStatusFilter !== "All" || paymentStatusFilter !== "All") {
+      return "No orders match your filters.";
+    }
+    return "No orders found.";
+  }, [
+    filteredOrders.length,
+    onlyMyOrders,
+    search,
+    orderStatusFilter,
+    paymentStatusFilter,
+  ]);
 
   const clearPaymentIfCancelled = useCallback((orderNo: string) => {
     setProcessingPayment((prev) => (prev?.orderNo === orderNo ? null : prev));
@@ -123,7 +146,12 @@ export default function OrdersContent() {
       <DashboardPageHeader />
       <div className="min-h-0 flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
         <div className="">
-          <OrdersHeader search={search} onSearchChange={setSearch} />
+          <OrdersHeader
+            search={search}
+            onSearchChange={setSearch}
+            onlyMyOrders={onlyMyOrders}
+            onOnlyMyOrdersChange={setOnlyMyOrders}
+          />
           <OrdersFilterSection
             orderStatusFilter={orderStatusFilter}
             paymentStatusFilter={paymentStatusFilter}
@@ -136,13 +164,65 @@ export default function OrdersContent() {
               <Loader2 className="h-8 w-8 animate-spin text-[#EA580C]" />
             </div>
           ) : (
-            <OrdersTable
-              orders={filteredOrders}
-              onView={handleViewOrder}
-              onPay={openPaymentFlow}
-              onEdit={handleEditClick}
-              onDelete={handleDeleteClick}
-            />
+            <>
+              <OrdersTable
+                orders={filteredOrders}
+                onView={handleViewOrder}
+                onPay={openPaymentFlow}
+                onEdit={handleEditClick}
+                onDelete={handleDeleteClick}
+                emptyMessage={emptyTableMessage}
+              />
+              {listMeta && !isLoading && (
+                <div className="mt-4 flex flex-col gap-3 rounded-[16px] border border-[#F1F5F9] bg-[#FAFBFC] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-wrap items-center gap-3 font-['Inter'] text-sm text-[#62748E]">
+                    <span>
+                      {listMeta.total === 0
+                        ? "Showing 0 of 0"
+                        : `Showing ${(listMeta.page - 1) * listMeta.pageSize + 1}–${Math.min(
+                            listMeta.page * listMeta.pageSize,
+                            listMeta.total
+                          )} of ${listMeta.total}`}
+                    </span>
+                    <label className="flex items-center gap-2 text-xs font-medium">
+                      <span className="text-[#90A1B9]">Rows per page</span>
+                      <select
+                        value={pageSize}
+                        onChange={(e) => setPageSize(Number(e.target.value))}
+                        className="rounded-lg border border-[#E2E8F0] bg-white px-2 py-1 text-xs text-[#314158]"
+                      >
+                        {[25, 50, 100].map((n) => (
+                          <option key={n} value={n}>
+                            {n}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={listMeta.page <= 1}
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      className="rounded-[12px] border border-[#E2E8F0] bg-white px-3 py-1.5 font-['Inter'] text-xs font-bold text-[#45556C] disabled:pointer-events-none disabled:opacity-40"
+                    >
+                      Previous
+                    </button>
+                    <span className="font-['Inter'] text-xs text-[#90A1B9]">
+                      Page {listMeta.page} of {listMeta.totalPages}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={listMeta.page >= listMeta.totalPages}
+                      onClick={() => setPage((p) => p + 1)}
+                      className="rounded-[12px] border border-[#E2E8F0] bg-white px-3 py-1.5 font-['Inter'] text-xs font-bold text-[#45556C] disabled:pointer-events-none disabled:opacity-40"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
