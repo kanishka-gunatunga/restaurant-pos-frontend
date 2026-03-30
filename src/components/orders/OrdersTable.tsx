@@ -13,6 +13,7 @@ type Props = {
   onView: (order: OrderRow) => void;
   onPay: (order: OrderRow) => void;
   onEdit: (order: OrderRow) => void;
+  onDelete: (orderNo: string) => void;
   emptyMessage?: string;
 };
 
