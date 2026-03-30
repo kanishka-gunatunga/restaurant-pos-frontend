@@ -1,5 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
-import type { Order } from "@/types/order";
+import type { Order, OrdersPageResponse } from "@/types/order";
 import { ORDER_KEYS } from "@/hooks/useOrder";
 import { reconcileBalanceDueWithPaymentRows } from "@/domains/orders/orderRefundSummary";
 
@@ -142,9 +142,15 @@ export function patchOrderPaymentInQueryCache(
     };
   };
 
-  queryClient.setQueriesData<Order[]>({ queryKey: ORDER_KEYS.lists() }, (old) => {
-    if (!Array.isArray(old)) return old;
-    return old.map((o) => (String(o.id) === idStr ? patchOrder(o) : o));
+  queryClient.setQueriesData<OrdersPageResponse | Order[]>({ queryKey: ORDER_KEYS.lists() }, (old) => {
+    if (old == null) return old;
+    if (Array.isArray(old)) {
+      return old.map((o) => (String(o.id) === idStr ? patchOrder(o) : o));
+    }
+    return {
+      ...old,
+      data: old.data.map((o) => (String(o.id) === idStr ? patchOrder(o) : o)),
+    };
   });
 
   queryClient.setQueryData<Order>(ORDER_KEYS.detail(orderId), (old) => {

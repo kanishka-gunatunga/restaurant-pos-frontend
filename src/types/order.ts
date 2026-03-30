@@ -51,6 +51,7 @@ export interface OrderItem {
 
 export interface Order {
   id: string | number;
+  branchId?: number | null;
   customerId?: string | number;
   totalAmount: number;
   orderType: OrderType;
@@ -118,14 +119,33 @@ export interface UpdateOrderData extends Partial<CreateOrderData> {
   paymentStatus?: string;
 }
 
-export interface OrderSearchParams {
+export interface OrdersListQueryParams {
+  page?: number;
+  pageSize?: number;
+  placedByMe?: boolean;
+}
+
+export interface OrdersListMeta {
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  placedByMe?: boolean;
+}
+
+export interface OrdersPageResponse {
+  data: Order[];
+  meta: OrdersListMeta;
+}
+
+export interface OrderSearchParams extends OrdersListQueryParams {
   q?: string;
   orderId?: string;
   customerName?: string;
   phone?: string;
 }
 
-export interface OrderFilterParams {
+export interface OrderFilterParams extends OrdersListQueryParams {
   status?: OrderStatus;
   paymentStatus?: string;
 }
