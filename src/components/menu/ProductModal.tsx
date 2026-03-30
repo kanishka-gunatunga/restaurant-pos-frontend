@@ -184,7 +184,7 @@ export default function ProductModal({
       onClick={onClose}
     >
       <div
-        className="relative max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-xl"
+        className="relative w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-xl max-h-[90dvh]"
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -195,17 +195,20 @@ export default function ProductModal({
           <X className="h-5 w-5" />
         </button>
 
-        <div className="flex h-full flex-col md:flex-row">
-          <div className="relative h-48 w-full shrink-0 md:h-auto md:w-1/2">
-            <MenuProductImage
-              productImageUrl={item.image}
-              fallbackImageId={item.id}
-              alt={item.name}
-              fill
-              className="object-cover"
-              sizes="(max-width: 768px) 100vw, 50vw"
-            />
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
+        {/* Content-sized modal: grows with short products; max-h caps tall content. Details pane scrolls with styled scrollbar. */}
+        <div className="flex max-h-[90dvh] flex-col overflow-hidden md:flex-row md:items-stretch">
+          <div className="relative h-48 w-full shrink-0 overflow-hidden md:h-auto md:min-h-[220px] md:w-1/2 md:self-stretch">
+            <div className="absolute inset-0">
+              <MenuProductImage
+                productImageUrl={item.image}
+                fallbackImageId={item.id}
+                alt={item.name}
+                fill
+                className="object-cover object-center"
+                sizes="(max-width: 768px) 100vw, 50vw"
+              />
+            </div>
+            <div className="absolute bottom-0 left-0 right-0 z-1 bg-gradient-to-t from-black/70 to-transparent p-4">
               <span className="text-xs font-medium uppercase tracking-wider text-white/90">
                 {item.category}
               </span>
@@ -213,7 +216,9 @@ export default function ProductModal({
             </div>
           </div>
 
-          <div className="flex flex-1 flex-col overflow-y-auto bg-[#F8FAFC] p-5">
+          <div
+            className="min-h-0 w-full max-h-[calc(90dvh-12rem)] overflow-y-auto bg-[#F8FAFC] p-5 [scrollbar-width:thin] [scrollbar-color:#CBD5E1_#F1F5F9] md:max-h-[90dvh] md:w-1/2 md:flex-1 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#F1F5F9] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#CBD5E1] hover:[&::-webkit-scrollbar-thumb]:bg-[#94A3B8]"
+          >
             {hasVariants && (
               <div>
                 <p className="mb-2 font-['Arial'] text-[10px] font-black uppercase leading-[15px] tracking-[1px] text-[#90A1B9]">
