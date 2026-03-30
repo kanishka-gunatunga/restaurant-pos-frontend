@@ -12,10 +12,7 @@ import OrdersFilterSection from "@/components/orders/OrdersFilterSection";
 import OrdersTable from "@/components/orders/OrdersTable";
 import { useOrdersFilters } from "@/domains/orders/hooks/useOrdersFilters";
 import { mapOrderToRow } from "@/domains/orders/types";
-import {
-  useOrderModals,
-  type OrderNeedsPaymentAfterEditPayload,
-} from "@/domains/orders/hooks/useOrderModals";
+import { useOrderModals } from "@/domains/orders/hooks/useOrderModals";
 import { useGetOrderById } from "@/hooks/useOrder";
 import { collectibleOrderAmount } from "@/domains/orders/orderCollectionAmount";
 import { Loader2 } from "lucide-react";
@@ -71,20 +68,6 @@ export default function OrdersContent() {
     setProcessingPayment((prev) => (prev?.orderNo === orderNo ? null : prev));
   }, []);
 
-  const handleOrderNeedsPaymentAfterEdit = useCallback(
-    (ctx: OrderNeedsPaymentAfterEditPayload) => {
-      setProcessingPayment({
-        orderId: Number(ctx.orderId),
-        orderNo: ctx.orderNo,
-        customerName: ctx.customerName,
-        customerMobile: ctx.phone,
-        total: ctx.amount,
-        isAdditionalPayment: true,
-      });
-    },
-    []
-  );
-
   const {
     authModal,
     editOrderModal,
@@ -108,7 +91,6 @@ export default function OrdersContent() {
     isUpdatingOrder,
   } = useOrderModals({
     onOrderCancelled: clearPaymentIfCancelled,
-    onOrderNeedsPaymentAfterEdit: handleOrderNeedsPaymentAfterEdit,
   });
 
   const { data: viewOrderDetails } = useGetOrderById(viewOrder?.id);

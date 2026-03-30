@@ -82,17 +82,8 @@ function mapOrderTypeToApi(orderType: OrderDetailsData["orderType"]) {
   return "delivery";
 }
 
-export type OrderNeedsPaymentAfterEditPayload = {
-  orderId: string;
-  orderNo: string;
-  customerName: string;
-  phone: string;
-  amount: number;
-};
-
 type UseOrderModalsOptions = {
   onOrderCancelled?: (orderNo: string) => void;
-  onOrderNeedsPaymentAfterEdit?: (p: OrderNeedsPaymentAfterEditPayload) => void;
 };
 
 async function resolveCollectAmountAfterPut(
@@ -122,7 +113,7 @@ async function resolveCollectAmountAfterPut(
 }
 
 export function useOrderModals(options?: UseOrderModalsOptions) {
-  const { onOrderCancelled, onOrderNeedsPaymentAfterEdit } = options ?? {};
+  const { onOrderCancelled } = options ?? {};
   const queryClient = useQueryClient();
   const [authModal, setAuthModal] = useState<{ isOpen: boolean; orderNo: string | null }>({
     isOpen: false,
@@ -309,23 +300,16 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
                     String(editOrderModal.id)
                   );
                   if (collect > MONEY_EPS) {
-                    onOrderNeedsPaymentAfterEdit?.({
-                      orderId: String(editOrderModal.id),
-                      orderNo: editOrderModal.orderNo,
-                      customerName: editOrderModal.customerName,
-                      phone: editOrderModal.phone,
-                      amount: collect,
-                    });
-                    if (!onOrderNeedsPaymentAfterEdit) {
-                      toast.success(
-                        "Order updated. Use Pay to collect the balance due when the customer is ready."
-                      );
-                    }
+                    toast.success(
+                      "Order saved. Use Pay on the orders list or Order & Pay when you are ready to collect the balance."
+                    );
                   } else {
                     toast.message(
                       "Order saved. If a balance is still due, use Pay on the orders list after refresh."
                     );
                   }
+                } else if (!shouldRecordRefund) {
+                  toast.success("Order saved.");
                 }
               } catch (err: unknown) {
                 toast.error(axiosErrorMessage(err));
@@ -340,13 +324,7 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
         );
       }
     },
-    [
-      editOrderModal,
-      updateOrderMutation,
-      updatePaymentStatusMutation,
-      queryClient,
-      onOrderNeedsPaymentAfterEdit,
-    ]
+    [editOrderModal, updateOrderMutation, updatePaymentStatusMutation, queryClient]
   );
 
   /**
