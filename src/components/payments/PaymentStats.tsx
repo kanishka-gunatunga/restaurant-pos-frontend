@@ -2,10 +2,11 @@ import { useMemo } from "react";
 import { CircleCheck, History, RotateCcw, X, Loader2 } from "lucide-react";
 import { useGetAllPaymentDetails, useGetPaymentStats } from "@/hooks/usePayment";
 import { formatCurrency } from "@/lib/format";
+import { readLineSettlementStatus } from "@/domains/orders/paymentRowFields";
 
-function sumPendingPaymentAmount(payments: { paymentStatus: string; amount: number }[]): number {
+function sumPendingPaymentAmount(payments: { amount: number }[]): number {
   return payments.reduce((sum, p) => {
-    if (String(p.paymentStatus).toLowerCase() !== "pending") return sum;
+    if (readLineSettlementStatus(p as Record<string, unknown>) !== "pending") return sum;
     const n = Number(p.amount);
     return sum + (Number.isFinite(n) ? n : 0);
   }, 0);

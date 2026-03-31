@@ -4,7 +4,11 @@ import { useState, useEffect, useRef } from "react";
 import { X, Wallet, CreditCard, Calculator, Loader2 } from "lucide-react";
 import { useCreatePayment } from "@/hooks/usePayment";
 import { toast } from "sonner";
-import { ORDER_MONEY_EPS } from "@/domains/orders/orderCollectionAmount";
+import { fetchOrderStateForPaymentCreate } from "@/services/paymentService";
+import {
+  buildCreatePaymentDraftFromOrder,
+  ORDER_MONEY_EPS,
+} from "@/domains/orders/orderCollectionAmount";
 
 const formatRs = (n: number) =>
   `Rs.${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -48,11 +52,27 @@ export default function ProcessPaymentModal({
     try {
       if (orderId) {
         try {
+          let fresh;
+          try {
+            fresh = await fetchOrderStateForPaymentCreate(orderId);
+          } catch {
+            toast.error("Could not reload the order. Check your connection and try again.");
+            return;
+          }
+          const draft = buildCreatePaymentDraftFromOrder(fresh);
+          if (draft.amount <= ORDER_MONEY_EPS) {
+            toast.message(
+              "This order is already fully paid on the server. Clearing checkout so you can start a new order."
+            );
+            onComplete();
+            return;
+          }
           await createPayment({
             orderId,
             paymentMethod: method,
-            amount: amountDue,
+            amount: draft.amount,
             status: "paid",
+            ...(draft.paymentRole === "balance_due" ? { paymentRole: "balance_due" } : {}),
           });
         } catch (err: unknown) {
           const msg =

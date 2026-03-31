@@ -7,10 +7,14 @@ import {
   type OrderRow,
 } from "../types";
 import { EditOrderLineItem } from "@/components/orders/EditOrderModal";
-import { useUpdateOrderStatus, useUpdateOrder } from "@/hooks/useOrder";
+import { useUpdateOrderStatus, useUpdateOrder, ORDER_KEYS } from "@/hooks/useOrder";
 import { useUpdateCustomer } from "@/hooks/useCustomer";
 import { useUpdatePaymentStatus, PAYMENT_KEYS } from "@/hooks/usePayment";
-import { getPaymentsByOrder } from "@/services/paymentService";
+import {
+  getPaymentsByOrder,
+  normalizePaymentsByOrderApiResponse,
+} from "@/services/paymentService";
+import { readLineSettlementStatus } from "@/domains/orders/paymentRowFields";
 import type { OrderDetailsData } from "@/contexts/OrderContext";
 import { totalsFromOrderLineItems } from "@/domains/orders/orderLineTotals";
 import {
@@ -21,8 +25,39 @@ import {
 import { isInvalidManagerPasscodeError } from "@/lib/api/managerPasscodeError";
 import type { Order } from "@/types/order";
 import { getOrderById } from "@/services/orderService";
+import { debugOrderEditRefund } from "@/lib/debug/orderEditRefund";
 
 const MONEY_EPS = 0.02;
+
+function normalizeAggregateStatus(s: string | undefined): string {
+  return String(s ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_");
+}
+
+/**
+ * Toast must reflect server `orders.paymentStatus` after refund, not the refund_type we requested.
+ */
+function toastAfterEditOrderRefund(serverAggregate: string | undefined): string {
+  const agg = normalizeAggregateStatus(serverAggregate);
+  if (agg === "partial_refund") {
+    return "Order updated. Server payment status: partial refund.";
+  }
+  if (agg === "refund") {
+    return "Order updated. Server payment status: full refund.";
+  }
+  if (agg === "paid") {
+    return "Order updated. Refund was recorded on the payment line; the new total is still fully covered, so order payment status remains paid.";
+  }
+  if (agg === "pending") {
+    return "Order updated. Server reports payment status: pending.";
+  }
+  if (!agg) {
+    return "Order updated. Refund call succeeded but the response had no order payment status — refresh the order or check the Network tab.";
+  }
+  return `Order updated. Server payment status: ${serverAggregate}.`;
+}
 
 function axiosErrorMessage(err: unknown): string {
   if (err && typeof err === "object" && "response" in err) {
@@ -39,13 +74,9 @@ function paymentRowAmount(p: { amount?: unknown }): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-/** API may return a bare array or a wrapped payload. */
+/** API may return a bare array, envelope `{ payments }`, or `{ data: ... }`. */
 function normalizePaymentsResponse(raw: unknown): unknown[] {
-  if (Array.isArray(raw)) return raw;
-  if (raw && typeof raw === "object" && Array.isArray((raw as { data?: unknown[] }).data)) {
-    return (raw as { data: unknown[] }).data;
-  }
-  return [];
+  return normalizePaymentsByOrderApiResponse(raw);
 }
 
 function pickRefundTargetPayment(
@@ -58,7 +89,7 @@ function pickRefundTargetPayment(
     const r = raw as Record<string, unknown>;
     const id = Number(r.id);
     if (!Number.isFinite(id)) continue;
-    const status = String(r.paymentStatus ?? r.payment_status ?? "").toLowerCase();
+    const status = readLineSettlementStatus(r);
     if (status !== "paid" && status !== "partial_refund") continue;
     const role = String(r.paymentRole ?? r.payment_role ?? "sale").toLowerCase();
     if (role === "balance_due") continue;
@@ -211,117 +242,153 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
   }, []);
 
   const handleEditOrderSubmit = useCallback(
-    (data: { items: EditOrderLineItem[] }) => {
-      if (editOrderModal) {
-        const computed = totalsFromOrderLineItems(
-          data.items.map((it) => ({
-            name: it.name,
-            qty: it.qty,
-            price: it.price,
-            productDiscount: it.productDiscount,
-            modifications: it.modifications?.map((m) => ({ price: m.price })),
-          })),
-          editOrderModal.orderDiscount ?? 0
-        );
-        const newTotal = computed?.totalAmount ?? 0;
-        const originalTotal = editOrderModal.totalAmount;
-        const refundAmount = originalTotal - newTotal;
-        const additionalDue = newTotal - originalTotal;
+    async (data: { items: EditOrderLineItem[] }) => {
+      const modalOrder = editOrderModal;
+      if (!modalOrder) return;
 
-        const shouldRecordRefund =
-          refundAmount > MONEY_EPS && additionalDue <= MONEY_EPS;
+      const computed = totalsFromOrderLineItems(
+        data.items.map((it) => ({
+          name: it.name,
+          qty: it.qty,
+          price: it.price,
+          productDiscount: it.productDiscount,
+          modifications: it.modifications?.map((m) => ({ price: m.price })),
+        })),
+        modalOrder.orderDiscount ?? 0
+      );
+      const newTotal = computed?.totalAmount ?? 0;
+      const originalTotal = modalOrder.totalAmount;
+      const refundAmount = originalTotal - newTotal;
+      const additionalDue = newTotal - originalTotal;
 
-        updateOrderMutation.mutate(
-          {
-            id: editOrderModal.id,
-            data: {
-              // Server recomputes totals + syncBalanceDuePayment (balance_due row) in the same transaction.
-              order_products: data.items.map((item) => ({
-                productId: Number(item.productId || item.id),
-                variationId: item.variationId ? Number(item.variationId) : undefined,
-                quantity: item.qty,
-                unitPrice: item.price,
-                productDiscount: item.productDiscount ?? 0,
-                modifications: item.modifications,
-              })),
-            },
+      const shouldRecordRefund =
+        refundAmount > MONEY_EPS && additionalDue <= MONEY_EPS;
+
+      const orderIdStr = String(modalOrder.id);
+      const orderIdNum = Number(modalOrder.id);
+
+      try {
+        const updatedOrder = await updateOrderMutation.mutateAsync({
+          id: modalOrder.id,
+          data: {
+            order_products: data.items.map((item) => ({
+              productId: Number(item.productId || item.id),
+              variationId: item.variationId ? Number(item.variationId) : undefined,
+              quantity: item.qty,
+              unitPrice: item.price,
+              productDiscount: item.productDiscount ?? 0,
+              modifications: item.modifications,
+            })),
           },
-          {
-            onSuccess: async (updatedOrder: Order) => {
-              try {
-                if (shouldRecordRefund) {
-                  const orderId = Number(editOrderModal.id);
-                  const rawRows = await queryClient.fetchQuery({
-                    queryKey: PAYMENT_KEYS.byOrder(orderId),
-                    queryFn: () => getPaymentsByOrder(orderId),
-                  });
-                  const rows = normalizePaymentsResponse(rawRows);
-                  const payment = pickRefundTargetPayment(rows);
-                  if (payment) {
-                    const isFullRefund =
-                      refundAmount >= payment.remainingCollectible - MONEY_EPS;
-                    const refundResponse = await updatePaymentStatusMutation.mutateAsync({
-                      id: payment.id,
-                      payload: {
-                        is_refund: 1,
-                        refund_type: isFullRefund ? "full" : "partial",
-                        refund_amount: refundAmount,
-                        status: isFullRefund ? "refund" : "partial_refund",
-                      },
-                    });
-                    const fromApi = readOrderPaymentFieldsFromRefundResponse(refundResponse);
-                    const oid = fromApi.orderId ?? editOrderModal.id;
-                    if (fromApi.orderPaymentStatus) {
-                      patchOrderPaymentInQueryCache(
-                        queryClient,
-                        oid,
-                        fromApi.orderPaymentStatus,
-                        fromApi.balanceDue,
-                        fromApi.totalRefunded,
-                        fromApi.requiresAdditionalPayment,
-                        readOrderSnapshotFromPaymentResponse(refundResponse)
-                      );
-                    }
-                    toast.success(
-                      isFullRefund
-                        ? "Order updated and payment marked as refunded."
-                        : "Order updated and payment marked as partial refund."
-                    );
-                  } else {
-                    toast.error(
-                      "Order was updated but no paid sale payment was found to record the refund. Check the Payments API for this order or fix the backend."
-                    );
-                  }
-                }
-                if (additionalDue > MONEY_EPS) {
-                  const collect = await resolveCollectAmountAfterPut(
-                    updatedOrder,
-                    additionalDue,
-                    String(editOrderModal.id)
-                  );
-                  if (collect > MONEY_EPS) {
-                    toast.success(
-                      "Order saved. Use Pay on the orders list or Order & Pay when you are ready to collect the balance."
-                    );
-                  } else {
-                    toast.message(
-                      "Order saved. If a balance is still due, use Pay on the orders list after refresh."
-                    );
-                  }
-                } else if (!shouldRecordRefund) {
-                  toast.success("Order saved.");
-                }
-              } catch (err: unknown) {
-                toast.error(axiosErrorMessage(err));
-              } finally {
-                setEditOrderModal(null);
+        });
+
+        const paymentStatusAfterPut =
+          updatedOrder.paymentStatus ?? (updatedOrder as { payment_status?: string }).payment_status;
+
+        debugOrderEditRefund("PUT /orders done", {
+          orderId: orderIdStr,
+          paymentStatus: paymentStatusAfterPut,
+          totalAmount: updatedOrder.totalAmount,
+          shouldRecordRefund,
+          refundAmount,
+          additionalDue,
+        });
+
+        try {
+          if (shouldRecordRefund) {
+            await queryClient.invalidateQueries({ queryKey: PAYMENT_KEYS.byOrder(orderIdNum) });
+            const rawRows = await queryClient.fetchQuery({
+              queryKey: PAYMENT_KEYS.byOrder(orderIdNum),
+              queryFn: () => getPaymentsByOrder(orderIdNum),
+            });
+            const rows = normalizePaymentsResponse(rawRows);
+            debugOrderEditRefund("payments rows for refund target", {
+              orderId: orderIdStr,
+              rowCount: rows.length,
+            });
+            const payment = pickRefundTargetPayment(rows);
+            if (payment) {
+              const isFullRefund =
+                refundAmount >= payment.remainingCollectible - MONEY_EPS;
+              debugOrderEditRefund("calling PUT /payments/:id/status", {
+                paymentId: payment.id,
+                refund_amount: refundAmount,
+                refund_type: isFullRefund ? "full" : "partial",
+                remainingCollectible: payment.remainingCollectible,
+              });
+              const refundResponse = await updatePaymentStatusMutation.mutateAsync({
+                id: payment.id,
+                payload: {
+                  is_refund: 1,
+                  refund_type: isFullRefund ? "full" : "partial",
+                  refund_amount: refundAmount,
+                  status: isFullRefund ? "refund" : "partial_refund",
+                },
+              });
+              const fromApi = readOrderPaymentFieldsFromRefundResponse(refundResponse);
+              const oid = fromApi.orderId ?? modalOrder.id;
+              debugOrderEditRefund("refund response parsed", {
+                orderPaymentStatus: fromApi.orderPaymentStatus,
+                balanceDue: fromApi.balanceDue,
+                orderId: oid,
+                responseKeys:
+                  refundResponse && typeof refundResponse === "object" && !Array.isArray(refundResponse)
+                    ? Object.keys(refundResponse as object).slice(0, 25)
+                    : [],
+              });
+              if (fromApi.orderPaymentStatus) {
+                patchOrderPaymentInQueryCache(
+                  queryClient,
+                  oid,
+                  fromApi.orderPaymentStatus,
+                  fromApi.balanceDue,
+                  fromApi.totalRefunded,
+                  fromApi.requiresAdditionalPayment,
+                  readOrderSnapshotFromPaymentResponse(refundResponse)
+                );
+              } else {
+                debugOrderEditRefund("warning: no order aggregate in refund body — cache not patched", {
+                  orderId: orderIdStr,
+                });
               }
-            },
-            onError: (err: unknown) => {
-              toast.error(axiosErrorMessage(err));
-            },
+              void queryClient.invalidateQueries({ queryKey: ORDER_KEYS.detail(modalOrder.id) });
+              void queryClient.invalidateQueries({ queryKey: ORDER_KEYS.lists() });
+              toast.success(toastAfterEditOrderRefund(fromApi.orderPaymentStatus));
+            } else {
+              debugOrderEditRefund("no sale payment row to refund — PUT payment not sent", {
+                orderId: orderIdStr,
+                rowCount: rows.length,
+              });
+              toast.error(
+                "Order was updated but no paid sale payment was found to record the refund. Open Network: only PUT /orders ran — PUT /payments/…/status is required to persist line refunds."
+              );
+            }
           }
-        );
+          if (additionalDue > MONEY_EPS) {
+            const collect = await resolveCollectAmountAfterPut(
+              updatedOrder,
+              additionalDue,
+              orderIdStr
+            );
+            if (collect > MONEY_EPS) {
+              toast.success(
+                "Order saved. Use Pay on the orders list or Order & Pay when you are ready to collect the balance."
+              );
+            } else {
+              toast.message(
+                "Order saved. If a balance is still due, use Pay on the orders list after refresh."
+              );
+            }
+          } else if (!shouldRecordRefund) {
+            toast.success("Order saved.");
+          }
+        } catch (err: unknown) {
+          toast.error(axiosErrorMessage(err));
+        } finally {
+          setEditOrderModal(null);
+        }
+      } catch (err: unknown) {
+        toast.error(axiosErrorMessage(err));
       }
     },
     [editOrderModal, updateOrderMutation, updatePaymentStatusMutation, queryClient]
@@ -476,6 +543,7 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
     openEditFromView,
     openEditInfoFromView,
     openCancelFromView,
-    isUpdatingOrder: updateOrderMutation.isPending,
+    isUpdatingOrder:
+      updateOrderMutation.isPending || updatePaymentStatusMutation.isPending,
   };
 }

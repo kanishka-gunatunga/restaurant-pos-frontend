@@ -1,7 +1,7 @@
 "use client";
 
 import { AxiosError } from "axios";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import MenuProductImage from "./MenuProductImage";
 import { toast } from "sonner";
 import { User, Phone, ChefHat, Trash2, X } from "lucide-react";
@@ -17,7 +17,16 @@ import NewOrderDetailsModal from "./NewOrderDetailsModal";
 import ProcessPaymentModal from "./ProcessPaymentModal";
 import type { OrderDetailsData, OrderItem } from "@/contexts/OrderContext";
 import type { CreateOrderData, Order } from "@/types/order";
-import { resolvePaymentSettlementAmount, ORDER_MONEY_EPS } from "@/domains/orders/orderCollectionAmount";
+import {
+  buildCreatePaymentDraftFromOrder,
+  ORDER_MONEY_EPS,
+} from "@/domains/orders/orderCollectionAmount";
+import { fetchOrderStateForPaymentCreate } from "@/services/paymentService";
+import {
+  readMenuOpenCheckout,
+  saveMenuOpenCheckout,
+  clearMenuOpenCheckoutForSlot,
+} from "@/lib/menuOpenCheckout";
 
 const TAX_RATE = 0.1;
 
@@ -152,8 +161,8 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
     activeOrderNote,
     setActiveKitchenNote,
     setActiveOrderNote,
-    clearActiveOrder,
     clearOrderById,
+    clearCheckoutSession,
     setCheckoutLockedOrderSlotId,
   } = useOrder();
 
@@ -164,11 +173,36 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
     loadPendingPaymentFlow()
   );
   const [isOrderAndPaySubmitting, setIsOrderAndPaySubmitting] = useState(false);
+  const orderSubmitLockRef = useRef(false);
 
   useEffect(() => {
     const p = loadPendingPaymentFlow();
     if (p?.localOrderId) setCheckoutLockedOrderSlotId(p.localOrderId);
   }, [setCheckoutLockedOrderSlotId]);
+
+  useEffect(() => {
+    const p = pendingPaymentOrder;
+    const orderId = p?.orderId;
+    if (orderId == null) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const fresh = await fetchOrderStateForPaymentCreate(orderId);
+        if (cancelled) return;
+        const draft = buildCreatePaymentDraftFromOrder(fresh);
+        if (draft.amount <= ORDER_MONEY_EPS) {
+          toast.message("Previous checkout was already completed. You can start a new order.");
+          clearCheckoutSession(p?.localOrderId ?? null);
+          setPendingPaymentOrder(null);
+        }
+      } catch {
+        /* keep pending if we cannot verify */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [pendingPaymentOrder?.orderId, pendingPaymentOrder?.localOrderId, clearCheckoutSession]);
 
   const { data: discountsData } = useGetAllDiscounts({ status: "active" });
   const discounts = discountsData || [];
@@ -216,23 +250,124 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
     const localSlotId = activeOrderId ?? orders[0]?.id;
     if (!localSlotId) return null;
 
-    setCheckoutLockedOrderSlotId(localSlotId);
+    if (orderSubmitLockRef.current) {
+      toast.message("Please wait — an order is already being sent.");
+      return null;
+    }
+    orderSubmitLockRef.current = true;
 
     const normalizedName = orderDetails.customerName.trim();
-    const normalizedOriginalName = (orderDetails.originalCustomerName ?? "").trim();
-    const shouldUpdateExistingCustomerName =
-      !!orderDetails.customerId &&
-      !!normalizedOriginalName &&
-      normalizedName.localeCompare(normalizedOriginalName, undefined, {
-        sensitivity: "accent",
-      }) !== 0;
 
-    if (shouldUpdateExistingCustomerName) {
+    const buildFingerprint = () => {
+      const line = itemsWithDiscounts
+        .map((i) => `${i.productId}|${i.id}|${i.qty}|${i.price}`)
+        .sort()
+        .join(";");
+      return `${line}@t${total.toFixed(2)}@p${orderDetails.phone.trim()}@${normalizedName}@${orderDetails.orderType}`;
+    };
+
+    try {
+      setCheckoutLockedOrderSlotId(localSlotId);
+
+      const fp = buildFingerprint();
+      const open = readMenuOpenCheckout();
+      if (open?.localSlotId === localSlotId) {
+        if (open.fingerprint !== fp) {
+          clearMenuOpenCheckoutForSlot(localSlotId);
+        } else if (open.serverOrderId) {
+          if (isPayNow) {
+            toast.message(`Resuming order #${open.serverOrderId} — not creating a duplicate.`);
+            try {
+              const order = await fetchOrderStateForPaymentCreate(open.serverOrderId);
+              return { serverOrderId: open.serverOrderId, localSlotId, order };
+            } catch {
+              toast.error(
+                "Could not load that order. Open the Orders page before trying again, or change the cart."
+              );
+              setCheckoutLockedOrderSlotId(null);
+              return null;
+            }
+          }
+          toast.message(
+            `Order #${open.serverOrderId} may already exist for this cart. Check Orders before placing again, or change items in the cart.`
+          );
+          setCheckoutLockedOrderSlotId(null);
+          return null;
+        }
+      }
+
+      const normalizedOriginalName = (orderDetails.originalCustomerName ?? "").trim();
+      const shouldUpdateExistingCustomerName =
+        !!orderDetails.customerId &&
+        !!normalizedOriginalName &&
+        normalizedName.localeCompare(normalizedOriginalName, undefined, {
+          sensitivity: "accent",
+        }) !== 0;
+
+      if (shouldUpdateExistingCustomerName) {
+        try {
+          await updateCustomer({
+            id: orderDetails.customerId!,
+            data: { name: normalizedName },
+          });
+        } catch (err) {
+          setCheckoutLockedOrderSlotId(null);
+          const message =
+            err instanceof AxiosError
+              ? (err.response?.data as { message?: string } | undefined)?.message
+              : err instanceof Error
+                ? err.message
+                : "Unknown error";
+          toast.error("Failed to update customer name", { description: message });
+          return null;
+        }
+      }
+
+      const payload: CreateOrderData = {
+        customerName: normalizedName,
+        customerMobile: orderDetails.phone,
+        customerId: orderDetails.customerId,
+        totalAmount: total,
+        orderType:
+          orderDetails.orderType === "Dine In"
+            ? "dining"
+            : orderDetails.orderType === "Take Away"
+              ? "takeaway"
+              : "delivery",
+        tableNumber: orderDetails.tableNumber,
+        orderDiscount: 0,
+        tax: tax,
+        orderNote: activeOrderNote,
+        kitchenNote: activeKitchenNote,
+        deliveryAddress: orderDetails.deliveryAddress,
+        landmark: orderDetails.landmark,
+        zipcode: orderDetails.zipCode,
+        deliveryInstructions: orderDetails.deliveryInstructions,
+        order_products: items.map((item) => ({
+          productId: item.productId,
+          variationId: item.variationId,
+          quantity: item.qty,
+          unitPrice: item.price,
+          productDiscount:
+            (itemsWithDiscounts.find((i) => i.id === item.id)?.discountAmount || 0) / item.qty,
+          modifications: item.modifications?.map((m) => ({
+            modificationId: m.modificationId,
+            price: m.price,
+          })),
+        })),
+      };
+
       try {
-        await updateCustomer({
-          id: orderDetails.customerId!,
-          data: { name: normalizedName },
-        });
+        const result = await createOrder(payload);
+        const serverOrderId = Number(result.id);
+        saveMenuOpenCheckout({ localSlotId, serverOrderId, fingerprint: fp });
+        if (!isPayNow) {
+          clearOrderById(localSlotId);
+          toast.success("Order submitted successfully");
+          setCheckoutLockedOrderSlotId(null);
+          return { serverOrderId, localSlotId, order: result };
+        }
+        return { serverOrderId, localSlotId, order: result };
       } catch (err) {
         setCheckoutLockedOrderSlotId(null);
         const message =
@@ -241,65 +376,18 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
             : err instanceof Error
               ? err.message
               : "Unknown error";
-        toast.error("Failed to update customer name", { description: message });
+        const networkOrTimeout =
+          err instanceof AxiosError &&
+          (!err.response || err.code === "ECONNABORTED" || err.message === "Network Error");
+        toast.error("Failed to submit order", {
+          description: networkOrTimeout
+            ? `${message ? `${message} ` : ""}If you are unsure, open Orders — the order may still have been created. Do not retry until you check.`.trim()
+            : message,
+        });
         return null;
       }
-    }
-
-    const payload: CreateOrderData = {
-      customerName: normalizedName,
-      customerMobile: orderDetails.phone,
-      customerId: orderDetails.customerId,
-      totalAmount: total,
-      orderType:
-        orderDetails.orderType === "Dine In"
-          ? "dining"
-          : orderDetails.orderType === "Take Away"
-            ? "takeaway"
-            : "delivery",
-      tableNumber: orderDetails.tableNumber,
-      orderDiscount: 0,
-      tax: tax,
-      orderNote: activeOrderNote,
-      kitchenNote: activeKitchenNote,
-      deliveryAddress: orderDetails.deliveryAddress,
-      landmark: orderDetails.landmark,
-      zipcode: orderDetails.zipCode,
-      deliveryInstructions: orderDetails.deliveryInstructions,
-      order_products: items.map((item) => ({
-        productId: item.productId,
-        variationId: item.variationId,
-        quantity: item.qty,
-        unitPrice: item.price,
-        productDiscount:
-          (itemsWithDiscounts.find((i) => i.id === item.id)?.discountAmount || 0) / item.qty,
-        modifications: item.modifications?.map((m) => ({
-          modificationId: m.modificationId,
-          price: m.price,
-        })),
-      })),
-    };
-
-    try {
-      const result = await createOrder(payload);
-      const serverOrderId = Number(result.id);
-      if (!isPayNow) {
-        clearOrderById(localSlotId);
-        toast.success("Order submitted successfully");
-        setCheckoutLockedOrderSlotId(null);
-        return { serverOrderId, localSlotId, order: result };
-      }
-      return { serverOrderId, localSlotId, order: result };
-    } catch (err) {
-      setCheckoutLockedOrderSlotId(null);
-      const message =
-        err instanceof AxiosError
-          ? (err.response?.data as { message?: string } | undefined)?.message
-          : err instanceof Error
-            ? err.message
-            : "Unknown error";
-      toast.error("Failed to submit order", { description: message });
-      return null;
+    } finally {
+      orderSubmitLockRef.current = false;
     }
   };
 
@@ -323,16 +411,18 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
     try {
       const submitted = await handleSubmitOrder(true);
       if (submitted) {
-        const settlementAmount = resolvePaymentSettlementAmount(
-          submitted.order as Order & Record<string, unknown>
-        );
-        if (settlementAmount <= ORDER_MONEY_EPS) {
-          toast.error("Could not read amount due from server. Open Orders and use Pay, or try again.");
+        const draft = buildCreatePaymentDraftFromOrder(submitted.order);
+        if (draft.amount <= ORDER_MONEY_EPS) {
+          toast.message(
+            "This order is already fully paid on the server. Your basket will be cleared so you can continue."
+          );
+          clearCheckoutSession(submitted.localSlotId);
+          setPendingPaymentOrder(null);
           return;
         }
         const nextPaymentFlow: PaymentFlowState = {
           customerName: paymentSnapshot.customerName,
-          settlementAmount,
+          settlementAmount: draft.amount,
           orderId: submitted.serverOrderId,
           localOrderId: submitted.localSlotId,
         };
@@ -773,7 +863,7 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
             <div className="flex gap-2.5">
               <button
                 type="button"
-                onClick={() => handleSubmitOrder()}
+                onClick={() => void handleSubmitOrder(false)}
                 disabled={
                   isCreatingOrder ||
                   isOrderAndPaySubmitting ||
@@ -842,13 +932,9 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
             setCheckoutLockedOrderSlotId(null);
           }}
           onComplete={() => {
-            const slot = paymentFlow.localOrderId;
-            if (slot) clearOrderById(slot);
-            else clearActiveOrder();
+            clearCheckoutSession(paymentFlow.localOrderId ?? null);
             setPaymentFlow(null);
             setPendingPaymentOrder(null);
-            savePendingPaymentFlow(null);
-            setCheckoutLockedOrderSlotId(null);
           }}
         />
       )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useId } from "react";
+import { useMemo, useState, useId, useRef, useEffect } from "react";
 import MenuProductImage from "@/components/menu/MenuProductImage";
 import {
   X,
@@ -59,7 +59,7 @@ type OrderForEdit = {
 type Props = {
   order: OrderForEdit;
   onClose: () => void;
-  onSubmit: (data: { items: EditOrderLineItem[] }) => void;
+  onSubmit: (data: { items: EditOrderLineItem[] }) => void | Promise<void>;
   onOrderAndPay?: (data: { items: EditOrderLineItem[] }) => Promise<number | null>;
   isSubmitting?: boolean;
 };
@@ -305,7 +305,19 @@ export default function EditOrderModal({ order, onClose, onSubmit, onOrderAndPay
   const [lineItems, setLineItems] = useState<EditOrderLineItem[]>(initialItems);
   const [showAddItems, setShowAddItems] = useState(false);
   const [orderAndPayBusy, setOrderAndPayBusy] = useState(false);
+
+  const [saveFlowBusy, setSaveFlowBusy] = useState(false);
+  const mountedRef = useRef(true);
   const refundClipId = useId();
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const isSaveBusy = saveFlowBusy || !!isSubmitting;
 
   const originalAmount = order.totalAmount;
   const lineTotals = totalsFromOrderLineItems(lineItems, order.orderDiscount ?? 0);
@@ -358,13 +370,20 @@ export default function EditOrderModal({ order, onClose, onSubmit, onOrderAndPay
     setLineItems((prev) => [...prev, newItem]);
   };
 
-  const handleSubmit = () => {
-    if (isSubmitting) return;
-    onSubmit({ items: lineItems });
+  const handleSubmit = async () => {
+    if (isSaveBusy) return;
+    setSaveFlowBusy(true);
+    try {
+      await Promise.resolve(onSubmit({ items: lineItems }));
+    } catch {
+      /* parent handles errors / toasts */
+    } finally {
+      if (mountedRef.current) setSaveFlowBusy(false);
+    }
   };
 
   const handleOrderAndPay = async () => {
-    if (!hasAdditionalPayment || !onOrderAndPay || isSubmitting) return;
+    if (!hasAdditionalPayment || !onOrderAndPay || isSaveBusy) return;
     setOrderAndPayBusy(true);
     try {
       const additional = await onOrderAndPay({ items: lineItems });
@@ -621,19 +640,19 @@ export default function EditOrderModal({ order, onClose, onSubmit, onOrderAndPay
               </button>
               <button
                 type="button"
-                onClick={handleSubmit}
-                disabled={isSubmitting}
+                onClick={() => void handleSubmit()}
+                disabled={isSaveBusy}
                 className="h-14 w-[274px] rounded-[14px] border-2 border-[#EA580C] bg-white font-['Arial'] text-base font-bold leading-6 text-[#EA580C] text-center hover:bg-[#FFF7ED] disabled:opacity-50 disabled:pointer-events-none"
               >
-                {isSubmitting ? "Saving…" : "Save order"}
+                {isSaveBusy ? "Saving…" : "Save order"}
               </button>
               <button
                 type="button"
                 onClick={() => void handleOrderAndPay()}
-                disabled={orderAndPayBusy || isSubmitting}
+                disabled={orderAndPayBusy || isSaveBusy}
                 className="h-14 w-[274px] rounded-[16px] bg-[#EA580C] font-['Inter'] text-base font-bold leading-6 text-white text-center shadow-[0px_4px_6px_-4px_#0000001A,0px_10px_15px_-3px_#0000001A] hover:bg-[#DC4C04] disabled:opacity-50 disabled:pointer-events-none"
               >
-                {orderAndPayBusy || isSubmitting ? "Saving…" : "Order & Pay"}
+                {orderAndPayBusy || isSaveBusy ? "Saving…" : "Order & Pay"}
               </button>
             </>
           ) : (
@@ -647,11 +666,11 @@ export default function EditOrderModal({ order, onClose, onSubmit, onOrderAndPay
               </button>
               <button
                 type="button"
-                onClick={handleSubmit}
-                disabled={isSubmitting}
+                onClick={() => void handleSubmit()}
+                disabled={isSaveBusy}
                 className="h-14 min-w-0 flex-1 rounded-[16px] bg-[#EA580C] font-['Inter'] text-base font-bold leading-6 text-white text-center shadow-[0px_4px_6px_-4px_#0000001A,0px_10px_15px_-3px_#0000001A] hover:bg-[#DC4C04] disabled:opacity-50 disabled:pointer-events-none"
               >
-                {isSubmitting ? "Saving…" : "Save Changes"}
+                {isSaveBusy ? "Saving…" : "Save Changes"}
               </button>
             </>
           )}

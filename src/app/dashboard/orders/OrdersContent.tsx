@@ -14,7 +14,11 @@ import { useOrdersFilters } from "@/domains/orders/hooks/useOrdersFilters";
 import { mapOrderToRow } from "@/domains/orders/types";
 import { useOrderModals } from "@/domains/orders/hooks/useOrderModals";
 import { useGetOrderById } from "@/hooks/useOrder";
-import { collectibleOrderAmount } from "@/domains/orders/orderCollectionAmount";
+import {
+  buildCreatePaymentDraftFromOrder,
+  ORDER_MONEY_EPS,
+} from "@/domains/orders/orderCollectionAmount";
+import { fetchOrderStateForPaymentCreate } from "@/services/paymentService";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -101,7 +105,7 @@ export default function OrdersContent() {
     return fromList ?? viewOrder;
   }, [viewOrder, viewOrderDetails, filteredOrders]);
 
-  const openPaymentFlow = (order: {
+  const openPaymentFlow = async (order: {
     id: string;
     orderNo: string;
     customerName: string;
@@ -109,17 +113,27 @@ export default function OrdersContent() {
     totalAmount: number;
     balanceDue?: number | null;
   }) => {
-    const total = collectibleOrderAmount(order);
-    if (total <= 0.02) {
-      toast.message("No balance due on this order.");
+    let fresh;
+    try {
+      fresh = await fetchOrderStateForPaymentCreate(order.id);
+    } catch {
+      toast.error("Could not load this order from the server. Try again.");
+      return;
+    }
+    const draft = buildCreatePaymentDraftFromOrder(fresh);
+    if (draft.amount <= ORDER_MONEY_EPS) {
+      toast.message(
+        "Nothing to collect on this order (already fully covered, per server). Refresh the list if that looks wrong."
+      );
       return;
     }
     setProcessingPayment({
-      orderId: Number(order.id),
-      orderNo: order.orderNo,
-      customerName: order.customerName,
-      customerMobile: order.phone,
-      total,
+      orderId: Number(fresh.id),
+      orderNo: String(fresh.id),
+      customerName: fresh.customer?.name ?? order.customerName,
+      customerMobile: fresh.customer?.mobile ?? order.phone,
+      total: draft.amount,
+      isAdditionalPayment: draft.paymentRole === "balance_due",
     });
   };
 
@@ -279,7 +293,7 @@ export default function OrdersContent() {
           onClose={closeViewModal}
           onEditInfo={() => openEditInfoFromView(activeViewOrder)}
           onPayNow={(details) => {
-            openPaymentFlow({
+            void openPaymentFlow({
               id: details.id,
               orderNo: details.orderNo,
               customerName: details.customerName,

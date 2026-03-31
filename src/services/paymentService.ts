@@ -1,10 +1,13 @@
 import axiosInstance from "@/lib/api/axiosInstance";
+import { roundMoney2 } from "@/domains/orders/orderCollectionAmount";
+import type { Order } from "@/types/order";
 import {
   CreatePaymentPayload,
   Payment,
   PaymentStats,
   PaymentUpdatePayload,
 } from "@/types/payment";
+import { getOrderById } from "@/services/orderService";
 
 function numField(v: unknown): number {
   if (typeof v === "number" && !Number.isNaN(v)) return v;
@@ -41,7 +44,10 @@ export function normalizePaymentStats(raw: unknown): PaymentStats {
 }
 
 export const createPayment = async (payload: CreatePaymentPayload): Promise<any> => {
-  const res = await axiosInstance.post("/payments", payload);
+  const res = await axiosInstance.post("/payments", {
+    ...payload,
+    amount: roundMoney2(Number(payload.amount)),
+  });
   return res.data;
 };
 
@@ -50,10 +56,39 @@ export const updatePaymentStatus = async (id: number, payload: PaymentUpdatePayl
   return res.data;
 };
 
+/**
+ * `GET /payments/order/:id` 
+ */
+export function normalizePaymentsByOrderApiResponse(body: unknown): unknown[] {
+  if (Array.isArray(body)) return body;
+  if (body && typeof body === "object") {
+    const o = body as Record<string, unknown>;
+    if (Array.isArray(o.payments)) return o.payments;
+    const wrapped = o.data;
+    if (wrapped != null && typeof wrapped === "object") {
+      if (Array.isArray(wrapped)) return wrapped;
+      const inner = wrapped as Record<string, unknown>;
+      if (Array.isArray(inner.payments)) return inner.payments;
+    }
+  }
+  return [];
+}
+
 export const getPaymentsByOrder = async (orderId: number): Promise<any[]> => {
   const res = await axiosInstance.get(`/payments/order/${orderId}`);
-  return res.data;
+  return normalizePaymentsByOrderApiResponse(res.data);
 };
+
+
+export async function fetchOrderStateForPaymentCreate(id: string | number): Promise<Order> {
+  const order = await getOrderById(id);
+  if (order.payments != null && order.payments.length > 0) {
+    return order;
+  }
+  const rows = await getPaymentsByOrder(Number(id));
+  if (!rows.length) return order;
+  return { ...order, payments: rows as Order["payments"] };
+}
 
 export const searchPaymentDetails = async (query: string): Promise<Payment[]> => {
   const res = await axiosInstance.get("/payments/search", { params: { query } });

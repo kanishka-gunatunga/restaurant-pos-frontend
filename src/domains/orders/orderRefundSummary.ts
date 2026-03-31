@@ -1,5 +1,6 @@
 import type { Order as ApiOrder } from "@/types/order";
 import type { Payment } from "@/types/payment";
+import { readLineSettlementStatus } from "./paymentRowFields";
 
 const EPS = 0.02;
 
@@ -8,10 +9,12 @@ type PaymentRowLike = Payment & {
   payment_role?: string;
   refunded_amount?: number;
   status?: string;
+  linePaymentStatus?: string;
+  line_payment_status?: string;
 };
 
 function readPaymentRowStatus(r: PaymentRowLike): string {
-  return String(r.paymentStatus ?? r.payment_status ?? r.status ?? "").toLowerCase();
+  return readLineSettlementStatus(r as unknown as Record<string, unknown>);
 }
 
 function isSaleLikePaymentRow(p: Payment): boolean {
@@ -164,50 +167,6 @@ export type OrderRefundSummary = {
   totalPaidForOrder: number;
   outstandingRefund: number;
 };
-
-export type PaymentStatusDeriveContext = {
-  balanceDue?: number;
-  requiresAdditionalPayment?: boolean;
-};
-
-export function deriveDisplayPaymentStatus(
-  apiPaymentStatus: string,
-  totalRefunded: number,
-  totalPaidForOrder: number,
-  ctx?: PaymentStatusDeriveContext
-): string {
-  const s = String(apiPaymentStatus).trim().toLowerCase().replace(/\s+/g, "_");
-  const tr = totalRefunded;
-  const tp = totalPaidForOrder;
-  const needsPay =
-    ctx?.requiresAdditionalPayment === true ||
-    (ctx?.balanceDue != null &&
-      Number.isFinite(Number(ctx.balanceDue)) &&
-      Number(ctx.balanceDue) > EPS);
-
-  if (needsPay) {
-    if (s === "pending") return s;
-    if (s === "paid" || s === "partial_refund") {
-      return "pending";
-    }
-    return s;
-  }
-
-  // --- Settled (nothing left to collect) ---
-  if (s === "pending") {
-    return "paid";
-  }
-  if (s === "refund") {
-    return "refund";
-  }
-  if (tp > EPS && tr >= tp - EPS) {
-    return "refund";
-  }
-  if (s === "partial_refund") {
-    return "partial_refund";
-  }
-  return "paid";
-}
 
 export function buildOrderRefundSummary(
   apiOrder: ApiOrder,
