@@ -176,18 +176,21 @@ export default function NewOrderDetailsModal({
   };
 
   const handleSubmit = () => {
-    if (!resolvedCustomerName.trim()) return showToast("Please enter customer name.");
-    if (!phone.trim()) return showToast("Please enter mobile number.");
-    if (!/^0{1}7{1}[01245678]{1}[0-9]{7}$/.test(phone.replace(/[-\s]/g, "")))
+    const mobileDigits = phone.replace(/[-\s]/g, "");
+    if (
+      mobileDigits.length > 0 &&
+      !/^0{1}7{1}[01245678]{1}[0-9]{7}$/.test(mobileDigits)
+    ) {
       return showToast("Invalid mobile number.");
+    }
     if (orderType === "Dine In" && !tableNumber.trim())
       return showToast("Please enter table number.");
     if (orderType === "Delivery" && !deliveryAddress.trim())
       return showToast("Please enter delivery address.");
 
     onSubmit({
-      customerName: resolvedCustomerName,
-      phone,
+      customerName: resolvedCustomerName.trim(),
+      phone: phone.trim(),
       customerId: resolvedCustomerId,
       originalCustomerName: resolvedOriginalCustomerName,
       orderType,
@@ -251,7 +254,6 @@ export default function NewOrderDetailsModal({
                   setPhone(val);
                   setHasManualNameEdit(false);
                 }}
-                pattern="^(?:0|94|\+94)?7[0-9]{8}$"
                 placeholder="07X-XXXX-XXX"
                 className={inputClass}
               />

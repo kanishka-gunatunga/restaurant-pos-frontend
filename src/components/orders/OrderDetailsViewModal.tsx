@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import type { OrderDetailsView } from "@/domains/orders/types";
 import {
-  getOrderLineTaxRate,
   isPlaceholderOrderLineItems,
   lineNetBeforeOrderDiscount,
   totalsFromOrderLineItems,
@@ -61,12 +60,9 @@ export default function OrderDetailsViewModal({
   const fromLines = deriveFromLines
     ? totalsFromOrderLineItems(order.items, order.orderDiscount ?? 0)
     : null;
-  const taxRateForLabel = fromLines?.taxRate ?? getOrderLineTaxRate();
-  const taxPercentShort =
-    taxRateForLabel > 0 ? `${Math.round(taxRateForLabel * 1000) / 10}%` : "0%";
   const subtotal = fromLines?.grossSubtotal ?? order.subtotal ?? order.totalAmount;
   const discount = fromLines?.totalDiscountAmount ?? order.discount ?? 0;
-  const taxAmount = fromLines?.taxAmount;
+  const taxAmount = fromLines?.taxAmount ?? 0;
   const totalAmount = fromLines?.totalAmount ?? order.totalAmount;
   const itemCount = items.reduce((sum, i) => sum + i.qty, 0);
   const orderTypeLabel = order.orderType ?? "Dine In";
@@ -393,18 +389,18 @@ export default function OrderDetailsViewModal({
                     <span className="font-normal text-[#45556C]">Subtotal</span>
                     <span className="font-bold text-[#1D293D]">{formatRs(subtotal)}</span>
                   </div>
-                  {fromLines && taxAmount != null && (
-                    <div className="flex justify-between text-base leading-6">
-                      <span className="font-normal text-[#45556C]">
-                        Tax
+                  <div className="flex justify-between text-base leading-6">
+                    <span className="font-normal text-[#45556C]">
+                      Tax
+                      {fromLines != null && fromLines.taxRate > MONEY_EPS && (
                         <span className="text-sm font-normal text-[#90A1B9]">
                           {" "}
-                          · {taxPercentShort}
+                          · {`${Math.round(fromLines.taxRate * 1000) / 10}%`}
                         </span>
-                      </span>
-                      <span className="font-bold text-[#1D293D]">{formatRs(taxAmount)}</span>
-                    </div>
-                  )}
+                      )}
+                    </span>
+                    <span className="font-bold text-[#1D293D]">{formatRs(taxAmount)}</span>
+                  </div>
                   {discount > 0.02 && (
                     <div className="flex justify-between text-base leading-6">
                       <span className="font-normal text-[#45556C]">Discount</span>

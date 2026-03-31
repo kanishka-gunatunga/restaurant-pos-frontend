@@ -28,7 +28,6 @@ import {
   clearMenuOpenCheckoutForSlot,
 } from "@/lib/menuOpenCheckout";
 
-const TAX_RATE = 0.1;
 
 type NoteModalType = "kitchen" | "order" | null;
 type PaymentFlowState = {
@@ -239,8 +238,8 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
   const subtotalBeforeDiscount = itemsWithDiscounts.reduce((sum, i) => sum + i.price * i.qty, 0);
   const totalItemDiscount = itemsWithDiscounts.reduce((sum, i) => sum + i.discountAmount, 0);
   const subtotal = subtotalBeforeDiscount - totalItemDiscount;
-  const tax = subtotal * TAX_RATE;
-  const total = subtotal + tax;
+  const cartTaxAmount = 0;
+  const total = subtotal + cartTaxAmount;
 
   const handleSubmitOrder = async (
     isPayNow = false
@@ -299,6 +298,7 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
       const normalizedOriginalName = (orderDetails.originalCustomerName ?? "").trim();
       const shouldUpdateExistingCustomerName =
         !!orderDetails.customerId &&
+        normalizedName.length > 0 &&
         !!normalizedOriginalName &&
         normalizedName.localeCompare(normalizedOriginalName, undefined, {
           sensitivity: "accent",
@@ -336,7 +336,7 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
               : "delivery",
         tableNumber: orderDetails.tableNumber,
         orderDiscount: 0,
-        tax: tax,
+        tax: cartTaxAmount,
         orderNote: activeOrderNote,
         kitchenNote: activeKitchenNote,
         deliveryAddress: orderDetails.deliveryAddress,
@@ -847,8 +847,10 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
                 </div>
               )}
               <div className="flex justify-between font-['Arial'] text-sm leading-5 text-[#62748E]">
-                <span>Tax (10%)</span>
-                <span>Rs.{tax.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                <span>Tax</span>
+                <span>
+                  Rs.{cartTaxAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                </span>
               </div>
               <div className="flex items-center justify-between border-t border-zinc-200 pt-1.5">
                 <span className="font-['Arial'] text-base font-bold leading-6 text-[#0F172B]">
