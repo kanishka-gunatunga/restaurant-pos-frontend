@@ -137,11 +137,8 @@ const createEmptyOrder = (): Order => ({
 });
 
 const hasOrderData = (order: Order): boolean => {
-  if (order.orderDetails) {
-    const details = order.orderDetails;
-    if (details.customerName?.trim() && details.phone?.trim()) {
-      return true;
-    }
+  if (order.orderDetails != null) {
+    return true;
   }
 
   if (order.items && order.items.length > 0) return true;

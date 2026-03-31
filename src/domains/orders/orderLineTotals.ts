@@ -7,11 +7,7 @@ export type OrderLineItemLike = {
 };
 
 export function getOrderLineTaxRate(): number {
-  if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_ORDER_TAX_RATE != null) {
-    const n = parseFloat(String(process.env.NEXT_PUBLIC_ORDER_TAX_RATE));
-    if (Number.isFinite(n) && n >= 0 && n <= 1) return n;
-  }
-  return 0.1;
+  return 0;
 }
 
 function modificationUnitSum(item: OrderLineItemLike): number {
@@ -70,7 +66,7 @@ export function totalsFromOrderLineItems(
   const netBeforeTax = Math.max(0, lineSum - orderDisc);
   const rate = getOrderLineTaxRate();
   const taxAmount = netBeforeTax * rate;
-  const totalAmount = netBeforeTax + taxAmount;
+  const totalAmount = netBeforeTax;
   return {
     grossSubtotal: grossWithMods,
     itemsSubtotal: lineSum,
