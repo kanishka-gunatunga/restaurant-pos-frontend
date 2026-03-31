@@ -5,8 +5,11 @@ import {
   useContext,
   useState,
   useCallback,
+  useLayoutEffect,
+  useRef,
   type ReactNode,
 } from "react";
+import { clearMenuOpenCheckoutForSlot } from "@/lib/menuOpenCheckout";
 
 export type OrderType = "Dine In" | "Take Away" | "Delivery";
 
@@ -54,6 +57,7 @@ type OrderContextType = {
   closeOrder: (orderId: string) => void;
   clearActiveOrder: () => void;
   clearOrderById: (orderId: string) => void;
+  clearCheckoutSession: (preferredOrderSlotId?: string | null) => void;
   getActiveOrder: () => Order | null;
   checkoutLockedOrderSlotId: string | null;
   setCheckoutLockedOrderSlotId: (orderId: string | null) => void;
@@ -146,6 +150,23 @@ const hasOrderData = (order: Order): boolean => {
 
   return false;
 };
+
+function applyClearOrderSlot(prev: Order[], orderId: string): Order[] | null {
+  const clearedOrder = prev.find((o) => o.id === orderId);
+  if (!clearedOrder) return null;
+
+  const cleared: Order = {
+    ...clearedOrder,
+    items: [],
+    orderDetails: null,
+    kitchenNote: "",
+    orderNote: "",
+  };
+
+  const updated = prev.map((order) => (order.id === orderId ? cleared : order));
+  const ordersWithData = updated.filter((o) => o.id === orderId || hasOrderData(o));
+  return ordersWithData.length > 0 ? ordersWithData : [cleared];
+}
 
 const INITIAL_ORDER = createEmptyOrder();
 const STORAGE_KEY = "pos_orders";
@@ -359,22 +380,10 @@ export function OrderProvider({
   }, []);
 
   const clearOrderById = useCallback((orderId: string) => {
+    clearMenuOpenCheckoutForSlot(orderId);
     setOrders((prev) => {
-      const clearedOrder = prev.find((o) => o.id === orderId);
-      if (!clearedOrder) return prev;
-
-      const cleared = {
-        ...clearedOrder,
-        items: [],
-        orderDetails: null,
-        kitchenNote: "",
-        orderNote: "",
-      };
-
-      const updated = prev.map((order) => (order.id === orderId ? cleared : order));
-      const ordersWithData = updated.filter((o) => o.id === orderId || hasOrderData(o));
-      const finalOrders = ordersWithData.length > 0 ? ordersWithData : [cleared];
-
+      const finalOrders = applyClearOrderSlot(prev, orderId);
+      if (!finalOrders) return prev;
       saveOrdersToStorage(finalOrders);
       return finalOrders;
     });
@@ -624,6 +633,48 @@ export function OrderProvider({
 
   const [checkoutLockedOrderSlotId, setCheckoutLockedOrderSlotId] = useState<string | null>(null);
 
+  const activeOrderIdRef = useRef(activeOrderId);
+  const checkoutLockedOrderSlotIdRef = useRef(checkoutLockedOrderSlotId);
+
+  useLayoutEffect(() => {
+    activeOrderIdRef.current = activeOrderId;
+    checkoutLockedOrderSlotIdRef.current = checkoutLockedOrderSlotId;
+  }, [activeOrderId, checkoutLockedOrderSlotId]);
+
+  const clearCheckoutSession = useCallback((preferredOrderSlotId?: string | null) => {
+    if (typeof window !== "undefined") {
+      try {
+        sessionStorage.removeItem(PENDING_PAYMENT_STORAGE_KEY);
+      } catch {
+        /* */
+      }
+    }
+    setCheckoutLockedOrderSlotId(null);
+
+    const tryIds = [
+      preferredOrderSlotId,
+      checkoutLockedOrderSlotIdRef.current,
+      activeOrderIdRef.current,
+    ].filter((id): id is string => id != null && String(id).length > 0);
+
+    const targetId =
+      tryIds.find((id) => orders.some((o) => o.id === id)) ?? orders[0]?.id;
+    if (targetId) {
+      clearMenuOpenCheckoutForSlot(targetId);
+    }
+
+    setOrders((prev) => {
+      const resolved =
+        tryIds.find((id) => prev.some((o) => o.id === id)) ?? prev[0]?.id;
+      if (!resolved) return prev;
+
+      const finalOrders = applyClearOrderSlot(prev, resolved);
+      if (!finalOrders) return prev;
+      saveOrdersToStorage(finalOrders);
+      return finalOrders;
+    });
+  }, [orders]);
+
   return (
     <OrderContext.Provider
       value={{
@@ -634,6 +685,7 @@ export function OrderProvider({
         closeOrder,
         clearActiveOrder,
         clearOrderById,
+        clearCheckoutSession,
         checkoutLockedOrderSlotId,
         setCheckoutLockedOrderSlotId,
         getActiveOrder,

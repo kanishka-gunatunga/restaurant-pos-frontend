@@ -4,6 +4,11 @@ import { useState } from "react";
 import { CreditCard, Banknote, Globe, Loader2 } from "lucide-react";
 import ProcessPaymentModal from "./ProcessPaymentModal";
 import { Payment } from "@/types/payment";
+import { readLineSettlementStatus } from "@/domains/orders/paymentRowFields";
+
+function rowSettlementStatus(p: Payment): string {
+  return readLineSettlementStatus(p as unknown as Record<string, unknown>);
+}
 
 const getStatusColor = (status: string) => {
   switch (status.toLowerCase()) {
@@ -40,7 +45,7 @@ export default function PaymentHistoryTable({ payments, isLoading }: PaymentHist
   };
 
   const getMethodDisplay = (payment: Payment) => {
-    const status = payment.paymentStatus.toLowerCase();
+    const status = rowSettlementStatus(payment);
     const method = payment.method;
 
     if (status === "pending") {
@@ -154,7 +159,7 @@ export default function PaymentHistoryTable({ payments, isLoading }: PaymentHist
                   </td>
                   <td className="px-6 py-5">
                     <div className="flex items-center gap-1 text-[14px] font-bold">
-                      {payment.paymentStatus.toLowerCase() === "refund" ? (
+                      {rowSettlementStatus(payment) === "refund" ? (
                         <span className="text-[#EC003F]">- Rs.{payment.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                       ) : (
                         <>
@@ -169,8 +174,8 @@ export default function PaymentHistoryTable({ payments, isLoading }: PaymentHist
                     </div>
                   </td>
                   <td className="px-6 py-5 text-right">
-                    <span className={`inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-black tracking-wider uppercase ${getStatusColor(payment.paymentStatus)}`}>
-                      {payment.paymentStatus.replace("_", " ")}
+                    <span className={`inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-black tracking-wider uppercase ${getStatusColor(rowSettlementStatus(payment))}`}>
+                      {rowSettlementStatus(payment).replace("_", " ")}
                     </span>
                   </td>
                 </tr>

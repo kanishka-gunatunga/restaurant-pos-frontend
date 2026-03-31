@@ -5,6 +5,11 @@ import { X, Banknote, CreditCard, Check, Calculator, ArrowRight, Loader2 } from 
 import { Payment } from "@/types/payment";
 import { useCreatePayment } from "@/hooks/usePayment";
 import { toast } from "sonner";
+import { fetchOrderStateForPaymentCreate } from "@/services/paymentService";
+import {
+  buildCreatePaymentDraftFromOrder,
+  ORDER_MONEY_EPS,
+} from "@/domains/orders/orderCollectionAmount";
 
 interface ProcessPaymentModalProps {
     payment: Payment;
@@ -41,12 +46,27 @@ export default function ProcessPaymentModal({
         submitGuardRef.current = true;
         setIsSubmitting(true);
         try {
+            let fresh;
+            try {
+                fresh = await fetchOrderStateForPaymentCreate(payment.id);
+            } catch {
+                toast.error("Could not reload the order. Check your connection and try again.");
+                return;
+            }
+            const draft = buildCreatePaymentDraftFromOrder(fresh);
+            if (draft.amount <= ORDER_MONEY_EPS) {
+                toast.message(
+                    "Nothing to collect — this order is already covered on the server."
+                );
+                onClose();
+                return;
+            }
             await createPaymentMutation.mutateAsync({
                 orderId: Number(payment.id),
                 paymentMethod: payMethod,
-                amount: payment.amount,
+                amount: draft.amount,
                 status: "paid",
-                ...(payment.isAdditionalCharge ? { paymentRole: "balance_due" as const } : {}),
+                ...(draft.paymentRole === "balance_due" ? { paymentRole: "balance_due" as const } : {}),
             });
             setStep("SUCCESS");
         } catch (error: unknown) {

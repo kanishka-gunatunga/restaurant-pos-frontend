@@ -69,6 +69,9 @@ export const useCreatePayment = () => {
         queryKey: ORDER_KEYS.all,
         refetchType: "active",
       });
+      if (variables?.orderId != null) {
+        await queryClient.invalidateQueries({ queryKey: ORDER_KEYS.detail(variables.orderId) });
+      }
     },
   });
 };

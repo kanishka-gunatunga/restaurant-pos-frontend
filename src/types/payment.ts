@@ -8,6 +8,9 @@ export interface Payment {
   dateTime: string;
   method: string | null;
   paymentStatus: PaymentStatus;
+  status?: PaymentStatus;
+  linePaymentStatus?: string;
+  line_payment_status?: string;
   amount: number;
   refundedAmount?: number;
   /** Server: `sale` | `balance_due` */

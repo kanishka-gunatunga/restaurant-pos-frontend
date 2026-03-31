@@ -5,11 +5,7 @@ import type {
 } from "@/types/order";
 import { formatDate, formatTime } from "@/lib/format";
 import { totalsFromOrderLineItems } from "./orderLineTotals";
-import {
-  buildOrderRefundSummary,
-  deriveDisplayPaymentStatus,
-  reconcileBalanceDueWithPaymentRows,
-} from "./orderRefundSummary";
+import { buildOrderRefundSummary, reconcileBalanceDueWithPaymentRows } from "./orderRefundSummary";
 
 export function readBalanceDueFromOrderPayload(
   o: Record<string, unknown> | null | undefined
@@ -156,7 +152,7 @@ export function mapOrderToRow(apiOrder: ApiOrder): OrderRow {
 
   const currentTotal = fromLines?.totalAmount ?? Number(apiOrder.totalAmount);
   const refundSummary = buildOrderRefundSummary(apiOrder, raw, currentTotal);
-  const basePaymentStatus = readPaymentStatusFromApi(raw);
+  const orderPaymentStatus = readPaymentStatusFromApi(raw);
 
   const { balanceDue, requiresAdditionalPayment } = reconcileBalanceDueWithPaymentRows(
     apiOrder,
@@ -175,12 +171,7 @@ export function mapOrderToRow(apiOrder: ApiOrder): OrderRow {
     customerId: apiOrder.customerId || apiOrder.customer?.id,
     totalAmount: fromLines?.totalAmount ?? Number(apiOrder.totalAmount),
     status: apiOrder.status || "pending",
-    paymentStatus: deriveDisplayPaymentStatus(
-      basePaymentStatus,
-      refundSummary.totalRefunded,
-      refundSummary.totalPaidForOrder,
-      { balanceDue, requiresAdditionalPayment }
-    ) as PaymentStatus,
+    paymentStatus: orderPaymentStatus,
     orderType,
     tableNumber: apiOrder.tableNumber,
     deliveryAddress: apiOrder.deliveryAddress,

@@ -23,6 +23,28 @@ export const PAYMENT_STATUS_STYLES: Record<
 
 export const DEFAULT_PAYMENT_STATUS_STYLE = { bg: "#F1F5F9", border: "#CAD5E2", text: "#45556C" };
 
+export function formatOrderStatusLabel(status: OrderStatus | string): string {
+  const s = String(status).toLowerCase().replace(/\s+/g, "_");
+  switch (s) {
+    case "pending":
+      return "Pending";
+    case "preparing":
+      return "Preparing";
+    case "ready":
+      return "Ready";
+    case "hold":
+      return "Hold";
+    case "complete":
+      return "Complete";
+    case "cancel":
+      return "Cancelled";
+    default:
+      return String(status)
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+}
+
 export function formatPaymentStatusLabel(status: PaymentStatus | string): string {
   const s = String(status).toLowerCase().replace(/\s+/g, "_");
   switch (s) {

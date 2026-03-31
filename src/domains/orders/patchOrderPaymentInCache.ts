@@ -44,6 +44,8 @@ export function readOrderPaymentFieldsFromRefundResponse(raw: unknown): {
       : undefined;
 
   const st =
+    o.paymentStatus ??
+    o.payment_status ??
     o.orderPaymentStatus ??
     o.order_payment_status ??
     orderObj?.paymentStatus ??
