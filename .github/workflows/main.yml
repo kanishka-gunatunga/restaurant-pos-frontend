@@ -1,0 +1,23 @@
+name: Sync v2 to Repo B
+
+on:
+  push:
+    branches:
+      - v2
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repo A
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Push to Repo B
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "actions@github.com"
+          git remote add target https://x-access-token:${{ secrets.TARGET_REPO_TOKEN }}@github.com/kanishka-gunatunga/ahas-gawwa-v2-frontend.git
+          git push target HEAD:main --force
