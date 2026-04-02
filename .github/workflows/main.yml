@@ -1,30 +1,27 @@
 name: Sync v2 to Repo B
 
-# Trigger only when v2 branch is updated
 on:
   push:
     branches:
       - v2
+  workflow_dispatch:   # manual trigger enabled
 
 jobs:
   sync:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout v2 branch fully
       - name: Checkout Repo A v2
         uses: actions/checkout@v3
         with:
           ref: v2
           fetch-depth: 0
 
-      # Step 2: Setup Git config
       - name: Setup Git
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
 
-      # Step 3: Push to Repo B
       - name: Push to Repo B
         env:
           TARGET_REPO_TOKEN: ${{ secrets.TARGET_REPO_TOKEN }}
