@@ -345,7 +345,7 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
         deliveryInstructions: orderDetails.deliveryInstructions,
         order_products: items.map((item) => ({
           productId: item.productId,
-          variationId: item.variationId,
+          variationId: item.variationOptionId,
           quantity: item.qty,
           unitPrice: item.price,
           productDiscount:
