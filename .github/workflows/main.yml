@@ -1,5 +1,6 @@
 name: Sync v2 to Repo B
 
+# Trigger only when v2 branch is updated
 on:
   push:
     branches:
@@ -10,17 +11,23 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repo A
+      # Step 1: Checkout v2 branch fully
+      - name: Checkout Repo A v2
         uses: actions/checkout@v3
         with:
+          ref: v2
           fetch-depth: 0
 
+      # Step 2: Setup Git config
+      - name: Setup Git
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "actions@github.com"
+
+      # Step 3: Push to Repo B
       - name: Push to Repo B
         env:
           TARGET_REPO_TOKEN: ${{ secrets.TARGET_REPO_TOKEN }}
         run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "actions@github.com"
-          git checkout v2
           git remote add target https://x-access-token:${TARGET_REPO_TOKEN}@github.com/kanishka-gunatunga/ahas-gawwa-v2-frontend.git
           git push target v2:main --force
