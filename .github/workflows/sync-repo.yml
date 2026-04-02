@@ -8,42 +8,41 @@ on:
 jobs:
   sync:
     runs-on: ubuntu-latest
+
     steps:
-      # 1. Checkout restaurant-pos-frontend (Source)
+      # 1. Checkout Source Repo
       - name: Checkout Source Repo
         uses: actions/checkout@v4
         with:
           ref: v2
           path: repo-a
+          persist-credentials: false
 
-      # 2. Checkout ahas-gawwa-v2-frontend (Destination)
+      # 2. Checkout Destination Repo
       - name: Checkout Destination Repo
         uses: actions/checkout@v4
         with:
-          repository: kanishka-gunatunga/ahas-gawwa-v2-frontend # Replace 'your-username' with your actual GitHub handle or organization name
+          repository: kanishka-gunatunga/ahas-gawwa-v2-frontend
           token: ${{ secrets.REPO_ACCESS_TOKEN }}
           path: repo-b
           ref: main
+          persist-credentials: false
 
-      # 3. Sync files and Push
+      # 3. Sync & Push
       - name: Copy files, Commit, and Push
         run: |
-          # Copy files, excluding .git and .github workflow folders
           rsync -av --exclude='.git' --exclude='.github' repo-a/ repo-b/
-          
+
           cd repo-b
-          
-          # Set up Git configuration
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          # Add all changes
+
           git add .
-          
-          # Check if there are actual changes to commit
+
           if git diff --staged --quiet; then
             echo "No changes to commit."
           else
             git commit -m "Auto-sync from restaurant-pos-frontend (v2 branch)"
-            git push origin main
+            git push https://x-access-token:${{ secrets.REPO_ACCESS_TOKEN }}@github.com/kanishka-gunatunga/ahas-gawwa-v2-frontend.git main
           fi
