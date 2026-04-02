@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { User, Phone, Home, MapPin, Navigation } from "lucide-react";
+import { User, Phone, Home, MapPin, Navigation, ChevronDown } from "lucide-react";
 import { X } from "lucide-react";
 import type { OrderDetailsData, OrderType } from "@/contexts/OrderContext";
 import { useGetCustomerByMobile } from "@/hooks/useCustomer";
@@ -163,12 +163,14 @@ export default function NewOrderDetailsModal({
   const [deliveryInstructions, setDeliveryInstructions] = useState(
     initialData?.deliveryInstructions ?? ""
   );
+  const [deliveryCharge, setDeliveryCharge] = useState("20");
   const [toast, setToast] = useState<string | null>(null);
   const { data: customerData } = useGetCustomerByMobile(phone.length >= 10 ? phone : "");
   const resolvedCustomerName =
     !hasManualNameEdit && customerData?.name ? customerData.name : customerName;
   const resolvedCustomerId = customerData?.id ?? initialData?.customerId;
-  const resolvedOriginalCustomerName = customerData?.name ?? initialData?.originalCustomerName ?? "";
+  const resolvedOriginalCustomerName =
+    customerData?.name ?? initialData?.originalCustomerName ?? "";
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -177,10 +179,7 @@ export default function NewOrderDetailsModal({
 
   const handleSubmit = () => {
     const mobileDigits = phone.replace(/[-\s]/g, "");
-    if (
-      mobileDigits.length > 0 &&
-      !/^0{1}7{1}[01245678]{1}[0-9]{7}$/.test(mobileDigits)
-    ) {
+    if (mobileDigits.length > 0 && !/^0{1}7{1}[01245678]{1}[0-9]{7}$/.test(mobileDigits)) {
       return showToast("Invalid mobile number.");
     }
     if (orderType === "Dine In" && !tableNumber.trim())
@@ -202,9 +201,23 @@ export default function NewOrderDetailsModal({
   const labelClass = "font-['Arial'] text-sm leading-5 text-[#62748E]";
   const inputClass =
     "w-full rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFC] py-3 pr-4 pl-11 font-['Arial'] text-base leading-[100%] text-[#0A0A0A80] placeholder:text-[#0A0A0A80] focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C]/20";
+  const selectClass =
+    "w-full appearance-none rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFC] py-3 pr-10 pl-4 font-['Arial'] text-base leading-[100%] text-[#0A0A0A80] focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C]/20";
   const iconClass = "absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#90A1B9]";
 
   const orderTypes: OrderType[] = ["Dine In", "Take Away", "Delivery"];
+  const deliveryChargeOptions = [
+    { value: "1", label: "Rs. 300.00" },
+    { value: "2", label: "Rs. 400.00" },
+    { value: "3", label: "Rs. 500.00" },
+    { value: "4", label: "Rs. 600.00" },
+    { value: "5", label: "Rs. 700.00" },
+    { value: "6", label: "Rs. 800.00" },
+    { value: "7", label: "Rs. 900.00" },
+    { value: "8", label: "Rs. 1000.00" },
+    { value: "9", label: "Rs. 1100.00" },
+    { value: "10", label: "Rs. 1200.00" },
+  ];
 
   return (
     <div
@@ -376,6 +389,24 @@ export default function NewOrderDetailsModal({
                   placeholder="Eg: Leave at front door"
                   className={inputClass}
                 />
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <label className={labelClass}>Delivery Charges</label>
+              <div className="relative mt-1.5">
+                <select
+                  value={deliveryCharge}
+                  onChange={(e) => setDeliveryCharge(e.target.value)}
+                  className={selectClass}
+                >
+                  {deliveryChargeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#90A1B9]" />
               </div>
             </div>
           </>
