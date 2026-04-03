@@ -29,6 +29,7 @@ export interface CreatePaymentPayload {
   orderId: number;
   paymentMethod: "cash" | "card";
   amount: number;
+  paidAmount?: number;
   transactionId?: string;
   status?: PaymentStatus;
   paymentRole?: "sale" | "balance_due";
