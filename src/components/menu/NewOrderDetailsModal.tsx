@@ -5,6 +5,8 @@ import { User, Phone, Home, MapPin, Navigation, ChevronDown } from "lucide-react
 import { X } from "lucide-react";
 import type { OrderDetailsData, OrderType } from "@/contexts/OrderContext";
 import { useGetCustomerByMobile } from "@/hooks/useCustomer";
+import { useAuth } from "@/contexts/AuthContext";
+import { useDeliveryChargesByBranch } from "@/hooks/useDeliveryCharge";
 
 type Props = {
   onSubmit: (data: OrderDetailsData) => void;
@@ -163,8 +165,14 @@ export default function NewOrderDetailsModal({
   const [deliveryInstructions, setDeliveryInstructions] = useState(
     initialData?.deliveryInstructions ?? ""
   );
-  const [deliveryCharge, setDeliveryCharge] = useState("20");
+  const [deliveryCharge, setDeliveryCharge] = useState(
+    initialData?.deliveryChargeId != null ? String(initialData.deliveryChargeId) : ""
+  );
   const [toast, setToast] = useState<string | null>(null);
+  const { user } = useAuth();
+  const userBranchId = user?.branchId ?? null;
+  const { data: deliveryChargesByBranch = [], isLoading: isLoadingDeliveryCharges } =
+    useDeliveryChargesByBranch(userBranchId);
   const { data: customerData } = useGetCustomerByMobile(phone.length >= 10 ? phone : "");
   const resolvedCustomerName =
     !hasManualNameEdit && customerData?.name ? customerData.name : customerName;
@@ -186,6 +194,10 @@ export default function NewOrderDetailsModal({
       return showToast("Please enter table number.");
     if (orderType === "Delivery" && !deliveryAddress.trim())
       return showToast("Please enter delivery address.");
+    if (orderType === "Delivery" && !deliveryCharge)
+      return showToast("Please select a delivery charge.");
+
+    const selectedDeliveryCharge = deliveryChargeOptions.find((option) => option.value === deliveryCharge);
 
     onSubmit({
       customerName: resolvedCustomerName.trim(),
@@ -194,7 +206,15 @@ export default function NewOrderDetailsModal({
       originalCustomerName: resolvedOriginalCustomerName,
       orderType,
       ...(orderType === "Dine In" && { tableNumber }),
-      ...(orderType === "Delivery" && { deliveryAddress, landmark, zipCode, deliveryInstructions }),
+      ...(orderType === "Delivery" && {
+        deliveryAddress,
+        landmark,
+        zipCode,
+        deliveryInstructions,
+        deliveryChargeId: selectedDeliveryCharge ? Number(selectedDeliveryCharge.value) : null,
+        deliveryChargeAmount: selectedDeliveryCharge?.amount ?? 0,
+        deliveryChargeTitle: selectedDeliveryCharge?.title ?? "",
+      }),
     });
   };
 
@@ -206,18 +226,15 @@ export default function NewOrderDetailsModal({
   const iconClass = "absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#90A1B9]";
 
   const orderTypes: OrderType[] = ["Dine In", "Take Away", "Delivery"];
-  const deliveryChargeOptions = [
-    { value: "1", label: "Rs. 300.00" },
-    { value: "2", label: "Rs. 400.00" },
-    { value: "3", label: "Rs. 500.00" },
-    { value: "4", label: "Rs. 600.00" },
-    { value: "5", label: "Rs. 700.00" },
-    { value: "6", label: "Rs. 800.00" },
-    { value: "7", label: "Rs. 900.00" },
-    { value: "8", label: "Rs. 1000.00" },
-    { value: "9", label: "Rs. 1100.00" },
-    { value: "10", label: "Rs. 1200.00" },
-  ];
+  const deliveryChargeOptions = deliveryChargesByBranch.map((charge) => ({
+    value: String(charge.id),
+    title: charge.title,
+    amount: Number(charge.amount),
+    label: `${charge.title} - Rs. ${Number(charge.amount).toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`,
+  }));
 
   return (
     <div
@@ -400,6 +417,13 @@ export default function NewOrderDetailsModal({
                   onChange={(e) => setDeliveryCharge(e.target.value)}
                   className={selectClass}
                 >
+                  <option value="" disabled>
+                    {isLoadingDeliveryCharges
+                      ? "Loading delivery charges..."
+                      : deliveryChargeOptions.length > 0
+                        ? "Select delivery charge"
+                        : "No delivery charges available"}
+                  </option>
                   {deliveryChargeOptions.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}

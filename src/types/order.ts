@@ -65,6 +65,9 @@ export interface Order {
   landmark?: string;
   zipcode?: string;
   deliveryInstructions?: string;
+  serviceCharge?: number | string;
+  deliveryChargeAmount?: number | string;
+  deliveryChargeId?: number | null;
   status: OrderStatus;
   paymentStatus: "paid" | "pending" | "refund" | "partial_refund" | string;
   balanceDue?: number;
@@ -100,6 +103,10 @@ export interface CreateOrderData {
   landmark?: string;
   zipcode?: string;
   deliveryInstructions?: string;
+  serviceCharge?: number;
+  deliveryChargeAmount?: number;
+  deliveryChargeId?: number | null;
+  deliveryChargeSelectedId?: number | null;
   order_products: {
     productId: string | number;
     variationId?: string | number;

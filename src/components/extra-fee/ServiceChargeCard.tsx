@@ -7,9 +7,10 @@ import type { ServiceChargeItem } from "@/domains/extra-fee/types";
 type Props = {
   item: ServiceChargeItem;
   onEdit: (item: ServiceChargeItem) => void;
+  onDelete: (item: ServiceChargeItem) => void;
 };
 
-export default function ServiceChargeCard({ item, onEdit }: Props) {
+export default function ServiceChargeCard({ item, onEdit, onDelete }: Props) {
   return (
     <article className="rounded-[14px] border border-[#F1F5F9] bg-white p-5 shadow-[0px_1px_2px_-1px_#0000001A,0px_1px_3px_0px_#0000001A]">
       <div className="flex items-start justify-between">
@@ -27,6 +28,7 @@ export default function ServiceChargeCard({ item, onEdit }: Props) {
           </button>
           <button
             type="button"
+            onClick={() => onDelete(item)}
             className="rounded-lg p-2 text-[#FB2C36] transition-colors hover:bg-[#FEF2F2]"
             aria-label={`Delete ${item.title}`}
           >

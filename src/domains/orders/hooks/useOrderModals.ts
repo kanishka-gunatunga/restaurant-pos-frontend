@@ -1,22 +1,14 @@
 import { useState, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import {
-  readBalanceDueFromOrderPayload,
-  type OrderDetailsView,
-  type OrderRow,
-} from "../types";
+import { readBalanceDueFromOrderPayload, type OrderDetailsView, type OrderRow } from "../types";
 import { EditOrderLineItem } from "@/components/orders/EditOrderModal";
 import { useUpdateOrderStatus, useUpdateOrder, ORDER_KEYS } from "@/hooks/useOrder";
 import { useUpdateCustomer } from "@/hooks/useCustomer";
 import { useUpdatePaymentStatus, PAYMENT_KEYS } from "@/hooks/usePayment";
-import {
-  getPaymentsByOrder,
-  normalizePaymentsByOrderApiResponse,
-} from "@/services/paymentService";
+import { getPaymentsByOrder, normalizePaymentsByOrderApiResponse } from "@/services/paymentService";
 import { readLineSettlementStatus } from "@/domains/orders/paymentRowFields";
 import type { OrderDetailsData } from "@/contexts/OrderContext";
-import { totalsFromOrderLineItems } from "@/domains/orders/orderLineTotals";
 import {
   patchOrderPaymentInQueryCache,
   readOrderPaymentFieldsFromRefundResponse,
@@ -122,25 +114,16 @@ async function resolveCollectAmountAfterPut(
   fallbackBasketDelta: number,
   orderId: string
 ): Promise<number> {
-  let serverBalance = readBalanceDueFromOrderPayload(
-    updated as unknown as Record<string, unknown>
-  );
-  if (
-    (serverBalance == null || serverBalance <= MONEY_EPS) &&
-    fallbackBasketDelta > MONEY_EPS
-  ) {
+  let serverBalance = readBalanceDueFromOrderPayload(updated as unknown as Record<string, unknown>);
+  if ((serverBalance == null || serverBalance <= MONEY_EPS) && fallbackBasketDelta > MONEY_EPS) {
     try {
       const fresh = await getOrderById(orderId);
-      serverBalance = readBalanceDueFromOrderPayload(
-        fresh as unknown as Record<string, unknown>
-      );
+      serverBalance = readBalanceDueFromOrderPayload(fresh as unknown as Record<string, unknown>);
     } catch {
       /* keep */
     }
   }
-  return serverBalance != null && serverBalance > MONEY_EPS
-    ? serverBalance
-    : fallbackBasketDelta;
+  return serverBalance != null && serverBalance > MONEY_EPS ? serverBalance : fallbackBasketDelta;
 }
 
 export function useOrderModals(options?: UseOrderModalsOptions) {
@@ -176,6 +159,9 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
       subtotal: order.subtotal,
       discount: order.discount,
       orderDiscount: order.orderDiscount ?? 0,
+      serviceCharge: order.serviceCharge ?? 0,
+      deliveryChargeAmount: order.deliveryChargeAmount ?? 0,
+      deliveryChargeId: order.deliveryChargeId ?? null,
       balanceDue: order.balanceDue,
       requiresAdditionalPayment: order.requiresAdditionalPayment,
       totalRefunded: order.totalRefunded,
@@ -246,24 +232,6 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
       const modalOrder = editOrderModal;
       if (!modalOrder) return;
 
-      const computed = totalsFromOrderLineItems(
-        data.items.map((it) => ({
-          name: it.name,
-          qty: it.qty,
-          price: it.price,
-          productDiscount: it.productDiscount,
-          modifications: it.modifications?.map((m) => ({ price: m.price })),
-        })),
-        modalOrder.orderDiscount ?? 0
-      );
-      const newTotal = computed?.totalAmount ?? 0;
-      const originalTotal = modalOrder.totalAmount;
-      const refundAmount = originalTotal - newTotal;
-      const additionalDue = newTotal - originalTotal;
-
-      const shouldRecordRefund =
-        refundAmount > MONEY_EPS && additionalDue <= MONEY_EPS;
-
       const orderIdStr = String(modalOrder.id);
       const orderIdNum = Number(modalOrder.id);
 
@@ -281,9 +249,15 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
             })),
           },
         });
+        const originalTotal = Number(modalOrder.totalAmount || 0);
+        const updatedTotal = Number(updatedOrder.totalAmount || 0);
+        const refundAmount = originalTotal - updatedTotal;
+        const additionalDue = updatedTotal - originalTotal;
+        const shouldRecordRefund = refundAmount > MONEY_EPS && additionalDue <= MONEY_EPS;
 
         const paymentStatusAfterPut =
-          updatedOrder.paymentStatus ?? (updatedOrder as { payment_status?: string }).payment_status;
+          updatedOrder.paymentStatus ??
+          (updatedOrder as { payment_status?: string }).payment_status;
 
         debugOrderEditRefund("PUT /orders done", {
           orderId: orderIdStr,
@@ -308,8 +282,7 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
             });
             const payment = pickRefundTargetPayment(rows);
             if (payment) {
-              const isFullRefund =
-                refundAmount >= payment.remainingCollectible - MONEY_EPS;
+              const isFullRefund = refundAmount >= payment.remainingCollectible - MONEY_EPS;
               debugOrderEditRefund("calling PUT /payments/:id/status", {
                 paymentId: payment.id,
                 refund_amount: refundAmount,
@@ -332,7 +305,9 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
                 balanceDue: fromApi.balanceDue,
                 orderId: oid,
                 responseKeys:
-                  refundResponse && typeof refundResponse === "object" && !Array.isArray(refundResponse)
+                  refundResponse &&
+                  typeof refundResponse === "object" &&
+                  !Array.isArray(refundResponse)
                     ? Object.keys(refundResponse as object).slice(0, 25)
                     : [],
               });
@@ -347,9 +322,12 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
                   readOrderSnapshotFromPaymentResponse(refundResponse)
                 );
               } else {
-                debugOrderEditRefund("warning: no order aggregate in refund body — cache not patched", {
-                  orderId: orderIdStr,
-                });
+                debugOrderEditRefund(
+                  "warning: no order aggregate in refund body — cache not patched",
+                  {
+                    orderId: orderIdStr,
+                  }
+                );
               }
               void queryClient.invalidateQueries({ queryKey: ORDER_KEYS.detail(modalOrder.id) });
               void queryClient.invalidateQueries({ queryKey: ORDER_KEYS.lists() });
@@ -402,25 +380,6 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
     async (data: { items: EditOrderLineItem[] }): Promise<number | null> => {
       if (!editOrderModal) return null;
 
-      const computed = totalsFromOrderLineItems(
-        data.items.map((it) => ({
-          name: it.name,
-          qty: it.qty,
-          price: it.price,
-          productDiscount: it.productDiscount,
-          modifications: it.modifications?.map((m) => ({ price: m.price })),
-        })),
-        editOrderModal.orderDiscount ?? 0
-      );
-      const newTotal = computed?.totalAmount ?? 0;
-      const originalTotal = editOrderModal.totalAmount;
-      const additionalDue = newTotal - originalTotal;
-
-      if (additionalDue <= MONEY_EPS) {
-        toast.error("No additional payment is due for this basket.");
-        return null;
-      }
-
       const order_products = data.items.map((item) => ({
         productId: Number(item.productId || item.id),
         variationId: item.variationId ? Number(item.variationId) : undefined,
@@ -441,6 +400,13 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
       } catch (err: unknown) {
         toast.error(axiosErrorMessage(err));
         throw err;
+      }
+      const originalTotal = Number(editOrderModal.totalAmount || 0);
+      const updatedTotal = Number(updated.totalAmount || 0);
+      const additionalDue = updatedTotal - originalTotal;
+      if (additionalDue <= MONEY_EPS) {
+        toast.error("No additional payment is due for this basket.");
+        return null;
       }
 
       const collectAmount = await resolveCollectAmountAfterPut(
@@ -482,6 +448,26 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
   const handleEditOrderInfoSubmit = useCallback(
     (data: OrderDetailsData) => {
       if (editOrderInfoModal) {
+        const isDineIn = data.orderType === "Dine In";
+        const isDelivery = data.orderType === "Delivery";
+        const existingServiceCharge = Number(editOrderInfoModal.serviceCharge ?? 0);
+        const existingDeliveryChargeAmount = Number(editOrderInfoModal.deliveryChargeAmount ?? 0);
+        const existingDeliveryChargeId = editOrderInfoModal.deliveryChargeId ?? null;
+        const payloadServiceCharge = isDineIn
+          ? Number.isFinite(existingServiceCharge)
+            ? existingServiceCharge
+            : 0
+          : 0;
+        const payloadDeliveryChargeAmount = isDelivery
+          ? Number(
+              data.deliveryChargeAmount ??
+                (Number.isFinite(existingDeliveryChargeAmount) ? existingDeliveryChargeAmount : 0)
+            ) || 0
+          : 0;
+        const payloadDeliveryChargeId = isDelivery
+          ? (data.deliveryChargeId ?? existingDeliveryChargeId ?? null)
+          : null;
+
         updateOrderMutation.mutate(
           {
             id: editOrderInfoModal.id,
@@ -495,6 +481,10 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
               zipcode: data.orderType === "Delivery" ? data.zipCode : undefined,
               deliveryInstructions:
                 data.orderType === "Delivery" ? data.deliveryInstructions : undefined,
+              serviceCharge: payloadServiceCharge,
+              deliveryChargeAmount: payloadDeliveryChargeAmount,
+              deliveryChargeId: payloadDeliveryChargeId,
+              deliveryChargeSelectedId: payloadDeliveryChargeId,
             },
           },
           {
@@ -543,7 +533,6 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
     openEditFromView,
     openEditInfoFromView,
     openCancelFromView,
-    isUpdatingOrder:
-      updateOrderMutation.isPending || updatePaymentStatusMutation.isPending,
+    isUpdatingOrder: updateOrderMutation.isPending || updatePaymentStatusMutation.isPending,
   };
 }

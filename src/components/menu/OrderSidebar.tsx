@@ -8,6 +8,8 @@ import { User, Phone, ChefHat, Trash2, X } from "lucide-react";
 import { useOrder } from "@/contexts/OrderContext";
 import { useCreateOrder } from "@/hooks/useOrder";
 import { useUpdateCustomer } from "@/hooks/useCustomer";
+import { useAuth } from "@/contexts/AuthContext";
+import { useServiceCharge } from "@/hooks/useServiceCharge";
 import {
   useGetAllDiscounts,
   findApplicableDiscount,
@@ -147,6 +149,7 @@ function NoteModal({
 export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: OrderItem) => void }) {
   const { mutateAsync: createOrder, isPending: isCreatingOrder } = useCreateOrder();
   const { mutateAsync: updateCustomer } = useUpdateCustomer();
+  const { user } = useAuth();
 
   const {
     orders,
@@ -239,7 +242,21 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
   const totalItemDiscount = itemsWithDiscounts.reduce((sum, i) => sum + i.discountAmount, 0);
   const subtotal = subtotalBeforeDiscount - totalItemDiscount;
   const cartTaxAmount = 0;
-  const total = subtotal + cartTaxAmount;
+  const serviceChargeBranchId = user?.branchId ?? null;
+  const { data: serviceChargeSetting } = useServiceCharge(serviceChargeBranchId);
+  const serviceChargePercentageRaw = Number(serviceChargeSetting?.percentage ?? 0);
+  const serviceChargePercentage = Number.isFinite(serviceChargePercentageRaw)
+    ? serviceChargePercentageRaw
+    : 0;
+  const serviceChargeAmount =
+    orderDetails?.orderType === "Dine In"
+      ? Number((subtotal * (serviceChargePercentage / 100)).toFixed(2))
+      : 0;
+  const deliveryChargeAmount =
+    orderDetails?.orderType === "Delivery"
+      ? Number(orderDetails.deliveryChargeAmount ?? 0)
+      : 0;
+  const total = subtotal + cartTaxAmount + serviceChargeAmount + deliveryChargeAmount;
 
   const handleSubmitOrder = async (
     isPayNow = false
@@ -343,6 +360,12 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
         landmark: orderDetails.landmark,
         zipcode: orderDetails.zipCode,
         deliveryInstructions: orderDetails.deliveryInstructions,
+        serviceCharge: serviceChargeAmount,
+        deliveryChargeAmount,
+        deliveryChargeId:
+          orderDetails.orderType === "Delivery" ? (orderDetails.deliveryChargeId ?? null) : null,
+        deliveryChargeSelectedId:
+          orderDetails.orderType === "Delivery" ? (orderDetails.deliveryChargeId ?? null) : null,
         order_products: items.map((item) => ({
           productId: item.productId,
           variationId: item.variationId,
@@ -846,12 +869,31 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
                   </span>
                 </div>
               )}
+              {/* Tax UI hidden for now; we still send tax: 0 in payload for future tax-rule support. */}
+              {/*
               <div className="flex justify-between font-['Arial'] text-sm leading-5 text-[#62748E]">
                 <span>Tax</span>
                 <span>
                   Rs.{cartTaxAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                 </span>
               </div>
+              */}
+              {serviceChargeAmount > 0 && (
+                <div className="flex justify-between font-['Arial'] text-sm leading-5 text-[#62748E]">
+                  <span>Service Charge</span>
+                  <span>
+                    Rs.{serviceChargeAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              )}
+              {deliveryChargeAmount > 0 && (
+                <div className="flex justify-between font-['Arial'] text-sm leading-5 text-[#62748E]">
+                  <span>Delivery</span>
+                  <span>
+                    Rs.{deliveryChargeAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              )}
               <div className="flex items-center justify-between border-t border-zinc-200 pt-1.5">
                 <span className="font-['Arial'] text-base font-bold leading-6 text-[#0F172B]">
                   Total Amount

@@ -3,16 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { Plus, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useQueries } from "@tanstack/react-query";
 import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
 import ExtraFeeTabs from "@/components/extra-fee/ExtraFeeTabs";
 import AddDeliveryFeeModal from "@/components/extra-fee/AddDeliveryFeeModal";
 import AddServiceChargeModal from "@/components/extra-fee/AddServiceChargeModal";
 import DeliveryFeeBranchSection from "@/components/extra-fee/DeliveryFeeBranchSection";
 import ServiceChargeCard from "@/components/extra-fee/ServiceChargeCard";
-import {
-  DELIVERY_FEE_MOCKS,
-  SERVICE_CHARGE_MOCKS,
-} from "@/domains/extra-fee/mockData";
+import ConfirmModal from "@/components/ui/ConfirmModal";
 import type {
   BranchOption,
   DeliveryFeeItem,
@@ -22,6 +20,16 @@ import type {
 import { useAuth } from "@/contexts/AuthContext";
 import { ROUTES } from "@/lib/constants";
 import { useGetAllBranches } from "@/hooks/useBranch";
+import {
+  useCreateDeliveryCharge,
+  useDeactivateDeliveryCharge,
+  useDeliveryCharges,
+  useUpdateDeliveryCharge,
+} from "@/hooks/useDeliveryCharge";
+import { toast } from "sonner";
+import type { AxiosError } from "axios";
+import { useUpsertServiceCharge } from "@/hooks/useServiceCharge";
+import * as serviceChargeService from "@/services/serviceChargeService";
 
 function normalizeBranchLocation(location: string | null | undefined): string {
   return location?.trim() || "Location not set";
@@ -38,8 +46,13 @@ export default function ExtraFeeContent() {
   const [isAddServiceModalOpen, setIsAddServiceModalOpen] = useState(false);
   const [editingDeliveryFee, setEditingDeliveryFee] = useState<DeliveryFeeItem | null>(null);
   const [editingServiceCharge, setEditingServiceCharge] = useState<ServiceChargeItem | null>(null);
-  const [deliveryFees, setDeliveryFees] = useState<DeliveryFeeItem[]>(DELIVERY_FEE_MOCKS);
-  const [serviceCharges, setServiceCharges] = useState<ServiceChargeItem[]>(SERVICE_CHARGE_MOCKS);
+  const [deliveryFeeToDelete, setDeliveryFeeToDelete] = useState<DeliveryFeeItem | null>(null);
+  const [serviceChargeToDelete, setServiceChargeToDelete] = useState<ServiceChargeItem | null>(null);
+  const { data: deliveryCharges = [], isLoading: deliveryChargesLoading } = useDeliveryCharges();
+  const createDeliveryChargeMutation = useCreateDeliveryCharge();
+  const updateDeliveryChargeMutation = useUpdateDeliveryCharge();
+  const deactivateDeliveryChargeMutation = useDeactivateDeliveryCharge();
+  const upsertServiceChargeMutation = useUpsertServiceCharge();
 
   useEffect(() => {
     if (isCashier) router.replace(ROUTES.DASHBOARD_MENU);
@@ -53,19 +66,40 @@ export default function ExtraFeeContent() {
         location: normalizeBranchLocation(b.location),
       }));
     }
-    return Array.from(
-      new Map(
-        DELIVERY_FEE_MOCKS.map((fee) => [
-          fee.branchId,
-          { id: fee.branchId, name: fee.branchName, location: fee.branchLocation },
-        ])
-      ).values()
-    );
+    return [];
   }, [branches]);
 
   const branchById = useMemo(() => {
     return new Map(branchOptions.map((b) => [b.id, b]));
   }, [branchOptions]);
+  const serviceChargeQueries = useQueries({
+    queries: branchOptions.map((branch) => ({
+      queryKey: ["service-charge", "branch", branch.id],
+      queryFn: () => serviceChargeService.getServiceCharge(branch.id),
+      enabled: activeTab === "service",
+      staleTime: 2 * 60 * 1000,
+    })),
+  });
+
+  const deliveryFees = useMemo<DeliveryFeeItem[]>(() => {
+    return deliveryCharges.flatMap((charge) => {
+      const links = Array.isArray(charge.branches) ? charge.branches : [];
+      return links.map((link) => {
+        const branchId = link.branchId ?? link.branch?.id ?? 0;
+        const branchMeta = branchById.get(branchId);
+        const amountNumber = Number(charge.amount);
+        return {
+          id: charge.id,
+          branchId,
+          branchName: link.branch?.name ?? branchMeta?.name ?? `Branch ${branchId}`,
+          branchLocation: normalizeBranchLocation(link.branch?.location ?? branchMeta?.location),
+          zoneName: charge.title,
+          price: Number.isFinite(amountNumber) ? amountNumber : 0,
+          addedOn: charge.createdAt ?? charge.updatedAt ?? new Date().toISOString().slice(0, 10),
+        };
+      });
+    });
+  }, [deliveryCharges, branchById]);
 
   const filteredDeliveryFees = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
@@ -101,12 +135,37 @@ export default function ExtraFeeContent() {
   }, [filteredDeliveryFees, branchById]);
 
   const filteredServiceCharges = useMemo(() => {
+    const serviceCharges = branchOptions.map((branch, index) => {
+      const result = serviceChargeQueries[index]?.data;
+      const percentageRaw = Number(result?.percentage ?? 0);
+      const percentage = Number.isFinite(percentageRaw) ? percentageRaw : 0;
+      const addedOn = result?.updated_at ?? result?.created_at ?? "";
+      return {
+        id: result?.id ?? branch.id,
+        branchId: branch.id,
+        title: branch.name,
+        location: branch.location,
+        rate: percentage,
+        addedOn,
+      } as ServiceChargeItem;
+    });
+    const configuredServiceCharges = serviceCharges.filter((item) => item.rate > 0);
+
     const q = searchTerm.trim().toLowerCase();
-    if (!q) return serviceCharges;
-    return serviceCharges.filter(
+    if (!q) return configuredServiceCharges;
+    return configuredServiceCharges.filter(
       (item) => item.title.toLowerCase().includes(q) || item.location.toLowerCase().includes(q)
     );
-  }, [serviceCharges, searchTerm]);
+  }, [branchOptions, searchTerm, serviceChargeQueries]);
+  const serviceChargesLoading =
+    activeTab === "service" &&
+    branchOptions.length > 0 &&
+    serviceChargeQueries.some((query) => query.isLoading);
+
+  const getApiErrorMessage = (error: unknown, fallback: string) => {
+    const axiosError = error as AxiosError<{ message?: string }>;
+    return axiosError?.response?.data?.message || fallback;
+  };
 
   if (isCashier) return null;
 
@@ -166,7 +225,13 @@ export default function ExtraFeeContent() {
 
           {activeTab === "delivery" ? (
             <div className="space-y-4">
-              {deliveryGroups.length === 0 ? (
+              {deliveryChargesLoading ? (
+                <div className="rounded-[14px] border border-[#E2E8F0] bg-white p-10 text-center">
+                  <p className="font-['Inter'] text-base font-medium text-[#45556C]">
+                    Loading delivery fees...
+                  </p>
+                </div>
+              ) : deliveryGroups.length === 0 ? (
                 <div className="rounded-[14px] border border-[#E2E8F0] bg-white p-10 text-center">
                   <p className="font-['Inter'] text-base font-medium text-[#45556C]">
                     No delivery fees found
@@ -186,8 +251,8 @@ export default function ExtraFeeContent() {
                       setEditingDeliveryFee(fee);
                       setIsAddDeliveryModalOpen(true);
                     }}
-                    onDelete={(fee) => {
-                      setDeliveryFees((prev) => prev.filter((item) => item.id !== fee.id));
+                    onDelete={async (fee) => {
+                      setDeliveryFeeToDelete(fee);
                     }}
                   />
                 ))
@@ -195,7 +260,15 @@ export default function ExtraFeeContent() {
             </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {filteredServiceCharges.map((item) => (
+              {serviceChargesLoading && (
+                <div className="col-span-full rounded-[14px] border border-[#E2E8F0] bg-white p-10 text-center">
+                  <p className="font-['Inter'] text-base font-medium text-[#45556C]">
+                    Loading service charges...
+                  </p>
+                </div>
+              )}
+              {!serviceChargesLoading &&
+                filteredServiceCharges.map((item) => (
                   <ServiceChargeCard
                     key={item.id}
                     item={item}
@@ -203,9 +276,12 @@ export default function ExtraFeeContent() {
                       setEditingServiceCharge(selected);
                       setIsAddServiceModalOpen(true);
                     }}
+                    onDelete={(selected) => {
+                      setServiceChargeToDelete(selected);
+                    }}
                   />
-              ))}
-              {filteredServiceCharges.length === 0 && (
+                ))}
+              {!serviceChargesLoading && filteredServiceCharges.length === 0 && (
                 <div className="col-span-full rounded-[14px] border border-[#E2E8F0] bg-white p-10 text-center">
                   <p className="font-['Inter'] text-base font-medium text-[#45556C]">
                     No service charge records found
@@ -232,37 +308,33 @@ export default function ExtraFeeContent() {
           onSubmit={({ branchId, feeName, price }) => {
             const branch = branchById.get(branchId);
             if (!branch) return;
-            if (editingDeliveryFee) {
-              setDeliveryFees((prev) =>
-                prev.map((item) =>
-                  item.id === editingDeliveryFee.id
-                    ? {
-                        ...item,
-                        branchId: branch.id,
-                        branchName: branch.name,
-                        branchLocation: branch.location,
-                        zoneName: feeName,
-                        price,
-                      }
-                    : item
-                )
-              );
-              return;
-            }
-            const nextId = Date.now();
-            const addedOn = new Date().toISOString().slice(0, 10);
-            setDeliveryFees((prev) => [
-              ...prev,
-              {
-                id: nextId,
-                branchId: branch.id,
-                branchName: branch.name,
-                branchLocation: branch.location,
-                zoneName: feeName,
-                price,
-                addedOn,
-              },
-            ]);
+            void (async () => {
+              try {
+                if (editingDeliveryFee) {
+                  await updateDeliveryChargeMutation.mutateAsync({
+                    id: editingDeliveryFee.id,
+                    body: {
+                      title: feeName,
+                      amount: price,
+                      branches: [branch.id],
+                      branchId: branch.id,
+                    },
+                  });
+                  toast.success("Delivery fee updated");
+                  return;
+                }
+
+                await createDeliveryChargeMutation.mutateAsync({
+                  title: feeName,
+                  amount: price,
+                  branches: [branch.id],
+                  branchId: branch.id,
+                });
+                toast.success("Delivery fee created");
+              } catch (error) {
+                toast.error(getApiErrorMessage(error, "Failed to save delivery fee"));
+              }
+            })();
           }}
         />
       )}
@@ -277,43 +349,73 @@ export default function ExtraFeeContent() {
             setEditingServiceCharge(null);
           }}
           onSubmit={({ branchId, percentage, chargeId }) => {
-            const branch = branchById.get(branchId);
-            if (!branch) return;
-            setServiceCharges((prev) => {
-              if (chargeId) {
-                return prev.map((item) =>
-                  item.id === chargeId
-                    ? {
-                        ...item,
-                        branchId: branch.id,
-                        title: branch.name,
-                        location: branch.location,
-                        rate: percentage,
-                      }
-                    : item
-                );
+            void (async () => {
+              try {
+                await upsertServiceChargeMutation.mutateAsync({
+                  percentage,
+                  branchId,
+                });
+                toast.success(chargeId ? "Service charge updated" : "Service charge saved");
+              } catch (error) {
+                toast.error(getApiErrorMessage(error, "Failed to save service charge"));
               }
-              const existing = prev.find((item) => item.branchId === branchId);
-              if (existing && !editingServiceCharge) {
-                return prev.map((item) =>
-                  item.branchId === branchId ? { ...item, rate: percentage } : item
-                );
-              }
-              return [
-                {
-                  id: Date.now(),
-                  branchId: branch.id,
-                  title: branch.name,
-                  location: branch.location,
-                  rate: percentage,
-                  addedOn: new Date().toISOString().slice(0, 10),
-                },
-                ...prev,
-              ];
-            });
+            })();
           }}
         />
       )}
+
+      <ConfirmModal
+        isOpen={!!deliveryFeeToDelete}
+        onClose={() => setDeliveryFeeToDelete(null)}
+        onConfirm={async () => {
+          if (!deliveryFeeToDelete) return;
+          try {
+            await deactivateDeliveryChargeMutation.mutateAsync(deliveryFeeToDelete.id);
+            toast.success("Delivery fee deactivated");
+          } catch (error) {
+            toast.error(getApiErrorMessage(error, "Failed to deactivate delivery fee"));
+          } finally {
+            setDeliveryFeeToDelete(null);
+          }
+        }}
+        title="Delete Delivery Fee"
+        message={
+          deliveryFeeToDelete
+            ? `Are you sure you want to delete "${deliveryFeeToDelete.zoneName}"?`
+            : ""
+        }
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+      />
+
+      <ConfirmModal
+        isOpen={!!serviceChargeToDelete}
+        onClose={() => setServiceChargeToDelete(null)}
+        onConfirm={async () => {
+          if (!serviceChargeToDelete) return;
+          try {
+            await upsertServiceChargeMutation.mutateAsync({
+              branchId: serviceChargeToDelete.branchId,
+              percentage: 0,
+            });
+            toast.success("Service charge deleted");
+          } catch (error) {
+            toast.error(getApiErrorMessage(error, "Failed to delete service charge"));
+          } finally {
+            setServiceChargeToDelete(null);
+          }
+        }}
+        title="Delete Service Charge"
+        message={
+          serviceChargeToDelete
+            ? `Are you sure you want to delete service charge for "${serviceChargeToDelete.title}"?`
+            : ""
+        }
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+      />
     </div>
   );
 }

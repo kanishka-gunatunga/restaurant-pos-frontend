@@ -40,7 +40,10 @@ type OrderForEdit = {
   orderNo: string;
   customerName: string;
   totalAmount: number;
+  orderType?: "Dine In" | "Take Away" | "Delivery";
   orderDiscount?: number;
+  serviceCharge?: number;
+  deliveryChargeAmount?: number;
   items?: {
     id: string;
     productId?: string;
@@ -321,7 +324,12 @@ export default function EditOrderModal({ order, onClose, onSubmit, onOrderAndPay
 
   const originalAmount = order.totalAmount;
   const lineTotals = totalsFromOrderLineItems(lineItems, order.orderDiscount ?? 0);
-  const updatedAmount = lineTotals?.totalAmount ?? order.totalAmount;
+  const serviceChargeAmount =
+    order.orderType === "Dine In" ? Number(order.serviceCharge ?? 0) || 0 : 0;
+  const deliveryChargeAmount =
+    order.orderType === "Delivery" ? Number(order.deliveryChargeAmount ?? 0) || 0 : 0;
+  const updatedAmount =
+    (lineTotals?.totalAmount ?? order.totalAmount) + serviceChargeAmount + deliveryChargeAmount;
   const paymentDiff = updatedAmount - originalAmount;
   const hasAdditionalPayment = paymentDiff > 0;
 

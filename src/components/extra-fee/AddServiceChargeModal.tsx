@@ -31,7 +31,7 @@ export default function AddServiceChargeModal({
       Number.isFinite(parsedBranchId) &&
       parsedBranchId > 0 &&
       Number.isFinite(parsedPercentage) &&
-      parsedPercentage > 0 &&
+      parsedPercentage >= 0 &&
       parsedPercentage <= 100
     );
   }, [branchId, percentage]);
@@ -102,8 +102,8 @@ export default function AddServiceChargeModal({
 
         <div className="mt-6 rounded-[12px] border border-[#BFDBFE] bg-[#EFF6FF] px-4 py-3">
           <p className="font-['Inter'] text-sm leading-5 text-[#2563EB]">
-            <span className="font-bold">Note:</span> Service charge will be automatically calculated as a
-            percentage of the subtotal for orders from this branch.
+            <span className="font-bold">Note:</span> This percentage is used by POS to calculate the service
+            charge amount when placing orders for this branch.
           </p>
         </div>
 
@@ -127,7 +127,7 @@ export default function AddServiceChargeModal({
                 !Number.isFinite(parsedBranchId) ||
                 parsedBranchId <= 0 ||
                 !Number.isFinite(parsedPercentage) ||
-                parsedPercentage <= 0 ||
+                parsedPercentage < 0 ||
                 parsedPercentage > 100
               ) {
                 setError("Please select a branch and enter a valid percentage between 0 and 100.");

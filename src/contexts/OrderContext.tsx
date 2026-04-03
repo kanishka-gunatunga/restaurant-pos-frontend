@@ -24,6 +24,9 @@ export type OrderDetailsData = {
   landmark?: string;
   zipCode?: string;
   deliveryInstructions?: string;
+  deliveryChargeId?: number | null;
+  deliveryChargeAmount?: number;
+  deliveryChargeTitle?: string;
 };
 
 export type OrderItem = {
