@@ -239,6 +239,7 @@ export default function OrdersContent() {
               id: item.id ?? `line-${editOrderModal.orderNo}-${index}-${item.name}`,
               productId: item.productId,
               variationId: item.variationId,
+              variationOptionId: item.variationOptionId,
               name: item.name,
               qty: item.qty,
               price: item.price,

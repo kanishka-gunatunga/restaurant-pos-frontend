@@ -368,7 +368,7 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
           orderDetails.orderType === "Delivery" ? (orderDetails.deliveryChargeId ?? null) : null,
         order_products: items.map((item) => ({
           productId: item.productId,
-          variationId: item.variationId,
+          variationId: item.variationOptionId,
           quantity: item.qty,
           unitPrice: item.price,
           productDiscount:

@@ -54,6 +54,7 @@ export type OrderDetailItem = {
   id?: string;
   productId?: string;
   variationId?: string;
+  variationOptionId?: string;
   name: string;
   qty: number;
   price: number;
@@ -390,6 +391,15 @@ function mapOrderItemToDetail(item: ApiOrderItem): OrderDetailItem {
     id: String(item.id),
     productId: String(item.productId),
     variationId: item.variationId != null ? String(item.variationId) : undefined,
+    variationOptionId:
+      (item.variationOptionId ?? 
+       rawItem.variation_option_id ?? 
+       item.variationOption?.id ?? 
+       (item.variationOption as any)?.variationId ??
+       (item as any).variation_option?.id ??
+       (item as any).variation_option?.variationId) != null
+        ? String(item.variationOptionId ?? rawItem.variation_option_id ?? item.variationOption?.id ?? (item.variationOption as any)?.variationId ?? (item as any).variation_option?.id ?? (item as any).variation_option?.variationId)
+        : undefined,
     name: (item.product as { name?: string } | undefined)?.name || "Unknown Product",
     qty: item.quantity,
     price: Number(item.unitPrice),

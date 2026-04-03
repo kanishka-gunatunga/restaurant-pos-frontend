@@ -5,9 +5,20 @@ import {
   Filter,
   Calendar,
   Building,
+  Package,
 } from "lucide-react";
 import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
 import { useGetAllBranches } from "@/hooks/useBranch";
+import { useGetAllProducts } from "@/hooks/useProduct";
+
+import { useGenerateReport } from "@/hooks/useReport";
+import {
+  generateOrdersReport,
+  generateProductWiseReport,
+  generatePaymentReport,
+  generateSalesReport,
+} from "@/lib/pdfGenerator";
+import { format } from "date-fns";
 
 export type ReportType =
   | "sales"
@@ -21,17 +32,15 @@ export type ReportType =
 
 const REPORT_TYPES: { id: ReportType; label: string }[] = [
   { id: "sales", label: "Sales Report" },
-  { id: "inventory", label: "Inventory Report" },
-  { id: "user_activity", label: "User Activity Report" },
-  { id: "order_summary", label: "Order Summary Report" },
+  { id: "order_summary", label: "Orders Report" },
   { id: "payment", label: "Payment Report" },
   { id: "product_performance", label: "Product Performance Report" },
-  { id: "branch_performance", label: "Branch Performance Report" },
-  { id: "discount_usage", label: "Discount Usage Report" },
 ];
 
 export default function ReportsContent() {
   const { data: branches = [], isLoading: branchesLoading } = useGetAllBranches("all");
+  const { data: products = [], isLoading: productsLoading } = useGetAllProducts({ status: "all" });
+  
   const [selectedReport, setSelectedReport] = useState<ReportType>("sales");
   const [fromDate, setFromDate] = useState(() => {
     const now = new Date();
@@ -40,19 +49,59 @@ export default function ReportsContent() {
   });
   const [toDate, setToDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [branch, setBranch] = useState("all");
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState("all");
+
+  const generateReportMutation = useGenerateReport();
 
   const branchSelectValue =
     branch === "all" || branches.some((b) => String(b.id) === branch)
       ? branch
       : "all";
 
-  const handleGenerateReport = () => {
-    setIsGenerating(true);
-    // Simulate report generation - in production this would call an API
-    setTimeout(() => {
-      setIsGenerating(false);
-    }, 1500);
+  const handleGenerateReport = async () => {
+    try {
+      let reportTypePath: string = selectedReport; // "sales", "payment", "product_performance"
+      if (selectedReport === "order_summary") reportTypePath = "orders";
+      if (selectedReport === "product_performance") reportTypePath = "product-performance";
+      if (selectedReport === "payment") reportTypePath = "payments";
+
+      const reportDataRaw = await generateReportMutation.mutateAsync({
+        startDate: fromDate,
+        endDate: toDate,
+        branch: branch === "all" ? "all" : branch,
+        reportTypePath,
+        product: selectedProduct !== "all" ? selectedProduct : undefined,
+      });
+
+      const reportData = reportDataRaw.data || [];
+      const reportSummary = reportDataRaw.summary || {};
+
+      if (!reportData || reportData.length === 0) {
+        alert("No data found for the selected criteria.");
+        return;
+      }
+
+      const branchName = branch === "all" ? "All Branches" : branches.find((b) => String(b.id) === branch)?.name || "N/A";
+      const conf = {
+        title: REPORT_TYPES.find(r => r.id === selectedReport)?.label || "Report",
+        dateRange: `${format(new Date(fromDate), "MMM dd, yyyy")} - ${format(new Date(toDate), "MMM dd, yyyy")}`,
+        branchName,
+        summary: reportSummary,
+      };
+
+      if (selectedReport === "product_performance") {
+        generateProductWiseReport(reportData, conf);
+      } else if (selectedReport === "sales") {
+        generateSalesReport(reportData, conf);
+      } else if (selectedReport === "payment") {
+        generatePaymentReport(reportData, conf);
+      } else {
+        generateOrdersReport(reportData, conf);
+      }
+    } catch (error) {
+      console.error("Failed to generate report", error);
+      alert("An error occurred while generating the report. Please check the console.");
+    }
   };
 
   return (
@@ -158,13 +207,42 @@ export default function ReportsContent() {
                   </div>
                 </div>
 
+                {(selectedReport === "sales" || selectedReport === "product_performance") && (
+                  <div className="min-w-0 flex-1">
+                    <label className="mb-1.5 block font-['Inter'] text-[12px] font-bold uppercase leading-4 text-[#45556C]">
+                      Product (Optional)
+                    </label>
+                    <div className="relative">
+                      <Package className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#90A1B9]" />
+                      <select
+                        value={selectedProduct}
+                        onChange={(e) => setSelectedProduct(e.target.value)}
+                        disabled={productsLoading}
+                        className="h-11 w-full appearance-none rounded-[14px] border-2 border-[#E2E8F0] bg-white pl-10 pr-10 text-[14px] text-[#1D293D] outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <option value="all">
+                          {productsLoading ? "Loading products…" : "All Products"}
+                        </option>
+                        {products && Array.isArray(products) && products.map((p: any) => (
+                          <option key={p.id} value={String(p.id)}>
+                            {p.name}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#90A1B9]">
+                        ▼
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 <button
                   type="button"
                   onClick={handleGenerateReport}
-                  disabled={isGenerating}
+                  disabled={generateReportMutation.isPending}
                   className="h-11 w-full flex-1 rounded-[14px] bg-[#EA580C] px-6 font-['Inter'] text-[14px] font-bold leading-5 text-white shadow-[0px_4px_6px_-4px_#EA580C33,0px_10px_15px_-3px_#EA580C33] transition-all hover:bg-primary-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  {isGenerating ? (
+                  {generateReportMutation.isPending ? (
                     <span className="flex items-center justify-center gap-2">
                       <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                       Generating...

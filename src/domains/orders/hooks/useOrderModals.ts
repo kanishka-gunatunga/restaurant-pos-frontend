@@ -235,19 +235,21 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
       const orderIdStr = String(modalOrder.id);
       const orderIdNum = Number(modalOrder.id);
 
+      const payload = {
+        order_products: data.items.map((item) => ({
+          productId: Number(item.productId || item.id),
+          variationId: item.variationOptionId ? Number(item.variationOptionId) : undefined,
+          quantity: item.qty,
+          unitPrice: item.price,
+          productDiscount: item.productDiscount ?? 0,
+          modifications: item.modifications,
+        })),
+      };
+
       try {
         const updatedOrder = await updateOrderMutation.mutateAsync({
           id: modalOrder.id,
-          data: {
-            order_products: data.items.map((item) => ({
-              productId: Number(item.productId || item.id),
-              variationId: item.variationId ? Number(item.variationId) : undefined,
-              quantity: item.qty,
-              unitPrice: item.price,
-              productDiscount: item.productDiscount ?? 0,
-              modifications: item.modifications,
-            })),
-          },
+          data: payload,
         });
         const originalTotal = Number(modalOrder.totalAmount || 0);
         const updatedTotal = Number(updatedOrder.totalAmount || 0);
@@ -382,7 +384,7 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
 
       const order_products = data.items.map((item) => ({
         productId: Number(item.productId || item.id),
-        variationId: item.variationId ? Number(item.variationId) : undefined,
+        variationId: item.variationOptionId ? Number(item.variationOptionId) : undefined,
         quantity: item.qty,
         unitPrice: item.price,
         productDiscount: item.productDiscount ?? 0,

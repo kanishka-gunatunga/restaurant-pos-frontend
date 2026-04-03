@@ -25,6 +25,7 @@ export type EditOrderLineItem = {
   id: string;
   productId?: string;
   variationId?: string;
+  variationOptionId?: string;
   name: string;
   qty: number;
   price: number;
@@ -48,6 +49,7 @@ type OrderForEdit = {
     id: string;
     productId?: string;
     variationId?: string;
+    variationOptionId?: string;
     name: string;
     qty: number;
     price: number;
@@ -78,6 +80,7 @@ function AddItemCard({
   onAdd: (params: {
     productId: string;
     variationId?: string;
+    variationOptionId?: string;
     name: string;
     price: number;
     image: string;
@@ -127,6 +130,7 @@ function AddItemCard({
     onAdd({
       productId: String(item.productId),
       variationId: selectedVariant?.variationId != null ? String(selectedVariant.variationId) : undefined,
+      variationOptionId: selectedVariant?.id != null ? String(selectedVariant.id) : undefined,
       name: item.name,
       price: unitPrice,
       image: resolveProductImageSrc(item.image, String(item.productId)),
@@ -291,6 +295,7 @@ export default function EditOrderModal({ order, onClose, onSubmit, onOrderAndPay
       id: it.id || `line-${order.orderNo}-${i}-${it.name}`,
       productId: it.productId,
       variationId: it.variationId,
+      variationOptionId: it.variationOptionId,
       name: it.name,
       qty: it.qty,
       price: it.price,
@@ -306,6 +311,11 @@ export default function EditOrderModal({ order, onClose, onSubmit, onOrderAndPay
   });
 
   const [lineItems, setLineItems] = useState<EditOrderLineItem[]>(initialItems);
+
+  useEffect(() => {
+    console.log("Edit Modal: Initial items from order:", initialItems.map(it => ({ name: it.name, variationOptionId: it.variationOptionId })));
+  }, [order.items, initialItems]);
+
   const [showAddItems, setShowAddItems] = useState(false);
   const [orderAndPayBusy, setOrderAndPayBusy] = useState(false);
 
@@ -348,6 +358,7 @@ export default function EditOrderModal({ order, onClose, onSubmit, onOrderAndPay
   const addItemFromMenu = (params: {
     productId: string;
     variationId?: string;
+    variationOptionId?: string;
     name: string;
     price: number;
     image: string;
@@ -356,7 +367,7 @@ export default function EditOrderModal({ order, onClose, onSubmit, onOrderAndPay
     modifications?: { modificationId: number; price: number }[];
   }) => {
     // Find applicable discount for the new item
-    const mockOrderItem = { productId: params.productId, variationOptionId: params.variationId } as any;
+    const mockOrderItem = { productId: params.productId, variationOptionId: params.variationOptionId } as any;
     const applicable = findApplicableDiscount(mockOrderItem, discountsData);
     const productDiscount = applicable 
       ? calculateItemDiscount(params.price, 1, applicable.discountItem)
@@ -366,6 +377,7 @@ export default function EditOrderModal({ order, onClose, onSubmit, onOrderAndPay
       id: `line-${order.orderNo}-${Date.now()}-${params.name}`,
       productId: params.productId,
       variationId: params.variationId,
+      variationOptionId: params.variationOptionId,
       name: params.name,
       qty: 1,
       price: params.price,
@@ -375,11 +387,13 @@ export default function EditOrderModal({ order, onClose, onSubmit, onOrderAndPay
       addOns: params.addOns?.length ? params.addOns : undefined,
       modifications: params.modifications?.length ? params.modifications : undefined,
     };
+    console.log("Edit Modal: Adding new item:", { name: newItem.name, variationOptionId: newItem.variationOptionId });
     setLineItems((prev) => [...prev, newItem]);
   };
 
   const handleSubmit = async () => {
     if (isSaveBusy) return;
+    console.log("Edit Modal: Submitting line items:", lineItems.map(it => ({ name: it.name, variationOptionId: it.variationOptionId })));
     setSaveFlowBusy(true);
     try {
       await Promise.resolve(onSubmit({ items: lineItems }));

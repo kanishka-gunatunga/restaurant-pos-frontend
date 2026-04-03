@@ -22,6 +22,7 @@ export interface OrderItem {
   orderId: string | number;
   productId: string | number;
   variationId?: string | number;
+  variationOptionId?: string | number;
   quantity: number;
   unitPrice: number;
   productDiscount: number;
