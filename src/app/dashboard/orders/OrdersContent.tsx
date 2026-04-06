@@ -231,7 +231,10 @@ export default function OrdersContent() {
             orderNo: editOrderModal.orderNo,
             customerName: editOrderModal.customerName,
             totalAmount: editOrderModal.totalAmount,
+            orderType: editOrderModal.orderType,
             orderDiscount: editOrderModal.orderDiscount ?? 0,
+            serviceCharge: editOrderModal.serviceCharge ?? 0,
+            deliveryChargeAmount: editOrderModal.deliveryChargeAmount ?? 0,
             items: editOrderModal.items?.map((item, index) => ({
               id: item.id ?? `line-${editOrderModal.orderNo}-${index}-${item.name}`,
               productId: item.productId,
