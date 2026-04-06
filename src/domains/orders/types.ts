@@ -383,6 +383,10 @@ function flattenModificationsForTotals(mods: OrderItemModification[]): {
 
 function mapOrderItemToDetail(item: ApiOrderItem): OrderDetailItem {
   const rawItem = item as ApiOrderItem & Record<string, unknown>;
+  const rawVariationOption =
+    rawItem.variation_option && typeof rawItem.variation_option === "object"
+      ? (rawItem.variation_option as { id?: unknown })
+      : undefined;
   const rawMods = normalizeModificationsFromOrderItem(rawItem);
   const addonLines = addonLinesFromModifications(rawMods);
   const variant = readOrderItemVariantLabel(rawItem);
@@ -395,10 +399,8 @@ function mapOrderItemToDetail(item: ApiOrderItem): OrderDetailItem {
       (item.variationOptionId ?? 
        rawItem.variation_option_id ?? 
        item.variationOption?.id ?? 
-       (item.variationOption as any)?.variationId ??
-       (item as any).variation_option?.id ??
-       (item as any).variation_option?.variationId) != null
-        ? String(item.variationOptionId ?? rawItem.variation_option_id ?? item.variationOption?.id ?? (item.variationOption as any)?.variationId ?? (item as any).variation_option?.id ?? (item as any).variation_option?.variationId)
+       rawVariationOption?.id) != null
+        ? String(item.variationOptionId ?? rawItem.variation_option_id ?? item.variationOption?.id ?? rawVariationOption?.id)
         : undefined,
     name: (item.product as { name?: string } | undefined)?.name || "Unknown Product",
     qty: item.quantity,

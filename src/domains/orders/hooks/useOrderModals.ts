@@ -236,14 +236,21 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
       const orderIdNum = Number(modalOrder.id);
 
       const payload = {
-        order_products: data.items.map((item) => ({
-          productId: Number(item.productId || item.id),
-          variationId: item.variationOptionId ? Number(item.variationOptionId) : undefined,
-          quantity: item.qty,
-          unitPrice: item.price,
-          productDiscount: item.productDiscount ?? 0,
-          modifications: item.modifications,
-        })),
+        order_products: data.items.map((item) => {
+          const modificationUnitSum = (item.modifications ?? []).reduce(
+            (sum, m) => sum + Number(m.price || 0),
+            0
+          );
+          const baseUnitPrice = Math.max(0, Number(item.price) - modificationUnitSum);
+          return {
+            productId: Number(item.productId || item.id),
+            variationOptionId: item.variationOptionId ? Number(item.variationOptionId) : undefined,
+            quantity: item.qty,
+            unitPrice: Number(baseUnitPrice.toFixed(2)),
+            productDiscount: item.productDiscount ?? 0,
+            modifications: item.modifications,
+          };
+        }),
       };
 
       try {
@@ -382,14 +389,21 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
     async (data: { items: EditOrderLineItem[] }): Promise<number | null> => {
       if (!editOrderModal) return null;
 
-      const order_products = data.items.map((item) => ({
-        productId: Number(item.productId || item.id),
-        variationId: item.variationOptionId ? Number(item.variationOptionId) : undefined,
-        quantity: item.qty,
-        unitPrice: item.price,
-        productDiscount: item.productDiscount ?? 0,
-        modifications: item.modifications,
-      }));
+      const order_products = data.items.map((item) => {
+        const modificationUnitSum = (item.modifications ?? []).reduce(
+          (sum, m) => sum + Number(m.price || 0),
+          0
+        );
+        const baseUnitPrice = Math.max(0, Number(item.price) - modificationUnitSum);
+        return {
+          productId: Number(item.productId || item.id),
+          variationOptionId: item.variationOptionId ? Number(item.variationOptionId) : undefined,
+          quantity: item.qty,
+          unitPrice: Number(baseUnitPrice.toFixed(2)),
+          productDiscount: item.productDiscount ?? 0,
+          modifications: item.modifications,
+        };
+      });
 
       let updated: Order;
       try {
