@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { X, Wallet, CreditCard, Calculator, Loader2 } from "lucide-react";
-import { useCreatePayment } from "@/hooks/usePayment";
+import { useMemo, useState } from "react";
+import { X, Wallet, CreditCard, Gift, Star, Trash2, ScanLine, Check } from "lucide-react";
 import { toast } from "sonner";
 import { fetchOrderStateForPaymentCreate } from "@/services/paymentService";
 import {
@@ -13,7 +12,20 @@ import {
 const formatRs = (n: number) =>
   `Rs.${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-type Step = "method" | "cash" | "success";
+type PaymentMethod = "cash" | "card" | "voucher" | "loyalty";
+
+type CardPaymentRow = {
+  id: string;
+  cardType: string;
+  last4: string;
+  amount: number;
+};
+
+type VoucherRedemptionRow = {
+  id: string;
+  code: string;
+  amount: number;
+};
 
 type ProcessPaymentModalProps = {
   customerName: string;
@@ -30,116 +42,132 @@ export default function ProcessPaymentModal({
   onClose,
   onComplete,
 }: ProcessPaymentModalProps) {
-  const [step, setStep] = useState<Step>("method");
-  const [amountGiven, setAmountGiven] = useState("");
-  const [changeReturned, setChangeReturned] = useState(0);
+  const [activeMethod, setActiveMethod] = useState<PaymentMethod>("cash");
+  const [cashAmount, setCashAmount] = useState("");
+  const [cards, setCards] = useState<CardPaymentRow[]>([]);
+  const [cardType, setCardType] = useState("visa");
+  const [cardLast4, setCardLast4] = useState("");
+  const [cardAmount, setCardAmount] = useState("");
+  const [voucherMode, setVoucherMode] = useState<"promo" | "scan">("promo");
+  const [voucherCode, setVoucherCode] = useState("");
+  const [vouchers, setVouchers] = useState<VoucherRedemptionRow[]>([]);
+  const [pointsToUse, setPointsToUse] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const submitGuardRef = useRef(false);
+  const [isSuccess, setIsSuccess] = useState(false);
 
-  const { mutateAsync: createPayment, isPending: isSavingPayment } = useCreatePayment();
-  const isBusy = isSubmitting || isSavingPayment;
+  const cashApplied = Number.parseFloat(cashAmount || "0") || 0;
+  const cardApplied = cards.reduce((sum, c) => sum + c.amount, 0);
+  const voucherApplied = vouchers.reduce((sum, v) => sum + v.amount, 0);
+  const hasCustomerForPoints = customerName.trim().length > 0;
+  const availablePoints = hasCustomerForPoints ? 5000 : 0;
+  const pointsRate = 1;
+  const pointsNumRaw = Number.parseInt(pointsToUse || "0", 10) || 0;
+  const pointsNum = Math.max(0, Math.min(pointsNumRaw, availablePoints));
+  const pointsApplied = pointsNum * pointsRate;
+  const totalPaid = cashApplied + cardApplied + voucherApplied + pointsApplied;
+  const remaining = amountDue - totalPaid;
+  const canConfirm = remaining <= ORDER_MONEY_EPS;
+  const fullyPaid = remaining <= ORDER_MONEY_EPS;
+  const cardCountText = `${cards.length}/5 cards`;
 
-  const amountNum = parseFloat(amountGiven.replace(/[^0-9.]/g, "")) || 0;
-  const change = step === "cash" ? Math.max(0, amountNum - amountDue) : changeReturned;
-  const cashCoversDue = amountNum + ORDER_MONEY_EPS >= amountDue;
+  const voucherCodeMap = useMemo(
+    () => ({
+      "GV25-ABCD-1234": 5000,
+      "BX25-ABCD-1234": 8000,
+      GV25: 5000,
+      BX25: 8000,
+    }),
+    []
+  );
 
-  const handleCompletePayment = async (method: "cash" | "card") => {
-    if (method === "cash" && !cashCoversDue) return;
-    if (submitGuardRef.current || isSavingPayment) return;
+  const getCloseAction = () => {
+    if (isSubmitting) return;
+    onClose();
+  };
 
-    submitGuardRef.current = true;
+  const resetCardInputs = () => {
+    setCardType("visa");
+    setCardLast4("");
+    setCardAmount("");
+  };
+
+  const handleAddCard = () => {
+    if (cards.length >= 5) {
+      toast.error("Maximum 5 cards allowed for split card payment.");
+      return;
+    }
+    const amount = Number.parseFloat(cardAmount || "0") || 0;
+    const digits = cardLast4.replace(/\D/g, "");
+    if (!cardType.trim()) return toast.error("Select card type.");
+    if (digits.length !== 4) return toast.error("Enter the last 4 digits.");
+    if (amount <= 0) return toast.error("Enter a valid card amount.");
+    const row: CardPaymentRow = {
+      id: crypto.randomUUID(),
+      cardType,
+      last4: digits,
+      amount,
+    };
+    setCards((prev) => [...prev, row]);
+    resetCardInputs();
+  };
+
+  const handleRedeemVoucher = () => {
+    const code = voucherCode.trim().toUpperCase();
+    if (!code) return toast.error("Enter voucher/promo code.");
+    if (vouchers.some((v) => v.code === code)) return toast.error("Voucher already applied.");
+    const amount = voucherCodeMap[code as keyof typeof voucherCodeMap] ?? 0;
+    if (amount <= 0) return toast.error("Invalid voucher code.");
+    setVouchers((prev) => [...prev, { id: crypto.randomUUID(), code, amount }]);
+    setVoucherCode("");
+  };
+
+  const handleConfirmPayment = async () => {
+    if (!canConfirm || isSubmitting) return;
     setIsSubmitting(true);
     try {
       if (orderId) {
         try {
-          let fresh;
-          try {
-            fresh = await fetchOrderStateForPaymentCreate(orderId);
-          } catch {
-            toast.error("Could not reload the order. Check your connection and try again.");
-            return;
-          }
+          const fresh = await fetchOrderStateForPaymentCreate(orderId);
           const draft = buildCreatePaymentDraftFromOrder(fresh);
           if (draft.amount <= ORDER_MONEY_EPS) {
             toast.message(
               "This order is already fully paid on the server. Clearing checkout so you can start a new order."
             );
             onComplete();
+            onClose();
             return;
           }
-          await createPayment({
-            orderId,
-            paymentMethod: method,
-            amount: draft.amount,
-            paidAmount: method === "cash" ? amountNum : draft.amount,
-            status: "paid",
-            ...(draft.paymentRole === "balance_due" ? { paymentRole: "balance_due" } : {}),
-          });
-        } catch (err: unknown) {
-          const msg =
-            err &&
-            typeof err === "object" &&
-            "response" in err &&
-            err.response &&
-            typeof err.response === "object" &&
-            "data" in err.response &&
-            err.response.data &&
-            typeof err.response.data === "object" &&
-            "message" in err.response.data
-              ? String((err.response.data as { message?: unknown }).message)
-              : err instanceof Error
-                ? err.message
-                : "Payment could not be saved.";
-          toast.error(msg);
+        } catch {
+          toast.error("Could not reload latest order state.");
           return;
         }
       }
-
-      if (method === "cash") {
-        setChangeReturned(change);
-      } else {
-        setChangeReturned(0);
-      }
-      setStep("success");
+      // Split payment API is not ready; we keep this as frontend flow.
+      setIsSuccess(true);
+      setTimeout(() => {
+        onComplete();
+        onClose();
+      }, 1400);
     } finally {
-      submitGuardRef.current = false;
       setIsSubmitting(false);
     }
   };
-
-  const handleSuccessClose = () => {
-    onComplete();
-    onClose();
-  };
-
-  // auto-close success after 5.5s so cashier can move to next customer; click-outside also closes
-  useEffect(() => {
-    if (step !== "success") return;
-    const t = setTimeout(() => {
-      onComplete();
-      onClose();
-    }, 5500);
-    return () => clearTimeout(t);
-  }, [step, onComplete, onClose]);
 
   const header = (
     <div className="border-b border-[#E2E8F0] pb-3">
       <div className="flex items-start justify-between">
         <div>
           <h2 className="font-['Inter'] text-2xl font-bold leading-8 text-[#1D293D]">
-            Process Payment
+            Split Payment
           </h2>
           <p className="mt-1 font-['Inter'] text-sm font-normal leading-5 text-[#62748E]">
-            {customerName} • Amount due: {formatRs(amountDue)}
+            {customerName}
           </p>
         </div>
         <button
           type="button"
-          onClick={() => {
-            if (step === "success") handleSuccessClose();
-            else if (!isBusy) onClose();
-          }}
-          disabled={isBusy && step !== "success"}
+          onClick={getCloseAction}
+          disabled={isSubmitting}
           className="rounded-full p-1.5 text-[#90A1B9] hover:bg-[#F1F5F9] hover:text-[#45556C] disabled:pointer-events-none disabled:opacity-50"
           aria-label="Close"
         >
@@ -150,185 +178,238 @@ export default function ProcessPaymentModal({
   );
 
   const requestBackdropClose = () => {
-    if (isBusy) return;
-    if (step === "success") handleSuccessClose();
-    else onClose();
+    if (isSubmitting) return;
+    onClose();
   };
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
+      className="fixed inset-0 z-60 flex items-center justify-center bg-black/50 p-4"
       onClick={requestBackdropClose}
     >
       <div
-        className="w-full max-w-[min(100%-2rem,28rem)] min-[1000px]:max-w-[32rem] min-[1200px]:max-w-[42rem] rounded-[32px] border border-[#FFFFFF33] bg-white p-4 shadow-[0px_25px_50px_-12px_#00000040] sm:p-6 min-[1000px]:p-8"
+        className="flex h-[calc(100dvh-2rem)] w-full max-w-[1100px] flex-col overflow-hidden rounded-[24px] border border-[#FFFFFF33] bg-white p-6 shadow-[0px_25px_50px_-12px_#00000040]"
         onClick={(e) => e.stopPropagation()}
       >
         {header}
-
-        {step === "method" && (
-          <>
-            <p className="mt-6 text-center font-['Inter'] text-lg font-bold leading-7 text-[#314158]">
-              Select Payment Method
+        <div className="mt-4 flex-1 overflow-y-auto pr-1 [scrollbar-width:thin] [scrollbar-color:#CBD5E1_#F1F5F9] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#F1F5F9] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#CBD5E1] hover:[&::-webkit-scrollbar-thumb]:bg-[#94A3B8]">
+        <div className="grid grid-cols-4 gap-3">
+          <div className="rounded-[12px] bg-[#F8FAFC] p-3">
+            <p className="text-xs text-[#90A1B9]">Order Total</p>
+            <p className="text-3xl font-bold text-[#1D293D]">{formatRs(amountDue)}</p>
+          </div>
+          <div className="rounded-[12px] bg-[#ECFDF5] p-3">
+            <p className="text-xs text-[#10B981]">Total Paid</p>
+            <p className="text-3xl font-bold text-[#047857]">{formatRs(totalPaid)}</p>
+          </div>
+          <div className={`rounded-[12px] p-3 ${fullyPaid ? "bg-[#ECFDF5]" : "bg-[#FFF7ED]"}`}>
+            <p className={`text-xs ${fullyPaid ? "text-[#10B981]" : "text-[#F97316]"}`}>Remaining</p>
+            <p className={`text-3xl font-bold ${fullyPaid ? "text-[#047857]" : "text-[#C2410C]"}`}>
+              {formatRs(Math.max(remaining, 0))}
             </p>
-            <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-4 min-[1200px]:gap-6">
-              <button
-                type="button"
-                onClick={() => {
-                  setAmountGiven("");
-                  setStep("cash");
-                }}
-                disabled={isBusy}
-                className="flex flex-col items-center justify-center rounded-[24px] border-2 border-[#A4F4CF] mb-2 p-4 transition-all duration-300 ease-out hover:opacity-95 disabled:pointer-events-none disabled:opacity-50 sm:p-5 min-[1200px]:p-6"
-                style={{
-                  background: "linear-gradient(135deg, #ECFDF5 0%, rgba(208, 250, 229, 0.5) 100%)",
-                }}
-              >
-                <span
-                  className="flex h-16 w-16 min-h-[80px] min-w-[80px] items-center justify-center rounded-[16px] bg-[#00BC7D] text-white shadow-[0px_4px_6px_-4px_#A4F4CF,0px_10px_15px_-3px_#A4F4CF] sm:h-20 sm:w-20 mt-3"
-                  aria-hidden
-                >
-                  <Wallet className="h-7 w-7 sm:h-8 sm:w-8" />
-                </span>
-                <span className="text-center mt-3 font-['Inter'] text-xl font-bold leading-7 text-[#1D293D]">
-                  Cash
-                </span>
-                <span className="text-center font-['Inter'] text-sm font-medium leading-5 text-[#62748E] mb-3">
-                  Pay with cash
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleCompletePayment("card")}
-                disabled={isBusy}
-                className="flex flex-col items-center justify-center rounded-[24px] border-2 border-[#BEDBFF] mb-2 p-4 transition-all duration-300 ease-out hover:opacity-95 disabled:pointer-events-none disabled:opacity-50 sm:p-5 min-[1200px]:p-6"
-                style={{
-                  background: "linear-gradient(135deg, #EFF6FF 0%, rgba(219, 234, 254, 0.5) 100%)",
-                }}
-              >
-                <span
-                  className="flex h-16 w-16 min-h-[80px] min-w-[80px] items-center justify-center rounded-[16px] bg-[#2B7FFF] text-white shadow-[0px_4px_6px_-4px_#BEDBFF,0px_10px_15px_-3px_#BEDBFF] sm:h-20 sm:w-20 mt-3"
-                  aria-hidden
-                >
-                  {isBusy && step === "method" ? (
-                    <Loader2 className="h-7 w-7 animate-spin sm:h-8 sm:w-8" />
-                  ) : (
-                    <CreditCard className="h-7 w-7 sm:h-8 sm:w-8" />
-                  )}
-                </span>
-                <span className="text-center mt-3 font-['Inter'] text-xl font-bold leading-7 text-[#1D293D]">
-                  Card
-                </span>
-                <span className="text-center font-['Inter'] text-sm font-medium leading-5 text-[#62748E] mb-3">
-                  Pay with card
-                </span>
-              </button>
-            </div>
-          </>
-        )}
+          </div>
+          <div className="rounded-[12px] bg-[#F8FAFC] p-3 flex items-center justify-center">
+            <p className={`text-xl font-bold ${fullyPaid ? "text-[#059669]" : "text-[#94A3B8]"}`}>
+              {fullyPaid ? (
+                <span className="inline-flex items-center gap-1"><Check className="h-5 w-5" /> Fully Paid</span>
+              ) : (
+                "Payment Pending"
+              )}
+            </p>
+          </div>
+        </div>
 
-        {step === "cash" && (
-          <>
-            <div className="mt-4 flex w-full items-center justify-between rounded-[16px] border border-[#E2E8F0] bg-[#F8FAFC] px-6 py-4 sm:px-[25px]">
-              <span className="font-['Inter'] text-sm font-bold uppercase leading-5 tracking-[0.7px] text-[#62748E]">
-                Amount due
-              </span>
-              <span className="font-['Inter'] text-2xl font-bold leading-9 text-[#1D293D] sm:text-[30px] sm:leading-[36px]">
-                {formatRs(amountDue)}
-              </span>
+        <div className="mt-4 grid grid-cols-12 gap-4">
+          <div className="col-span-4 border-r border-[#E2E8F0] pr-4">
+            <p className="text-xs font-bold uppercase text-[#62748E]">Payment Methods</p>
+            <div className="mt-3 space-y-2">
+              {[
+                { id: "cash", label: "Cash", icon: Wallet, sub: formatRs(cashApplied) },
+                { id: "card", label: "Card", icon: CreditCard, sub: `${cardCountText} • ${formatRs(cardApplied)}` },
+                { id: "voucher", label: "Voucher", icon: Gift, sub: `${vouchers.length} vouchers • ${formatRs(voucherApplied)}` },
+                { id: "loyalty", label: "Loyalty Points", icon: Star, sub: `${pointsNum} pts • ${formatRs(pointsApplied)}` },
+              ].map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setActiveMethod(m.id as PaymentMethod)}
+                  className={`w-full rounded-[14px] border p-3 text-left ${activeMethod === m.id ? "border-[#EA580C] bg-[#FFF7ED]" : "border-[#E2E8F0] bg-white"}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="rounded-[10px] bg-[#F1F5F9] p-2"><m.icon className="h-4 w-4 text-[#64748B]" /></span>
+                    <div>
+                      <p className="font-bold text-[#1D293D]">{m.label}</p>
+                      <p className="text-sm text-[#62748E]">{m.sub}</p>
+                    </div>
+                  </div>
+                </button>
+              ))}
             </div>
-            <div className="mt-4">
-              <label className="mb-2 flex items-center gap-2 font-['Inter'] text-sm font-bold leading-5 text-[#314158]">
-                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0" aria-hidden>
-                  <path d="M15 4.5H3C2.17157 4.5 1.5 5.17157 1.5 6V12C1.5 12.8284 2.17157 13.5 3 13.5H15C15.8284 13.5 16.5 12.8284 16.5 12V6C16.5 5.17157 15.8284 4.5 15 4.5Z" stroke="#009966" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M9 10.5C9.82843 10.5 10.5 9.82843 10.5 9C10.5 8.17157 9.82843 7.5 9 7.5C8.17157 7.5 7.5 8.17157 7.5 9C7.5 9.82843 8.17157 10.5 9 10.5Z" stroke="#009966" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M4.5 9H4.5075M13.5 9H13.5075" stroke="#009966" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                Cash received
-              </label>
-              <input
-                type="text"
-                value={amountGiven}
-                onChange={(e) => setAmountGiven(e.target.value)}
-                disabled={isBusy}
-                placeholder="Rs.0.00"
-                className="w-full min-h-[80px] rounded-[16px] border-2 border-[#E2E8F0] bg-white py-4 pl-[27px] pr-6 font-['Inter'] text-2xl font-bold leading-[100%] text-[#1D293D] placeholder:text-[#90A1B9] focus:border-[#22C55E] focus:outline-none focus:ring-2 focus:ring-[#22C55E]/20 disabled:opacity-60"
-              />
-            </div>
-            <div
-              className="mt-4 flex w-full flex-row items-center gap-4 rounded-[16px] border-2 border-[#A4F4CF] px-6 pb-6 pt-[26px] sm:px-[26px]"
-              style={{
-                background: "linear-gradient(135deg, #ECFDF5 0%, rgba(208, 250, 229, 0.5) 100%)",
-              }}
-            >
-              <div
-                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px] bg-[#00BC7D] text-white shadow-[0px_4px_6px_-4px_#A4F4CF,0px_10px_15px_-3px_#A4F4CF]"
-                aria-hidden
-              >
-                <Calculator className="h-6 w-6 text-white" stroke="#FFFFFF" />
+
+            <div className="mt-4 border-t border-[#E2E8F0] pt-3">
+              <p className="text-xs font-bold uppercase tracking-wide text-[#334155]">Applied Payments</p>
+              <div className="mt-2 space-y-1.5 text-sm">
+                {cashApplied > 0 && (
+                  <div className="flex justify-between rounded border border-[#A7F3D0] bg-[#ECFDF5] px-2 py-1 text-[#065F46]">
+                    <span className="font-medium">Cash</span>
+                    <span className="font-bold">{formatRs(cashApplied)}</span>
+                  </div>
+                )}
+                {cards.map((c) => (
+                  <div key={c.id} className="flex justify-between rounded border border-[#BFDBFE] bg-[#EFF6FF] px-2 py-1 text-[#1E3A8A]">
+                    <span className="font-medium">{c.cardType.toUpperCase()} •••• {c.last4}</span>
+                    <span className="font-bold">{formatRs(c.amount)}</span>
+                  </div>
+                ))}
+                {vouchers.map((v) => (
+                  <div key={v.id} className="flex justify-between rounded border border-[#DDD6FE] bg-[#F5F3FF] px-2 py-1 text-[#6B21A8]">
+                    <span className="font-medium">{v.code}</span>
+                    <span className="font-bold">{formatRs(v.amount)}</span>
+                  </div>
+                ))}
+                {pointsApplied > 0 && (
+                  <div className="flex justify-between rounded border border-[#FDE68A] bg-[#FEF9C3] px-2 py-1 text-[#854D0E]">
+                    <span className="font-medium">Loyalty Points ({pointsNum})</span>
+                    <span className="font-bold">{formatRs(pointsApplied)}</span>
+                  </div>
+                )}
+                {cashApplied + cards.length + vouchers.length + (pointsApplied > 0 ? 1 : 0) === 0 && (
+                  <p className="py-4 text-center text-[#94A3B8]">No payments applied yet</p>
+                )}
               </div>
-              <div className="flex min-w-0 flex-1 flex-col">
-                <span className="font-['Inter'] text-xs font-bold uppercase leading-4 tracking-[0.6px] text-[#007A55]">
-                  Change to Return
-                </span>
-                <span className="font-['Inter'] text-2xl font-bold leading-9 text-[#007A55] sm:text-[30px] sm:leading-[36px]">
-                  {formatRs(change)}
-                </span>
-              </div>
             </div>
-            <div className="mt-6 flex gap-3">
-              <button
-                type="button"
-                onClick={() => setStep("method")}
-                disabled={isBusy}
-                className="flex-1 rounded-[16px] bg-[#E2E8F0] py-3.5 font-['Inter'] text-base font-bold leading-6 text-[#314158] transition-all duration-300 ease-out hover:opacity-90 disabled:pointer-events-none disabled:opacity-50 min-[400px]:min-h-[56px]"
-              >
-                Back
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleCompletePayment("cash")}
-                disabled={!cashCoversDue || isBusy}
-                className="flex flex-1 items-center justify-center gap-2 rounded-[16px] bg-[#00BC7D] py-3.5 font-['Inter'] text-base font-bold leading-6 text-white shadow-[0px_4px_6px_-4px_#0000001A,0px_10px_15px_-3px_#0000001A] transition-all duration-300 ease-out hover:bg-[#00A66D] disabled:pointer-events-none disabled:opacity-50 min-[400px]:min-h-[56px]"
-              >
-                {isBusy ? (
-                  <>
-                    <Loader2 className="h-5 w-5 shrink-0 animate-spin" />
-                    Processing…
-                  </>
+          </div>
+
+          <div className="col-span-8">
+            {activeMethod === "cash" && (
+              <div className="rounded-[14px] border border-[#A7F3D0] bg-[#ECFDF5] p-4">
+                <p className="mb-2 font-bold text-[#065F46]">Cash Payment</p>
+                <label className="text-sm text-[#065F46]">Cash Amount ($)</label>
+                <input value={cashAmount} onChange={(e) => setCashAmount(e.target.value)} placeholder="0.00" className="mt-1 w-full rounded-[12px] border border-[#6EE7B7] bg-white px-3 py-3 text-2xl font-bold text-[#1D293D]" />
+                <button type="button" className="mt-3 w-full rounded-[12px] bg-[#059669] py-3 font-bold text-white">
+                  Save Cash Balance ({formatRs(Math.max(amountDue - (cardApplied + voucherApplied + pointsApplied), 0))})
+                </button>
+              </div>
+            )}
+
+            {activeMethod === "card" && (
+              <div className="rounded-[14px] border border-[#BFDBFE] bg-[#EFF6FF] p-4">
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="font-bold text-[#1E3A8A]">Card Payment</p>
+                  <p className="text-sm text-[#64748B]">{cardCountText}</p>
+                </div>
+                <p className="mb-3 text-sm text-[#3B82F6]">Record card payment details. Actual payment is processed on the card machine.</p>
+                <label className="text-sm font-medium text-[#334155]">Card Type</label>
+                <select value={cardType} onChange={(e) => setCardType(e.target.value)} className="mt-1 w-full rounded-[12px] border border-[#DBEAFE] bg-white px-3 py-2.5 text-[#1D293D]">
+                  <option value="visa">Visa</option>
+                  <option value="master">MasterCard</option>
+                  <option value="amex">Amex</option>
+                </select>
+                <label className="mt-3 block text-sm font-medium text-[#334155]">Last 4 Digits</label>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  value={cardLast4}
+                  onChange={(e) => {
+                    const digitsOnly = e.target.value.replace(/\D/g, "").slice(0, 4);
+                    setCardLast4(digitsOnly);
+                  }}
+                  maxLength={4}
+                  placeholder="••••"
+                  className="mt-1 w-full rounded-[12px] border border-[#DBEAFE] bg-white px-3 py-2.5 text-[#1D293D] placeholder:text-[#94A3B8]"
+                />
+                <label className="mt-3 block text-sm font-medium text-[#334155]">Amount (Rs.)</label>
+                <input value={cardAmount} onChange={(e) => setCardAmount(e.target.value)} placeholder="0.00" className="mt-1 w-full rounded-[12px] border border-[#DBEAFE] bg-white px-3 py-2.5 text-[#1D293D] placeholder:text-[#94A3B8]" />
+                <button type="button" onClick={handleAddCard} className="mt-3 w-full rounded-[12px] bg-[#2563EB] py-3 font-bold text-white">+ Add Card Payment</button>
+
+                {cards.length > 0 && (
+                  <div className="mt-4 border-t border-[#BFDBFE] pt-3">
+                    <p className="mb-2 text-sm font-bold uppercase text-[#64748B]">Added Cards</p>
+                    <div className="space-y-2">
+                      {cards.map((c) => (
+                        <div key={c.id} className="flex items-center justify-between rounded-[12px] border border-[#DBEAFE] bg-white px-3 py-2.5">
+                          <div>
+                            <p className="font-bold text-[#1D293D]">{c.cardType.toUpperCase()}</p>
+                            <p className="text-sm text-[#64748B]">•••• {c.last4}</p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <p className="font-bold text-[#1E40AF]">{formatRs(c.amount)}</p>
+                            <button type="button" onClick={() => setCards((prev) => prev.filter((x) => x.id !== c.id))} className="text-[#EF4444]">
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeMethod === "voucher" && (
+              <div className="rounded-[14px] border border-[#E9D5FF] bg-[#FAF5FF] p-4">
+                <p className="mb-3 font-bold text-[#6B21A8]">Gift Voucher</p>
+                <p className="mb-2 text-sm font-medium text-[#7C3AED]">Redemption Method</p>
+                <div className="mb-3 grid grid-cols-2 gap-2">
+                  <button type="button" onClick={() => setVoucherMode("promo")} className={`rounded-[12px] border px-3 py-3 font-medium ${voucherMode === "promo" ? "border-[#A855F7] bg-white text-[#7C3AED]" : "border-[#E9D5FF] bg-white text-[#64748B]"}`}>Promo Code</button>
+                  <button type="button" onClick={() => setVoucherMode("scan")} className={`rounded-[12px] border px-3 py-3 font-medium ${voucherMode === "scan" ? "border-[#A855F7] bg-white text-[#7C3AED]" : "border-[#E9D5FF] bg-white text-[#64748B]"}`}>
+                    <span className="inline-flex items-center gap-1"><ScanLine className="h-4 w-4" /> Scan Barcode</span>
+                  </button>
+                </div>
+                <label className="text-sm font-medium text-[#334155]">{voucherMode === "promo" ? "Promo Code" : "Scanned Code"}</label>
+                <input value={voucherCode} onChange={(e) => setVoucherCode(e.target.value)} placeholder="GV25-ABCD-1234" className="mt-1 w-full rounded-[12px] border border-[#E9D5FF] bg-white px-3 py-2.5 text-[#1D293D] placeholder:text-[#94A3B8]" />
+                <button type="button" onClick={handleRedeemVoucher} className="mt-3 w-full rounded-[12px] bg-[#A21CAF] py-3 font-bold text-white">Redeem Voucher</button>
+                <p className="mt-3 rounded-[10px] bg-[#F3E8FF] px-3 py-2 text-xs text-[#7C3AED]">Code Format: GV25-ABCD-1234 (Rs.5000), BX25-ABCD-1234 (Rs.8000)</p>
+              </div>
+            )}
+
+            {activeMethod === "loyalty" && (
+              <div className="rounded-[14px] border border-[#FEF08A] bg-[#FEFCE8] p-4">
+                <p className="mb-3 font-bold text-[#854D0E]">Loyalty Points</p>
+                {!hasCustomerForPoints ? (
+                  <p className="rounded-[10px] bg-white px-3 py-3 text-sm text-[#92400E]">
+                    No registered customer found for this order. Loyalty points can be used only for registered customers.
+                  </p>
                 ) : (
                   <>
-                    Complete Payment
-                    <span className="inline-block h-5 w-5 shrink-0">
-                      <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
-                        <path fillRule="evenodd" d="M3 10a.75.75 0 01.75-.75h10.638L10.23 5.29a.75.75 0 111.04-1.08l5.5 5.25a.75.75 0 010 1.08l-5.5 5.25a.75.75 0 11-1.04-1.08l4.158-3.96H3.75A.75.75 0 013 10z" clipRule="evenodd" />
-                      </svg>
-                    </span>
+                    <div className="rounded-[12px] bg-white px-3 py-2.5">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-[#64748B]">Available Points</p>
+                          <p className="text-5xl font-bold text-[#D97706]">{availablePoints.toLocaleString()}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-[#64748B]">Points Value</p>
+                          <p className="text-4xl font-bold text-[#92400E]">{formatRs(availablePoints * pointsRate)}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <p className="mt-2 rounded bg-[#FEF3C7] px-3 py-1.5 text-center text-xs text-[#A16207]">1 point = Rs.1.00</p>
+                    <label className="mt-3 block text-sm font-medium text-[#334155]">Points to Use</label>
+                    <input value={pointsToUse} onChange={(e) => setPointsToUse(e.target.value)} placeholder="Enter points" className="mt-1 w-full rounded-[12px] border border-[#FDE68A] bg-white px-3 py-2.5" />
+                    <button type="button" className="mt-3 w-full rounded-[12px] bg-[#D97706] py-3 font-bold text-white">Apply Points</button>
                   </>
                 )}
-              </button>
-            </div>
-          </>
-        )}
-
-        {step === "success" && (
-          <div className="flex flex-col items-center py-6">
-            <span className="flex h-[104px] w-[104px] items-center justify-center rounded-full bg-[#00BC7D] text-white shadow-[0px_25px_50px_-12px_#A4F4CF]">
-              <svg width="52" height="52" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0" aria-hidden>
-                <path d="M25.8513 47.3939C37.7489 47.3939 47.3939 37.7489 47.3939 25.8512C47.3939 13.9535 37.7489 4.30856 25.8513 4.30856C13.9536 4.30856 4.30859 13.9535 4.30859 25.8512C4.30859 37.7489 13.9536 47.3939 25.8513 47.3939Z" stroke="white" strokeWidth="6.4628" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M19.3884 25.8512L23.697 30.1598L32.314 21.5427" stroke="white" strokeWidth="6.4628" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </span>
-            <p className="mt-4 text-center font-['Inter'] text-2xl font-bold leading-8 text-[#1D293D]">
-              Payment Successful!
-            </p>
-            {changeReturned > 0 && (
-              <p className="mt-2 text-center font-['Inter'] text-base font-normal leading-6 text-[#62748E]">
-                Change returned: {formatRs(changeReturned)}
-              </p>
+              </div>
             )}
           </div>
-        )}
+        </div>
+
+        <div className="mt-5 flex items-center gap-3 border-t border-[#E2E8F0] pt-4">
+          <button type="button" onClick={onClose} disabled={isSubmitting} className="rounded-[12px] border border-[#E2E8F0] bg-white px-8 py-3 font-bold text-[#475569]">
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleConfirmPayment()}
+            disabled={!canConfirm || isSubmitting}
+            className={`flex-1 rounded-[12px] py-3 font-bold text-white ${canConfirm ? "bg-[#EA580C]" : "bg-[#94A3B8]"} disabled:opacity-70`}
+          >
+            {isSuccess ? "Payment Confirmed" : canConfirm ? "Confirm Payment" : `${formatRs(Math.max(remaining, 0))} Remaining`}
+          </button>
+        </div>
+        </div>
       </div>
     </div>
   );

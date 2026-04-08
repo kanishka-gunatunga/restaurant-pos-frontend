@@ -21,4 +21,12 @@ export type MenuItem = {
   image?: string;
   variants?: ProductVariant[];
   addOns?: ProductAddOn[];
+  bundleItems?: {
+    productId: number;
+    name: string;
+    qty: number;
+    unitPrice: number;
+    details?: string;
+    image?: string;
+  }[];
 };

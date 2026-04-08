@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { X, Plus, Minus } from "lucide-react";
+import { X, Plus, Minus, User, Phone } from "lucide-react";
 import type { MenuItem, ProductVariant, ProductAddOn } from "./types";
 import MenuProductImage from "./MenuProductImage";
 import { resolveProductImageSrc } from "@/lib/productImage";
+import type { AddItemOptions } from "@/contexts/OrderContext";
 
 type ProductModalProps = {
   item: MenuItem;
@@ -19,7 +20,8 @@ type ProductModalProps = {
     addOnsList?: string[],
     variationId?: number,
     variationOptionId?: number,
-    modifications?: { modificationId: number; price: number }[]
+    modifications?: { modificationId: number; price: number }[],
+    options?: AddItemOptions
   ) => void;
   onUpdateOrder?: (
     productId: number,
@@ -32,11 +34,14 @@ type ProductModalProps = {
     variationId?: number,
     variationOptionId?: number,
     modifications?: { modificationId: number; price: number }[],
-    qty?: number
+    qty?: number,
+    options?: AddItemOptions
   ) => void;
   initialQty?: number;
   initialVariantId?: number;
   initialAddOns?: { modificationId: number; price: number }[];
+  initialRecipientName?: string;
+  initialRecipientMobile?: string;
   isEditing?: boolean;
 };
 
@@ -48,8 +53,13 @@ export default function ProductModal({
   initialQty,
   initialVariantId,
   initialAddOns,
+  initialRecipientName,
+  initialRecipientMobile,
   isEditing,
 }: ProductModalProps) {
+  const isVoucherItem =
+    item.category.toLowerCase().includes("voucher") || item.name.toLowerCase().includes("voucher");
+  const isPromotionDeal = (item.bundleItems?.length ?? 0) > 0;
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
     initialVariantId
       ? (item.variants?.find((v) => v.id === initialVariantId) ?? item.variants?.[0] ?? null)
@@ -80,6 +90,8 @@ export default function ProductModal({
   );
   const [qty, setQty] = useState(initialQty ?? 1);
   const [addOnSearch, setAddOnSearch] = useState("");
+  const [recipientName, setRecipientName] = useState(initialRecipientName ?? "");
+  const [recipientPhone, setRecipientPhone] = useState(initialRecipientMobile ?? "");
 
   const hasVariants = item.variants && item.variants.length > 0;
   const basePrice = selectedVariant?.price ?? item.price;
@@ -117,13 +129,49 @@ export default function ProductModal({
         )
       );
     }
-    return parts.join(" + ") || "REGULAR";
+    const baseDetails = parts.join(" + ") || "REGULAR";
+    if (!isVoucherItem) return baseDetails;
+
+    const normalizedName = recipientName.trim();
+    const normalizedPhone = recipientPhone.trim();
+    if (!normalizedName && !normalizedPhone) return baseDetails;
+
+    if (normalizedName && normalizedPhone) {
+      return `${baseDetails} | Recipient: ${normalizedName} (${normalizedPhone})`;
+    }
+    if (normalizedName) return `${baseDetails} | Recipient: ${normalizedName}`;
+    return `${baseDetails} | Recipient Mobile: ${normalizedPhone}`;
   };
 
   const getAddOnsList = () =>
     selectedAddOns.map(({ addOn, qty: n }) => (n > 1 ? `${addOn.name} x${n}` : addOn.name));
 
   const handleAction = () => {
+    if (isPromotionDeal && !isEditing) {
+      const dealImage = resolveProductImageSrc(item.image, item.id);
+      for (let i = 0; i < qty; i++) {
+        item.bundleItems?.forEach((bundle) => {
+          for (let j = 0; j < bundle.qty; j++) {
+            onAddToOrder(
+              bundle.productId,
+              bundle.name,
+              bundle.unitPrice,
+              bundle.details ?? item.name,
+              bundle.image ?? dealImage,
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              { itemType: "promotion" }
+            );
+          }
+        });
+      }
+      onClose();
+      return;
+    }
+
     const unitPrice = totalPrice / qty;
     const details = getDetailsString();
     const image = resolveProductImageSrc(item.image, item.id);
@@ -148,7 +196,12 @@ export default function ProductModal({
         selectedVariant?.variationId,
         selectedVariant?.id,
         modifications.length > 0 ? modifications : undefined,
-        qty
+        qty,
+        {
+          itemType: isPromotionDeal ? "promotion" : isVoucherItem ? "voucher" : "food",
+          recipientName: isVoucherItem ? recipientName.trim() || undefined : undefined,
+          recipientMobile: isVoucherItem ? recipientPhone.trim() || undefined : undefined,
+        }
       );
     } else {
       for (let i = 0; i < qty; i++) {
@@ -162,7 +215,12 @@ export default function ProductModal({
           addOnsParsed.length > 0 ? addOnsParsed : undefined,
           selectedVariant?.variationId,
           selectedVariant?.id,
-          modifications.length > 0 ? modifications : undefined
+          modifications.length > 0 ? modifications : undefined,
+          {
+            itemType: isPromotionDeal ? "promotion" : isVoucherItem ? "voucher" : "food",
+            recipientName: isVoucherItem ? recipientName.trim() || undefined : undefined,
+            recipientMobile: isVoucherItem ? recipientPhone.trim() || undefined : undefined,
+          }
         );
       }
     }
@@ -199,7 +257,7 @@ export default function ProductModal({
                 sizes="(max-width: 768px) 100vw, 50vw"
               />
             </div>
-            <div className="absolute bottom-0 left-0 right-0 z-1 bg-gradient-to-t from-black/70 to-transparent p-4">
+            <div className="absolute bottom-0 left-0 right-0 z-1 bg-linear-to-t from-black/70 to-transparent p-4">
               <span className="text-xs font-medium uppercase tracking-wider text-white/90">
                 {item.category}
               </span>
@@ -208,6 +266,60 @@ export default function ProductModal({
           </div>
 
           <div className="min-h-0 w-full max-h-[calc(90dvh-12rem)] overflow-y-auto bg-[#F8FAFC] p-5 [scrollbar-width:thin] [scrollbar-color:#CBD5E1_#F1F5F9] md:max-h-[90dvh] md:w-1/2 md:flex-1 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#F1F5F9] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#CBD5E1] hover:[&::-webkit-scrollbar-thumb]:bg-[#94A3B8]">
+            {isPromotionDeal && (
+              <div className="mb-4 rounded-[14px] bg-white p-3.5">
+                <h3 className="font-['Arial'] text-lg font-bold leading-7 text-[#1D293D]">
+                  Deal Includes
+                </h3>
+                <div className="mt-2 space-y-1.5">
+                  {item.bundleItems?.map((bundle, idx) => (
+                    <p
+                      key={`${bundle.productId}-${idx}`}
+                      className="font-['Arial'] text-sm leading-5 text-[#45556C]"
+                    >
+                      {bundle.qty} x {bundle.name}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {isVoucherItem && (
+              <div className="mb-4 rounded-[14px] bg-white p-3.5">
+                <h3 className="font-['Arial'] text-lg font-bold leading-7 text-[#1D293D]">
+                  Recipient Details (Optional)
+                </h3>
+                <div className="mt-3 space-y-3">
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-[#62748E]">Recipient Name</label>
+                    <div className="relative">
+                      <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#90A1B9]" />
+                      <input
+                        type="text"
+                        value={recipientName}
+                        onChange={(e) => setRecipientName(e.target.value)}
+                        placeholder="Enter recipient name"
+                        className="w-full rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFC] py-2.5 pl-10 pr-3 text-sm text-[#0A0A0A]"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-[#62748E]">Recipient Number</label>
+                    <div className="relative">
+                      <Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#90A1B9]" />
+                      <input
+                        type="tel"
+                        value={recipientPhone}
+                        onChange={(e) => setRecipientPhone(e.target.value)}
+                        placeholder="Enter recipient mobile"
+                        className="w-full rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFC] py-2.5 pl-10 pr-3 text-sm text-[#0A0A0A]"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {hasVariants && (
               <div>
                 <p className="mb-2 font-['Arial'] text-[10px] font-black uppercase leading-[15px] tracking-[1px] text-[#90A1B9]">

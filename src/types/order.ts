@@ -93,7 +93,7 @@ export interface CreateOrderData {
   customerName?: string;
   customerId?: string | number;
   totalAmount: number;
-  orderType: OrderType;
+  orderType?: OrderType;
   tableNumber?: string;
   orderDiscount: number;
   tax: number;
@@ -120,6 +120,7 @@ export interface CreateOrderData {
       modificationId: number;
       price: number;
     }[];
+    notes?: string;
   }[];
 }
 
