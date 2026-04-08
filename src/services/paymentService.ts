@@ -1,12 +1,7 @@
 import axiosInstance from "@/lib/api/axiosInstance";
 import { roundMoney2 } from "@/domains/orders/orderCollectionAmount";
 import type { Order } from "@/types/order";
-import {
-  CreatePaymentPayload,
-  Payment,
-  PaymentStats,
-  PaymentUpdatePayload,
-} from "@/types/payment";
+import { CreatePaymentPayload, Payment, PaymentStats, PaymentUpdatePayload } from "@/types/payment";
 import { getOrderById } from "@/services/orderService";
 
 function numField(v: unknown): number {
@@ -20,7 +15,8 @@ function numField(v: unknown): number {
 
 /** Map API stats payload (camelCase or snake_case, optional `data` wrapper) to PaymentStats. */
 export function normalizePaymentStats(raw: unknown): PaymentStats {
-  const root = raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
+  const root =
+    raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
   const data =
     root.data != null && typeof root.data === "object" && !Array.isArray(root.data)
       ? (root.data as Record<string, unknown>)
@@ -51,13 +47,16 @@ export const createPayment = async (payload: CreatePaymentPayload): Promise<any>
   return res.data;
 };
 
-export const updatePaymentStatus = async (id: number, payload: PaymentUpdatePayload): Promise<any> => {
+export const updatePaymentStatus = async (
+  id: number,
+  payload: PaymentUpdatePayload
+): Promise<any> => {
   const res = await axiosInstance.put(`/payments/${id}/status`, payload);
   return res.data;
 };
 
 /**
- * `GET /payments/order/:id` 
+ * `GET /payments/order/:id`
  */
 export function normalizePaymentsByOrderApiResponse(body: unknown): unknown[] {
   if (Array.isArray(body)) return body;
@@ -78,7 +77,6 @@ export const getPaymentsByOrder = async (orderId: number): Promise<any[]> => {
   const res = await axiosInstance.get(`/payments/order/${orderId}`);
   return normalizePaymentsByOrderApiResponse(res.data);
 };
-
 
 export async function fetchOrderStateForPaymentCreate(id: string | number): Promise<Order> {
   const order = await getOrderById(id);

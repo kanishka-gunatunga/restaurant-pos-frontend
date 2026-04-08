@@ -111,6 +111,7 @@ export interface CreateOrderData {
   order_products: {
     productId: string | number;
     variationId?: string | number;
+    variationOptionId?: string | number;
     quantity: number;
     unitPrice: number;
     productDiscount: number;

@@ -366,18 +366,25 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
           orderDetails.orderType === "Delivery" ? (orderDetails.deliveryChargeId ?? null) : null,
         deliveryChargeSelectedId:
           orderDetails.orderType === "Delivery" ? (orderDetails.deliveryChargeId ?? null) : null,
-        order_products: items.map((item) => ({
-          productId: item.productId,
-          variationId: item.variationOptionId,
-          quantity: item.qty,
-          unitPrice: item.price,
+        order_products: items.map((item) => {
+          const modificationUnitSum = (item.modifications ?? []).reduce(
+            (sum, m) => sum + Number(m.price || 0),
+            0
+          );
+          const baseUnitPrice = Math.max(0, Number(item.price) - modificationUnitSum);
+          return {
+            productId: item.productId,
+            variationOptionId: item.variationOptionId,
+            quantity: item.qty,
+            unitPrice: Number(baseUnitPrice.toFixed(2)),
           productDiscount:
             (itemsWithDiscounts.find((i) => i.id === item.id)?.discountAmount || 0) / item.qty,
           modifications: item.modifications?.map((m) => ({
             modificationId: m.modificationId,
             price: m.price,
           })),
-        })),
+          };
+        }),
       };
 
       try {

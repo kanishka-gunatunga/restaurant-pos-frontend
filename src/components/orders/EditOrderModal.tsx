@@ -19,6 +19,7 @@ import type { MenuItem, ProductVariant, ProductAddOn } from "@/components/menu/t
 import { useGetAllModifications } from "@/hooks/useModification";
 import { useGetProductsByBranch } from "@/hooks/useProduct";
 import { useAuth } from "@/contexts/AuthContext";
+import type { OrderItem } from "@/contexts/OrderContext";
 import { lineNetBeforeOrderDiscount, totalsFromOrderLineItems } from "@/domains/orders/orderLineTotals";
 
 export type EditOrderLineItem = {
@@ -99,8 +100,6 @@ function AddItemCard({
   const hasVariants = item.variants && item.variants.length > 0;
   const hasAddOns = item.addOns && item.addOns.length > 0;
   const basePrice = selectedVariant?.price ?? item.price;
-  const addOnsTotal = selectedAddOns.reduce((sum, { addOn, qty: n }) => sum + addOn.price * n, 0);
-  const unitPrice = basePrice + addOnsTotal;
 
   const toggleAddOn = (addOn: ProductAddOn) => {
     setSelectedAddOns((prev) => {
@@ -132,7 +131,7 @@ function AddItemCard({
       variationId: selectedVariant?.variationId != null ? String(selectedVariant.variationId) : undefined,
       variationOptionId: selectedVariant?.id != null ? String(selectedVariant.id) : undefined,
       name: item.name,
-      price: unitPrice,
+      price: basePrice,
       image: resolveProductImageSrc(item.image, String(item.productId)),
       variant: variantName,
       addOns: addOnsList.length > 0 ? addOnsList : undefined,
@@ -367,7 +366,10 @@ export default function EditOrderModal({ order, onClose, onSubmit, onOrderAndPay
     modifications?: { modificationId: number; price: number }[];
   }) => {
     // Find applicable discount for the new item
-    const mockOrderItem = { productId: params.productId, variationOptionId: params.variationOptionId } as any;
+    const mockOrderItem = {
+      productId: params.productId,
+      variationOptionId: params.variationOptionId,
+    } as unknown as OrderItem;
     const applicable = findApplicableDiscount(mockOrderItem, discountsData);
     const productDiscount = applicable 
       ? calculateItemDiscount(params.price, 1, applicable.discountItem)

@@ -21,6 +21,7 @@ import BranchesIcon from "@/components/icons/BranchesIcon";
 import DrawerIcon from "@/components/icons/DrawerIcon";
 import ReportIcon from "@/components/icons/ReportIcon";
 import ExtraFeeIcon from "@/components/icons/ExtraFeeIcon";
+import GiftVoucherIcon from "@/components/icons/GiftVoucherIcon";
 import { ROUTES } from "@/lib/constants";
 import { getFirstName } from "@/lib/format";
 import { useCalculator } from "@/contexts/CalculatorContext";
@@ -41,6 +42,7 @@ const navLinks = [
   { href: ROUTES.DASHBOARD_CUSTOMERS, label: "Customers", icon: Users },
   { href: ROUTES.DASHBOARD_USERS, label: "Users", icon: UserCog },
   { href: ROUTES.DASHBOARD_BRANCHES, label: "Branches", icon: BranchesIcon },
+  { href: ROUTES.DASHBOARD_VOUCHERS, label: "Vouchers", icon: GiftVoucherIcon },
   { href: ROUTES.DASHBOARD_INVENTORY, label: "Inventory", icon: Package },
   { href: ROUTES.DASHBOARD_DRAWER, label: "Drawer", icon: DrawerIcon },
   { href: ROUTES.DASHBOARD_EXTRA_FEE, label: "Extra Fee", icon: ExtraFeeIcon },
