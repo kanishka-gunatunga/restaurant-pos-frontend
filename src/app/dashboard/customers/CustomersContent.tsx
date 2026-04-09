@@ -6,6 +6,7 @@ import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
 import CustomerHeader from "@/components/customers/CustomerHeader";
 import CustomerTable from "@/components/customers/CustomerTable";
 import AddCustomerModal from "@/components/customers/AddCustomerModal";
+import SendPromotionModal from "@/components/customers/SendPromotionModal";
 import {
   useGetAllCustomers,
   useSearchCustomers,
@@ -21,6 +22,7 @@ export default function CustomersContent() {
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isPromotionModalOpen, setIsPromotionModalOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
   useEffect(() => {
@@ -128,6 +130,7 @@ export default function CustomersContent() {
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
             onAddClick={() => setIsAddModalOpen(true)}
+            onSendPromotionClick={() => setIsPromotionModalOpen(true)}
           />
           <CustomerTable
             searchTerm={searchTerm}
@@ -148,6 +151,12 @@ export default function CustomersContent() {
           }}
           onSave={handleSaveCustomer}
           initialData={selectedCustomer}
+        />
+      )}
+
+      {isPromotionModalOpen && (
+        <SendPromotionModal
+          onClose={() => setIsPromotionModalOpen(false)}
         />
       )}
     </div>
