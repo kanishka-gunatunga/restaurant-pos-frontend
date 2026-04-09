@@ -29,6 +29,7 @@ type VoucherRedemptionRow = {
 
 type ProcessPaymentModalProps = {
   customerName: string;
+  customerMobile?: string;
   amountDue: number;
   orderId?: number;
   onClose: () => void;
@@ -37,6 +38,7 @@ type ProcessPaymentModalProps = {
 
 export default function ProcessPaymentModal({
   customerName,
+  customerMobile,
   amountDue,
   orderId,
   onClose,
@@ -154,14 +156,14 @@ export default function ProcessPaymentModal({
   };
 
   const header = (
-    <div className="border-b border-[#E2E8F0] pb-3">
+    <div className=" pb-3">
       <div className="flex items-start justify-between">
         <div>
           <h2 className="font-['Inter'] text-2xl font-bold leading-8 text-[#1D293D]">
             Split Payment
           </h2>
           <p className="mt-1 font-['Inter'] text-sm font-normal leading-5 text-[#62748E]">
-            {customerName}
+            {customerMobile ? `${customerName} • ${customerMobile}` : customerName}
           </p>
         </div>
         <button
@@ -192,36 +194,37 @@ export default function ProcessPaymentModal({
         onClick={(e) => e.stopPropagation()}
       >
         {header}
-        <div className="mt-4 flex-1 overflow-y-auto pr-1 [scrollbar-width:thin] [scrollbar-color:#CBD5E1_#F1F5F9] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#F1F5F9] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#CBD5E1] hover:[&::-webkit-scrollbar-thumb]:bg-[#94A3B8]">
-        <div className="grid grid-cols-4 gap-3">
-          <div className="rounded-[12px] bg-[#F8FAFC] p-3">
-            <p className="text-xs text-[#90A1B9]">Order Total</p>
-            <p className="text-3xl font-bold text-[#1D293D]">{formatRs(amountDue)}</p>
+        <div className="grid grid-cols-4 gap-3 pb-3">
+          <div className="flex flex-col gap-1 rounded-[14px] bg-[#F8FAFC] p-4">
+            <p className="text-xs font-normal leading-4 tracking-normal text-[#62748E]">Order Total</p>
+            <p className="text-2xl font-bold leading-8 tracking-normal text-[#1D293D]">{formatRs(amountDue)}</p>
           </div>
-          <div className="rounded-[12px] bg-[#ECFDF5] p-3">
-            <p className="text-xs text-[#10B981]">Total Paid</p>
-            <p className="text-3xl font-bold text-[#047857]">{formatRs(totalPaid)}</p>
+          <div className="flex flex-col gap-1 rounded-[14px] bg-[#ECFDF5] p-4">
+            <p className="text-xs font-normal leading-4 tracking-normal text-[#009966]">Total Paid</p>
+            <p className="text-2xl font-bold leading-8 tracking-normal text-[#007A55]">{formatRs(totalPaid)}</p>
           </div>
-          <div className={`rounded-[12px] p-3 ${fullyPaid ? "bg-[#ECFDF5]" : "bg-[#FFF7ED]"}`}>
-            <p className={`text-xs ${fullyPaid ? "text-[#10B981]" : "text-[#F97316]"}`}>Remaining</p>
-            <p className={`text-3xl font-bold ${fullyPaid ? "text-[#047857]" : "text-[#C2410C]"}`}>
+          <div className={`flex flex-col gap-1 rounded-[14px] p-4 ${fullyPaid ? "bg-[#ECFDF5]" : "bg-[#FFF7ED]"}`}>
+            <p className={`text-xs font-normal leading-4 tracking-normal ${fullyPaid ? "text-[#10B981]" : "text-[#F54900]"}`}>Remaining</p>
+            <p className={`text-2xl font-bold leading-8 tracking-normal ${fullyPaid ? "text-[#047857]" : "text-[#CA3500]"}`}>
               {formatRs(Math.max(remaining, 0))}
             </p>
           </div>
-          <div className="rounded-[12px] bg-[#F8FAFC] p-3 flex items-center justify-center">
-            <p className={`text-xl font-bold ${fullyPaid ? "text-[#059669]" : "text-[#94A3B8]"}`}>
+          <div className="flex items-center justify-center gap-1 rounded-[14px] bg-[#F8FAFC] p-4">
+            <p className={`text-xl font-bold ${fullyPaid ? "text-[#009966]" : "text-[#90A1B9]"}`}>
               {fullyPaid ? (
-                <span className="inline-flex items-center gap-1"><Check className="h-5 w-5" /> Fully Paid</span>
+                <span className="inline-flex items-center gap-1 text-base font-bold leading-6 tracking-normal"><Check className="h-5 w-5" /> Fully Paid</span>
               ) : (
-                "Payment Pending"
+                <span className="text-xs font-normal leading-4 tracking-normal">Payment Pending</span>
               )}
             </p>
           </div>
         </div>
+        <div className="-mx-6 border-b border-[#E2E8F0]" />
 
-        <div className="mt-4 grid grid-cols-12 gap-4">
+        <div className="mt-4 flex-1 overflow-y-auto pr-1 [scrollbar-width:thin] [scrollbar-color:#CBD5E1_#F1F5F9] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#F1F5F9] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#CBD5E1] hover:[&::-webkit-scrollbar-thumb]:bg-[#94A3B8]">
+        <div className="grid grid-cols-12 gap-4">
           <div className="col-span-4 border-r border-[#E2E8F0] pr-4">
-            <p className="text-xs font-bold uppercase text-[#62748E]">Payment Methods</p>
+            <p className="text-sm font-bold uppercase leading-5 tracking-normal text-[#314158]">Payment Methods</p>
             <div className="mt-3 space-y-2">
               {[
                 { id: "cash", label: "Cash", icon: Wallet, sub: formatRs(cashApplied) },
@@ -395,6 +398,7 @@ export default function ProcessPaymentModal({
             )}
           </div>
         </div>
+        </div>
 
         <div className="mt-5 flex items-center gap-3 border-t border-[#E2E8F0] pt-4">
           <button type="button" onClick={onClose} disabled={isSubmitting} className="rounded-[12px] border border-[#E2E8F0] bg-white px-8 py-3 font-bold text-[#475569]">
@@ -408,7 +412,6 @@ export default function ProcessPaymentModal({
           >
             {isSuccess ? "Payment Confirmed" : canConfirm ? "Confirm Payment" : `${formatRs(Math.max(remaining, 0))} Remaining`}
           </button>
-        </div>
         </div>
       </div>
     </div>

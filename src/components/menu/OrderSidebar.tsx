@@ -34,6 +34,7 @@ import {
 type NoteModalType = "kitchen" | "order" | null;
 type PaymentFlowState = {
   customerName: string;
+  customerMobile?: string;
   settlementAmount: number;
   orderId?: number;
   localOrderId?: string;
@@ -65,6 +66,7 @@ function loadPendingPaymentFlow(): PaymentFlowState | null {
     if (typeof parsed.customerName === "string" && settlement != null && typeof parsed.orderId === "number") {
       return {
         customerName: parsed.customerName,
+        ...(typeof parsed.customerMobile === "string" ? { customerMobile: parsed.customerMobile } : {}),
         settlementAmount: settlement,
         orderId: parsed.orderId,
         ...(typeof parsed.localOrderId === "string" && parsed.localOrderId
@@ -496,12 +498,13 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
 
     if (isOrderAndPaySubmitting || !orderDetails || items.length === 0) return;
 
-    const paymentSnapshot = { customerName: orderDetails.customerName };
+    const paymentSnapshot = { customerName: orderDetails.customerName, customerMobile: orderDetails.phone };
 
     if (hasMockOnlyItems) {
       const localSlotId = activeOrderId ?? orders[0]?.id;
       setPaymentFlow({
         customerName: paymentSnapshot.customerName,
+        customerMobile: paymentSnapshot.customerMobile,
         settlementAmount: total,
         localOrderId: localSlotId ?? undefined,
       });
@@ -525,6 +528,7 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
         }
         const nextPaymentFlow: PaymentFlowState = {
           customerName: paymentSnapshot.customerName,
+          customerMobile: paymentSnapshot.customerMobile,
           settlementAmount: draft.amount,
           orderId: submitted.serverOrderId,
           localOrderId: submitted.localSlotId,
@@ -1063,6 +1067,7 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
       {paymentFlow && (
         <ProcessPaymentModal
           customerName={paymentFlow.customerName}
+          customerMobile={paymentFlow.customerMobile ?? orderDetails?.phone}
           amountDue={paymentFlow.settlementAmount}
           orderId={paymentFlow.orderId}
           onClose={() => {
