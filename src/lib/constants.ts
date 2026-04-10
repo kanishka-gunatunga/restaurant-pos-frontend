@@ -20,6 +20,7 @@ export const ROUTES = {
   DASHBOARD_INVENTORY: "/dashboard/inventory",
   DASHBOARD_INVENTORY_ADD_PRODUCT: "/dashboard/inventory/add-product",
   DASHBOARD_SUPPLY: "/dashboard/supply",
+  DASHBOARD_EXTRA_FEE: "/dashboard/extra-fee",
   DASHBOARD_BRANCHES: "/dashboard/branches",
   DASHBOARD_ACTIVITY: "/dashboard/activity",
   DASHBOARD_REPORTS: "/dashboard/reports",

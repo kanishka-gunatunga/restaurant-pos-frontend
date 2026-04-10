@@ -87,6 +87,9 @@ export type OrderDetailsView = {
   subtotal?: number;
   discount?: number;
   orderDiscount?: number;
+  serviceCharge?: number;
+  deliveryChargeAmount?: number;
+  deliveryChargeId?: number | null;
   balanceDue?: number;
   requiresAdditionalPayment?: boolean;
   totalRefunded?: number;
@@ -115,6 +118,9 @@ export type OrderRow = {
   subtotal?: number;
   discount?: number;
   orderDiscount?: number;
+  serviceCharge?: number;
+  deliveryChargeAmount?: number;
+  deliveryChargeId?: number | null;
   balanceDue?: number;
   requiresAdditionalPayment?: boolean;
   totalRefunded?: number;
@@ -150,8 +156,27 @@ export function mapOrderToRow(apiOrder: ApiOrder): OrderRow {
     Number(apiOrder.tax || 0) +
     Number(apiOrder.orderDiscount || 0) +
     itemDiscountSum;
+  const serviceChargeRaw = Number(raw.serviceCharge ?? raw.service_charge ?? 0);
+  const serviceCharge = Number.isFinite(serviceChargeRaw) ? serviceChargeRaw : 0;
+  const deliveryChargeAmountRaw = Number(
+    raw.deliveryChargeAmount ?? raw.delivery_charge_amount ?? 0
+  );
+  const deliveryChargeAmount = Number.isFinite(deliveryChargeAmountRaw)
+    ? deliveryChargeAmountRaw
+    : 0;
+  const deliveryChargeIdRaw = raw.deliveryChargeId ?? raw.delivery_charge_id;
+  const parsedDeliveryChargeId =
+    deliveryChargeIdRaw == null || deliveryChargeIdRaw === "" ? null : Number(deliveryChargeIdRaw);
+  const deliveryChargeId =
+    parsedDeliveryChargeId != null && Number.isFinite(parsedDeliveryChargeId)
+      ? parsedDeliveryChargeId
+      : null;
+  const apiTotalAmountRaw = Number(apiOrder.totalAmount);
+  const apiTotalAmount = Number.isFinite(apiTotalAmountRaw) ? apiTotalAmountRaw : NaN;
 
-  const currentTotal = fromLines?.totalAmount ?? Number(apiOrder.totalAmount);
+  const currentTotal = Number.isFinite(apiTotalAmount)
+    ? apiTotalAmount
+    : (fromLines?.totalAmount ?? 0);
   const refundSummary = buildOrderRefundSummary(apiOrder, raw, currentTotal);
   const orderPaymentStatus = readPaymentStatusFromApi(raw);
 
@@ -170,7 +195,7 @@ export function mapOrderToRow(apiOrder: ApiOrder): OrderRow {
     customerName: apiOrder.customer?.name || "Guest",
     phone: apiOrder.customer?.mobile || "N/A",
     customerId: apiOrder.customerId || apiOrder.customer?.id,
-    totalAmount: fromLines?.totalAmount ?? Number(apiOrder.totalAmount),
+    totalAmount: Number.isFinite(apiTotalAmount) ? apiTotalAmount : (fromLines?.totalAmount ?? 0),
     status: apiOrder.status || "pending",
     paymentStatus: orderPaymentStatus,
     orderType,
@@ -183,6 +208,9 @@ export function mapOrderToRow(apiOrder: ApiOrder): OrderRow {
     subtotal: fromLines?.itemsSubtotal ?? subtotalFromApi,
     discount: fromLines?.totalDiscountAmount ?? aggregateDiscount,
     orderDiscount,
+    serviceCharge,
+    deliveryChargeAmount,
+    deliveryChargeId,
     balanceDue,
     ...(requiresAdditionalPayment !== undefined ? { requiresAdditionalPayment } : {}),
     totalRefunded: refundSummary.totalRefunded,
