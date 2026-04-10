@@ -16,8 +16,39 @@ export interface VariationPrice {
   price: string | number;
   discountPrice?: string | number | null;
   quantity: number;
+  isUnlimited?: boolean | null | number;
+  is_unlimited?: boolean | null | number;
   expireDate?: string | null;
   batchNo?: string | null;
+}
+
+export function readIsUnlimitedFromPrice(
+  price:
+    | {
+        isUnlimited?: unknown;
+        is_unlimited?: unknown;
+      }
+    | null
+    | undefined
+): boolean {
+  if (!price) return false;
+
+  const a = price.isUnlimited;
+  const b = price.is_unlimited;
+  const raw =
+    a !== null && a !== undefined ? a : b !== null && b !== undefined ? b : null;
+
+  if (raw === null || raw === undefined) return false;
+  if (raw === true || raw === 1) return true;
+  if (raw === false || raw === 0) return false;
+
+  if (typeof raw === "string") {
+    const s = raw.trim().toLowerCase();
+    if (s === "" || s === "null" || s === "false" || s === "0") return false;
+    if (s === "true" || s === "1") return true;
+  }
+
+  return false;
 }
 
 export interface VariationOption {
@@ -130,6 +161,7 @@ export interface CreateProductPayload {
         price: number;
         discountPrice?: number;
         quantity?: number;
+        isUnlimited?: boolean;
         expireDate?: string;
         batchNo?: string;
       }[];
