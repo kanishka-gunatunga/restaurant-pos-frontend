@@ -6,7 +6,7 @@ export const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
   { id: "products", label: "Products", icon: Package },
   { id: "categories", label: "Categories", icon: LayoutGrid },
   { id: "addons", label: "Add-on Groups", icon: Layers },
-  { id: "discounts", label: "Discounts", icon: Tag },
+  // { id: "discounts", label: "Discounts", icon: Tag },
 ];
 
 export const MOCK_CATEGORIES = [
