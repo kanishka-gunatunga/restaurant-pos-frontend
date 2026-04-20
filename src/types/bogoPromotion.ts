@@ -21,6 +21,7 @@ export interface BogoPromotion {
   buyVariationOptionId?: number;
   getVariationOptionId?: number;
   status: BogoPromotionStatus;
+  image?: string | null;
   branches?: BogoPromotionBranch[];
   buyProduct?: Product;
   getProduct?: Product;
@@ -44,4 +45,5 @@ export interface CreateBogoPromotionPayload {
 
 export interface UpdateBogoPromotionPayload extends Partial<CreateBogoPromotionPayload> {
   status?: BogoPromotionStatus;
+  image?: string;
 }

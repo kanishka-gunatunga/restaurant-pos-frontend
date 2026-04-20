@@ -17,6 +17,13 @@ export const useGetAllComboPacks = (status: "active" | "inactive" | "all" = "act
   });
 };
 
+export const useGetComboPacksByBranch = () => {
+  return useQuery({
+    queryKey: [...COMBO_PACK_KEYS.all, "by-branch"],
+    queryFn: () => comboPackService.getComboPacksByBranch(),
+  });
+};
+
 export const useGetComboPackById = (id: number) => {
   return useQuery({
     queryKey: COMBO_PACK_KEYS.detail(id),
@@ -28,7 +35,13 @@ export const useGetComboPackById = (id: number) => {
 export const useCreateComboPack = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: CreateComboPackPayload) => comboPackService.createComboPack(data),
+    mutationFn: ({
+      data,
+      imageFile,
+    }: {
+      data: CreateComboPackPayload;
+      imageFile?: File;
+    }) => comboPackService.createComboPack(data, imageFile),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: COMBO_PACK_KEYS.all });
     },
@@ -38,8 +51,15 @@ export const useCreateComboPack = () => {
 export const useUpdateComboPack = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: UpdateComboPackPayload }) =>
-      comboPackService.updateComboPack(id, data),
+    mutationFn: ({
+      id,
+      data,
+      imageFile,
+    }: {
+      id: number;
+      data: UpdateComboPackPayload;
+      imageFile?: File;
+    }) => comboPackService.updateComboPack(id, data, imageFile),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: COMBO_PACK_KEYS.all });
       queryClient.invalidateQueries({ queryKey: COMBO_PACK_KEYS.detail(variables.id) });

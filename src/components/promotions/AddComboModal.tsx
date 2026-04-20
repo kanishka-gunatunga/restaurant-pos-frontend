@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import {
   X,
@@ -26,6 +26,8 @@ import {
 } from "@/hooks/useComboPack";
 import { ComboPack, CreateComboPackPayload, UpdateComboPackPayload } from "@/types/comboPack";
 import { useGetProductsByBranch } from "@/hooks/useProduct";
+import { useGetAllModifications } from "@/hooks/useModification";
+import { collectAddOns } from "../menu/menuItemMapper";
 
 type AddComboModalProps = {
   open: boolean;
@@ -62,11 +64,26 @@ export default function AddComboModal({
   );
   const [comboPricesByBranch, setComboPricesByBranch] = useState<Record<number, number>>({});
   const [expandedBranchId, setExpandedBranchId] = useState<number | null>(null);
+  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
+  const [addOnSearch, setAddOnSearch] = useState("");
+
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState(() => editingCombo?.image ?? "");
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    return () => {
+      if (imagePreview && !imagePreview.startsWith("http")) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imagePreview]);
 
   const { data: fetchedCombo, isLoading: isFetching } = useGetComboPackById(editingCombo?.id || 0);
 
   const createComboPackMutation = useCreateComboPack();
   const updateComboPackMutation = useUpdateComboPack();
+  const { data: allModifications = [] } = useGetAllModifications("active");
 
   const isEditing = !!editingCombo;
   const isLoading =
@@ -79,21 +96,26 @@ export default function AddComboModal({
       setComboName(fetchedCombo.name || "");
       setExpiryDate(fetchedCombo.expire_date ? fetchedCombo.expire_date.slice(0, 10) : "");
       setDescription(fetchedCombo.description || "");
+      setImagePreview(fetchedCombo.image || "");
 
       const hasBranches = (fetchedCombo.branches && fetchedCombo.branches.length > 0) || false;
       setIsForAllBranches(!hasBranches);
       const branchIds = hasBranches ? fetchedCombo.branches?.map((b: any) => b.branchId) || [] : [];
       setSelectedBranchIds(branchIds);
 
-      const mappedItems =
-        fetchedCombo.items?.map((item: any) => {
+      const itemsByBase = new Map<string, any>();
+
+      fetchedCombo.items?.forEach((item: any) => {
+        const key = `${item.productId}-${item.variationOptionId}`;
+        if (!item.modificationItemId) {
           const variant =
             item.variationOption ||
             item.product?.variations?.[0]?.options?.find(
               (o: any) => o.id === item.variationOptionId
             );
-          const price = Number(variant?.prices?.[0]?.price || 0);
-          return {
+          const price = Number(variant?.prices?.find((p: any) => p.branchId === expandedBranchId)?.price || variant?.prices?.[0]?.price || 0);
+          
+          itemsByBase.set(key, {
             productId: item.productId,
             variationOptionId: item.variationOptionId,
             name: item.product?.name,
@@ -101,8 +123,25 @@ export default function AddComboModal({
             price,
             qty: item.quantity,
             image: item.product?.image,
-          };
-        }) || [];
+            modifications: []
+          });
+        }
+      });
+
+      fetchedCombo.items?.forEach((item: any) => {
+        const key = `${item.productId}-${item.variationOptionId}`;
+        if (item.modificationItemId && itemsByBase.has(key)) {
+          const modItem = item.modificationItem;
+          itemsByBase.get(key).modifications.push({
+            id: item.modificationItemId,
+            name: modItem?.title || "Unknown",
+            price: Number(modItem?.price || 0),
+            qty: item.quantity
+          });
+        }
+      });
+
+      const mappedItems = Array.from(itemsByBase.values());
 
       const productsMap: Record<number, any[]> = {};
       const pricesMap: Record<number, number> = {};
@@ -124,6 +163,8 @@ export default function AddComboModal({
       setSelectedBranchIds([]);
       setSelectedProductsByBranch({});
       setComboPricesByBranch({});
+      setImageFile(null);
+      setImagePreview("");
     }
   }, [fetchedCombo, branches, isEditing]);
 
@@ -134,7 +175,12 @@ export default function AddComboModal({
 
   const getOriginalPriceForBranch = (branchId: number, branchProducts: any[]) => {
     return branchProducts.reduce((sum, item) => {
-      return sum + item.price * (item.qty || 1);
+      const baseTotal = item.price * (item.qty || 1);
+      const modsTotal = (item.modifications || []).reduce(
+        (mSum: number, m: any) => mSum + m.price * m.qty,
+        0
+      );
+      return sum + baseTotal + modsTotal * (item.qty || 1);
     }, 0);
   };
 
@@ -192,6 +238,50 @@ export default function AddComboModal({
     }));
   };
 
+  const toggleAddOn = (branchId: number, productIndex: number, addOn: any) => {
+    setSelectedProductsByBranch((prev) => {
+      const branchProducts = [...(prev[branchId] || [])];
+      const product = branchProducts[productIndex];
+      const modifications = [...(product.modifications || [])];
+      const existingIdx = modifications.findIndex((m) => m.id === Number(addOn.id));
+
+      if (existingIdx > -1) {
+        modifications.splice(existingIdx, 1);
+      } else {
+        modifications.push({
+          id: Number(addOn.id),
+          name: addOn.name,
+          price: addOn.price,
+          qty: 1,
+        });
+      }
+
+      branchProducts[productIndex] = { ...product, modifications };
+      return { ...prev, [branchId]: branchProducts };
+    });
+  };
+
+  const updateAddOnQty = (
+    branchId: number,
+    productIndex: number,
+    addOnId: string | number,
+    delta: number
+  ) => {
+    setSelectedProductsByBranch((prev) => {
+      const branchProducts = [...(prev[branchId] || [])];
+      const product = branchProducts[productIndex];
+      const modifications = (product.modifications || []).map((m: any) => {
+        if (m.id === Number(addOnId)) {
+          return { ...m, qty: Math.max(1, m.qty + delta) };
+        }
+        return m;
+      });
+
+      branchProducts[productIndex] = { ...product, modifications };
+      return { ...prev, [branchId]: branchProducts };
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -225,18 +315,37 @@ export default function AddComboModal({
       const configGroups: Record<string, number[]> = {};
 
       activeBranches.forEach((branch) => {
-        const items = (selectedProductsByBranch[branch.id] || [])
-          .map((p) => ({
+        const branchItems: any[] = [];
+        (selectedProductsByBranch[branch.id] || []).forEach((p) => {
+          // Base product
+          branchItems.push({
             productId: p.productId,
             variationOptionId: p.variationOptionId,
+            modificationItemId: null,
             quantity: p.qty,
-          }))
-          .sort(
-            (a, b) =>
-              a.productId - b.productId || (a.variationOptionId || 0) - (b.variationOptionId || 0)
-          );
+          });
 
-        const groupKey = JSON.stringify({ items });
+          // Modifications
+          if (p.modifications && p.modifications.length > 0) {
+            p.modifications.forEach((m: any) => {
+              branchItems.push({
+                productId: p.productId,
+                variationOptionId: p.variationOptionId,
+                modificationItemId: m.id,
+                quantity: m.qty,
+              });
+            });
+          }
+        });
+
+        const sortedItems = branchItems.sort(
+          (a, b) =>
+            a.productId - b.productId ||
+            (a.variationOptionId || 0) - (b.variationOptionId || 0) ||
+            (a.modificationItemId || 0) - (b.modificationItemId || 0)
+        );
+
+        const groupKey = JSON.stringify({ items: sortedItems });
 
         if (!configGroups[groupKey]) configGroups[groupKey] = [];
         configGroups[groupKey].push(branch.id);
@@ -270,6 +379,7 @@ export default function AddComboModal({
           expire_date: expiryDate || undefined,
           branches: branchPayload,
           items: items,
+          image: imagePreview && imagePreview.startsWith("http") ? imagePreview : undefined
         };
 
         if (isEditing && editingCombo) {
@@ -277,12 +387,19 @@ export default function AddComboModal({
             await updateComboPackMutation.mutateAsync({
               id: editingCombo.id,
               data: { ...commonPayload },
+              imageFile: imageFile || undefined,
             });
           } else {
-            await createComboPackMutation.mutateAsync({ ...commonPayload });
+            await createComboPackMutation.mutateAsync({ 
+              data: { ...commonPayload }, 
+              imageFile: imageFile || undefined 
+            });
           }
         } else {
-          await createComboPackMutation.mutateAsync({ ...commonPayload });
+          await createComboPackMutation.mutateAsync({ 
+            data: { ...commonPayload }, 
+            imageFile: imageFile || undefined 
+          });
         }
       }
 
@@ -389,6 +506,51 @@ export default function AddComboModal({
                   className="w-full rounded-[14px] border border-[#F1F5F9] bg-[#F8FAFC] px-4 py-3 font-['Inter'] text-sm text-[#1D293D] placeholder:text-[#0A0A0A80] focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C] transition-all resize-none"
                   required
                 />
+              </div>
+
+              {/* Image Upload Row */}
+              <div className="flex flex-col gap-2">
+                <label className="font-['Inter'] text-[12px] font-bold uppercase tracking-wider text-[#90A1B9]">
+                  Combo Image
+                </label>
+                <div className="flex items-center gap-4">
+                  <input
+                    ref={imageInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        if (imagePreview && !imagePreview.startsWith("http")) URL.revokeObjectURL(imagePreview);
+                        setImageFile(file);
+                        setImagePreview(URL.createObjectURL(file));
+                      }
+                    }}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => imageInputRef.current?.click()}
+                    className="flex min-w-0 flex-1 items-center gap-3 rounded-[14px] border border-[#F1F5F9] bg-[#F8FAFC] px-4 h-[46px] font-['Inter'] text-sm text-left transition-all hover:border-[#EA580C]/30 focus:border-[#EA580C] focus:outline-none"
+                  >
+                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-white shadow-sm">
+                      <ImageIcon className="h-3.5 w-3.5 text-[#EA580C]" />
+                    </div>
+                    <span className={imageFile || (imagePreview && imagePreview.startsWith("http")) ? "min-w-0 truncate text-[#1D293D]" : "text-[#90A1B9]"}>
+                      {imageFile ? imageFile.name : (imagePreview && imagePreview.startsWith("http") ? "Change existing image" : "Attach image (Optional)")}
+                    </span>
+                  </button>
+                  {imagePreview && (
+                    <div className="h-[46px] w-[46px] shrink-0 overflow-hidden rounded-[14px] border border-[#F1F5F9] shadow-sm">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Branch Selection Area */}
@@ -527,6 +689,13 @@ export default function AddComboModal({
                       branch.id,
                       selectedProductsByBranch[branch.id] || []
                     )}
+                    allModifications={allModifications}
+                    expandedItems={expandedItems}
+                    setExpandedItems={setExpandedItems}
+                    addOnSearch={addOnSearch}
+                    setAddOnSearch={setAddOnSearch}
+                    onToggleAddOn={(pIdx, addOn) => toggleAddOn(branch.id, pIdx, addOn)}
+                    onUpdateAddOnQty={(pIdx, addOnId, d) => updateAddOnQty(branch.id, pIdx, addOnId, d)}
                   />
                 ))}
               </div>
@@ -571,6 +740,13 @@ function BranchAccordionContent({
   onPriceChange,
   originalPrice,
   onSyncItems,
+  allModifications,
+  expandedItems,
+  setExpandedItems,
+  addOnSearch,
+  setAddOnSearch,
+  onToggleAddOn,
+  onUpdateAddOnQty,
 }: {
   branch: any;
   isExpanded: boolean;
@@ -583,6 +759,13 @@ function BranchAccordionContent({
   onPriceChange: (val: number) => void;
   originalPrice: number;
   onSyncItems: (items: any[]) => void;
+  allModifications: any[];
+  expandedItems: Record<string, boolean>;
+  setExpandedItems: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+  addOnSearch: string;
+  setAddOnSearch: React.Dispatch<React.SetStateAction<string>>;
+  onToggleAddOn: (pIdx: number, addOn: any) => void;
+  onUpdateAddOnQty: (pIdx: number, addOnId: string | number, d: number) => void;
 }) {
   const { data: products, isLoading } = useGetProductsByBranch(branch.id, { status: "active" });
   const [searchTerm, setSearchTerm] = useState("");
@@ -603,10 +786,18 @@ function BranchAccordionContent({
   const branchTotal = useMemo(() => {
     const calculatedTotal = selectedProducts.reduce((sum, p) => {
       const product = products?.find((prod) => prod.id === p.productId);
-      const currentPrice = product ? getPriceForBranch(product, p.variationOptionId, p.price) : p.price;
-      return sum + currentPrice * p.qty;
-    }, 0);
+      const currentPrice = product
+        ? getPriceForBranch(product, p.variationOptionId, p.price)
+        : p.price;
 
+      const baseTotal = currentPrice * p.qty;
+      const modsTotal = (p.modifications || []).reduce(
+        (mSum: number, m: any) => mSum + m.price * m.qty,
+        0
+      );
+
+      return sum + baseTotal + modsTotal * p.qty;
+    }, 0);
 
     return calculatedTotal || originalPrice || 0;
   }, [selectedProducts, products, getPriceForBranch, originalPrice]);
@@ -848,11 +1039,20 @@ function BranchAccordionContent({
               </div>
 
               <div className="flex-1 overflow-y-auto pr-1 scrollbar-subtle flex flex-col gap-[12px]">
-                {selectedProducts.map((p) => {
+                {selectedProducts.map((p, pIdx) => {
                   const product = products?.find((prod) => prod.id === p.productId);
                   const currentPrice = product
                     ? getPriceForBranch(product, p.variationOptionId)
                     : p.price;
+
+                  const expansionKey = `${branch.id}-${p.productId}-${p.variationOptionId}`;
+                  const isExpanded = expandedItems[expansionKey];
+
+                  const availableAddOns = product ? collectAddOns(product, allModifications) : [];
+                  const filteredAddOns = availableAddOns.filter((a) =>
+                    a.name.toLowerCase().includes(addOnSearch.toLowerCase())
+                  );
+
                   return (
                     <div
                       key={`${p.productId}-${p.variationOptionId}`}
@@ -901,10 +1101,120 @@ function BranchAccordionContent({
                             </button>
                           </div>
                         </div>
-                        <p className="font-['Inter'] text-[12px] font-normal text-[#62748E] text-right">
-                          Rs. {(currentPrice * p.qty).toFixed(2)}
+
+                        {availableAddOns.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setExpandedItems((prev) => ({
+                                ...prev,
+                                [expansionKey]: !isExpanded,
+                              }))
+                            }
+                            className="flex items-center gap-1 text-[12px] font-bold text-primary hover:opacity-80"
+                          >
+                            Add-ons{" "}
+                            {isExpanded ? (
+                              <ChevronUp className="h-4 w-4" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4" />
+                            )}
+                          </button>
+                        )}
+
+                        <p className="font-['Inter'] text-[14px] font-bold text-[#1D293D] text-right">
+                          Rs.{" "}
+                          {(
+                            (currentPrice +
+                              (p.modifications || []).reduce(
+                                (mSum: number, m: any) => mSum + m.price * m.qty,
+                                0
+                              )) *
+                            p.qty
+                          ).toFixed(2)}
                         </p>
                       </div>
+
+                      {isExpanded && availableAddOns.length > 0 && (
+                        <div className="mt-4 border-t border-[#E2E8F0] pt-4 animate-in slide-in-from-top-2 duration-200">
+                          <div className="mb-3 flex items-center gap-3">
+                            <p className="shrink-0 font-['Inter'] text-[10px] font-black uppercase tracking-wider text-[#90A1B9]">
+                              ADD-ONS
+                            </p>
+                            <div className="relative flex-1">
+                              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
+                              <input
+                                type="text"
+                                placeholder="Search..."
+                                value={addOnSearch}
+                                onChange={(e) => setAddOnSearch(e.target.value)}
+                                className="w-full rounded-[10px] border border-[#E2E8F0] bg-[#F1F5F9] py-1.5 pl-8 pr-3 text-xs outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-1.5 max-h-[200px] overflow-y-auto scrollbar-hide">
+                            {filteredAddOns.map((addOn) => {
+                              const selected = (p.modifications || []).find(
+                                (m: any) => m.id === Number(addOn.id)
+                              );
+                              return (
+                                <div
+                                  key={addOn.id}
+                                  className={`flex items-center justify-between gap-2 rounded-xl border p-2.5 transition-all ${
+                                    selected
+                                      ? "border-primary bg-primary-muted"
+                                      : "border-[#E2E8F0] bg-white hover:border-zinc-300"
+                                  }`}
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={() => onToggleAddOn(pIdx, addOn)}
+                                    className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
+                                  >
+                                    <div
+                                      className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                                        selected ? "border-primary bg-primary" : "border-zinc-300"
+                                      }`}
+                                    >
+                                      {selected && <Check className="h-2.5 w-2.5 text-white" />}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <p className="truncate text-xs font-bold text-zinc-800">
+                                        {addOn.name}
+                                      </p>
+                                      <p className="text-[10px] font-medium text-zinc-500">
+                                        +{addOn.price.toFixed(2)} LKR
+                                      </p>
+                                    </div>
+                                  </button>
+
+                                  {selected && (
+                                    <div className="flex shrink-0 items-center gap-1.5 rounded-lg border border-primary/20 bg-white px-1.5 py-0.5 shadow-sm">
+                                      <button
+                                        type="button"
+                                        onClick={() => onUpdateAddOnQty(pIdx, addOn.id, -1)}
+                                        className="py-0.5 text-[#90A1B9] hover:text-zinc-700 transition-colors"
+                                      >
+                                        <Minus className="h-3 w-3" />
+                                      </button>
+                                      <span className="min-w-[14px] text-center text-[11px] font-black text-[#1D293D]">
+                                        {selected.qty}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => onUpdateAddOnQty(pIdx, addOn.id, 1)}
+                                        className="py-0.5 text-[#90A1B9] hover:text-primary transition-colors"
+                                      >
+                                        <Plus className="h-3 w-3" />
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}

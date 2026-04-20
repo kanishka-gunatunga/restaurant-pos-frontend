@@ -18,9 +18,11 @@ export interface ComboPackItem {
   productBundleId: number;
   productId: number;
   variationOptionId?: number;
+  modificationItemId?: number | null;
   quantity: number;
   variationOption?: VariationOption;
   product?: Product;
+  modificationItem?: any;
 }
 
 export interface ComboPack {
@@ -30,6 +32,7 @@ export interface ComboPack {
   expire_date: string | null;
   price: string | number;
   status: ComboPackStatus;
+  image?: string | null;
   branches?: ComboPackBranch[];
   items?: ComboPackItem[];
   original_price?: string | number;
@@ -52,10 +55,12 @@ export interface CreateComboPackPayload {
   items: {
     productId: number;
     variationOptionId?: number;
+    modificationItemId?: number | null;
     quantity: number;
   }[];
   original_price?: number;
   customer_saves?: number;
+  image?: string;
 }
 
 export interface UpdateComboPackPayload extends Partial<CreateComboPackPayload> {}

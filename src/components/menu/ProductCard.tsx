@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, ChevronDown, ChevronUp, Minus } from "lucide-react";
+import { Plus, ChevronDown, ChevronUp, Minus, Tag } from "lucide-react";
 import { useOrder } from "@/contexts/OrderContext";
 import type { MenuItem, ProductVariant, ProductAddOn } from "./types";
 import ProductModal from "./ProductModal";
+import PromotionModal from "./PromotionModal";
 import MenuProductImage from "./MenuProductImage";
 import { resolveProductImageSrc } from "@/lib/productImage";
 
@@ -36,6 +37,10 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
 
   const handleImageClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (item.isOffer) {
+      setShowModal(true);
+      return;
+    }
     if (isExpanded) {
       onCollapse();
     } else {
@@ -45,14 +50,23 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
   };
 
   const handleBottomClick = () => {
+    if (item.isOffer) {
+      setShowModal(true);
+      return;
+    }
     onExpand();
   };
 
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (item.isOffer || (item.addOns && item.addOns.length > 0)) {
+      setShowModal(true);
+      return;
+    }
     const variant = item.variants?.[0];
     const price = variant?.price ?? item.price;
     const variantName = variant?.name ?? "REGULAR";
+
     addItem(
       item.productId,
       item.name,
@@ -110,6 +124,7 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
       modificationId: Number(a.addOn.id),
       price: a.addOn.price,
     }));
+
     for (let i = 0; i < qty; i++) {
       addItem(
         item.productId,
@@ -168,10 +183,12 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
               {item.category}
             </span>
             <span className="product-card-title font-semibold text-zinc-800">{item.name}</span>
-            <span className="product-card-price font-medium text-zinc-700">
-              From Rs.
-              {item.price.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-            </span>
+            {item.category !== "BOGO" && (
+              <span className="product-card-price font-medium text-zinc-700">
+                From Rs.
+                {item.price.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+              </span>
+            )}
           </div>
           <div className="mt-3 border-b-2 border-[#F1F5F9]" />
 
@@ -488,6 +505,12 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
             className="object-cover"
             sizes="(max-width: 768px) 50vw, 25vw"
           />
+          {item.isOffer && (
+            <div className="absolute left-2 top-2 z-10 flex items-center gap-1 rounded-[8px] bg-primary px-2 py-1 text-[10px] font-black uppercase text-white shadow-lg">
+              <Tag className="h-3 w-3 shrink-0" />
+              Offer
+            </div>
+          )}
           <button
             type="button"
             onClick={handleQuickAdd}
@@ -505,21 +528,31 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
             {item.category}
           </span>
           <span className="product-card-title font-semibold text-zinc-800">{item.name}</span>
-          <span className="product-card-price font-medium text-zinc-700">
-            From Rs.
-            {item.price.toLocaleString("en-US", {
-              minimumFractionDigits: 2,
-            })}
-          </span>
+          {item.category !== "BOGO" && (
+            <span className="product-card-price font-medium text-zinc-700">
+              From Rs.
+              {item.price.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+              })}
+            </span>
+          )}
         </button>
       </div>
 
       {showModal && (
-        <ProductModal
-          item={item}
-          onClose={() => setShowModal(false)}
-          onAddToOrder={addItem}
-        />
+        item.isOffer ? (
+          <PromotionModal
+            item={item}
+            onClose={() => setShowModal(false)}
+            onAddToOrder={addItem}
+          />
+        ) : (
+          <ProductModal
+            item={item}
+            onClose={() => setShowModal(false)}
+            onAddToOrder={addItem}
+          />
+        )
       )}
     </>
   );

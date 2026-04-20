@@ -14,22 +14,47 @@ export const getAllComboPacks = async (
   return res.data;
 };
 
+export const getComboPacksByBranch = async (): Promise<ComboPack[]> => {
+  const res = await axiosInstance.get("/product-bundles/branch-specific");
+  return res.data;
+};
+
 export const getComboPackById = async (id: number): Promise<ComboPack> => {
   const res = await axiosInstance.get(`/product-bundles/${id}`);
   return res.data;
 };
 
 export const createComboPack = async (
-  data: CreateComboPackPayload
+  data: CreateComboPackPayload,
+  imageFile?: File
 ): Promise<ComboPack> => {
+  if (imageFile) {
+    const fd = new FormData();
+    fd.append("data", JSON.stringify(data));
+    fd.append("image", imageFile);
+    const response = await axiosInstance.post("/product-bundles", fd, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return response.data;
+  }
   const res = await axiosInstance.post("/product-bundles", data);
   return res.data;
 };
 
 export const updateComboPack = async (
   id: number,
-  data: UpdateComboPackPayload
+  data: UpdateComboPackPayload,
+  imageFile?: File
 ): Promise<ComboPack> => {
+  if (imageFile) {
+    const fd = new FormData();
+    fd.append("data", JSON.stringify(data));
+    fd.append("image", imageFile);
+    const response = await axiosInstance.put(`/product-bundles/${id}`, fd, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return response.data;
+  }
   const res = await axiosInstance.put(`/product-bundles/${id}`, data);
   return res.data;
 };

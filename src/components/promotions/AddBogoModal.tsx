@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import {
   X,
@@ -59,6 +59,18 @@ export default function AddBogoModal({
   const [selectedBuyItems, setSelectedBuyItems] = useState<SelectedBogoItemWithQty[]>([]);
   const [selectedFreeItems, setSelectedFreeItems] = useState<SelectedBogoItemWithQty[]>([]);
   
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>("");
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    return () => {
+      if (imagePreview && !imagePreview.startsWith("http")) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imagePreview]);
+  
   const createMutation = useCreateBogoPromotion();
   const updateMutation = useUpdateBogoPromotion();
 
@@ -97,6 +109,9 @@ export default function AddBogoModal({
           quantity: dataToUse.getQuantity 
         }]);
       }
+      if (dataToUse.image) {
+        setImagePreview(dataToUse.image);
+      }
     } else {
       setPromoName("");
       setExpiryDate("");
@@ -106,6 +121,8 @@ export default function AddBogoModal({
       setSelectedBranchIds([]);
       setSelectedBuyItems([]);
       setSelectedFreeItems([]);
+      setImageFile(null);
+      setImagePreview("");
       setStep(1);
     }
   }, [editingBogo, bogoDetails, open]);
@@ -208,11 +225,12 @@ export default function AddBogoModal({
         buyVariationOptionId: selectedBuyItems[0].variant?.id || undefined,
         getProductId: selectedFreeItems[0].product.id,
         getVariationOptionId: selectedFreeItems[0].variant?.id || undefined,
-        branches: isForAllBranches ? [] : selectedBranchIds
+        branches: isForAllBranches ? [] : selectedBranchIds,
+        image: imagePreview && imagePreview.startsWith("http") ? imagePreview : undefined
     };
 
     if (isEditing && editingBogo) {
-        updateMutation.mutate({ id: editingBogo.id, data: payload }, {
+        updateMutation.mutate({ id: editingBogo.id, data: payload, imageFile: imageFile || undefined }, {
             onSuccess: () => {
                 toast.success("BOGO promotion updated successfully!");
                 onClose();
@@ -223,7 +241,7 @@ export default function AddBogoModal({
             }
         });
     } else {
-        createMutation.mutate(payload, {
+        createMutation.mutate({ data: payload, imageFile: imageFile || undefined }, {
             onSuccess: () => {
                 toast.success("BOGO promotion created successfully!");
                 onClose();
@@ -299,6 +317,50 @@ export default function AddBogoModal({
                       className="h-[46px] w-full rounded-[14px] border border-[#F1F5F9] bg-[#F8FAFC] pl-10 pr-4 font-['Inter'] text-sm text-[#1D293D] placeholder:text-[rgba(10,10,10,0.5)] focus:border-[#EA580C] focus:outline-none"
                     />
                   </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-2 flex items-center gap-2 font-['Inter'] text-[12px] font-bold uppercase leading-4 tracking-normal text-[#90A1B9]">
+                  Promotion Image
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    ref={imageInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        if (imagePreview && !imagePreview.startsWith("http")) URL.revokeObjectURL(imagePreview);
+                        setImageFile(file);
+                        setImagePreview(URL.createObjectURL(file));
+                      }
+                    }}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => imageInputRef.current?.click()}
+                    className="flex min-w-0 flex-1 items-center gap-3 rounded-[14px] border border-[#F1F5F9] bg-[#F8FAFC] px-4 h-[46px] font-['Inter'] text-sm text-left transition-colors hover:border-[#CAD5E2] focus:border-[#EA580C] focus:outline-none"
+                  >
+                    <span className={imageFile || (imagePreview && imagePreview.startsWith("http")) ? "min-w-0 truncate text-[#1D293D]" : "text-[#90A1B9]"}>
+                      {imageFile ? imageFile.name : (imagePreview && imagePreview.startsWith("http") ? "Change existing image" : "Attach Image here")}
+                    </span>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="ml-auto shrink-0">
+                      <path d="M5 21C4.45 21 3.97933 20.8043 3.588 20.413C3.19667 20.0217 3.00067 19.5507 3 19V5C3 4.45 3.196 3.97933 3.588 3.588C3.98 3.19667 4.45067 3.00067 5 3H19C19.55 3 20.021 3.196 20.413 3.588C20.805 3.98 21.0007 4.45067 21 5V19C21 19.55 20.8043 20.413 20.413 20.413C20.0217 20.805 19.5507 21.0007 19 21H5ZM5 19H19V5H5V19ZM6 17H18L14.25 12L11.25 16L9 13L6 17Z" fill="#8F8F8F"/>
+                    </svg>
+                  </button>
+                  {imagePreview && (
+                    <div className="h-[46px] w-[46px] shrink-0 overflow-hidden rounded-[14px] border border-[#F1F5F9]">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
 

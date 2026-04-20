@@ -8,17 +8,47 @@ export const getAllBogoPromotions = async (status: "active" | "inactive" | "all"
   return response.data;
 };
 
+export const getBogoPromotionsByBranch = async (): Promise<BogoPromotion[]> => {
+  const response = await axiosInstance.get(`${API_URL}/branch-specific`);
+  return response.data;
+};
+
 export const getBogoPromotionById = async (id: number): Promise<BogoPromotion> => {
   const response = await axiosInstance.get(`${API_URL}/${id}`);
   return response.data;
 };
 
-export const createBogoPromotion = async (data: CreateBogoPromotionPayload): Promise<BogoPromotion> => {
+export const createBogoPromotion = async (
+  data: CreateBogoPromotionPayload,
+  imageFile?: File
+): Promise<BogoPromotion> => {
+  if (imageFile) {
+    const fd = new FormData();
+    fd.append("data", JSON.stringify(data));
+    fd.append("image", imageFile);
+    const response = await axiosInstance.post(API_URL, fd, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return response.data;
+  }
   const response = await axiosInstance.post(API_URL, data);
   return response.data;
 };
 
-export const updateBogoPromotion = async (id: number, data: UpdateBogoPromotionPayload): Promise<BogoPromotion> => {
+export const updateBogoPromotion = async (
+  id: number,
+  data: UpdateBogoPromotionPayload,
+  imageFile?: File
+): Promise<BogoPromotion> => {
+  if (imageFile) {
+    const fd = new FormData();
+    fd.append("data", JSON.stringify(data));
+    fd.append("image", imageFile);
+    const response = await axiosInstance.put(`${API_URL}/${id}`, fd, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return response.data;
+  }
   const response = await axiosInstance.put(`${API_URL}/${id}`, data);
   return response.data;
 };

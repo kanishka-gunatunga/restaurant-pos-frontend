@@ -17,6 +17,13 @@ export const useGetAllBogoPromotions = (status: "active" | "inactive" | "all" = 
   });
 };
 
+export const useGetBogoPromotionsByBranch = () => {
+  return useQuery({
+    queryKey: [...BOGO_PROMOTION_KEYS.lists(), "branch-specific"],
+    queryFn: () => bogoPromotionService.getBogoPromotionsByBranch(),
+  });
+};
+
 export const useGetBogoPromotionById = (id: number) => {
   return useQuery({
     queryKey: BOGO_PROMOTION_KEYS.detail(id),
@@ -28,7 +35,8 @@ export const useGetBogoPromotionById = (id: number) => {
 export const useCreateBogoPromotion = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: CreateBogoPromotionPayload) => bogoPromotionService.createBogoPromotion(data),
+    mutationFn: ({ data, imageFile }: { data: CreateBogoPromotionPayload; imageFile?: File }) =>
+      bogoPromotionService.createBogoPromotion(data, imageFile),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: BOGO_PROMOTION_KEYS.all });
     },
@@ -38,8 +46,15 @@ export const useCreateBogoPromotion = () => {
 export const useUpdateBogoPromotion = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: UpdateBogoPromotionPayload }) =>
-      bogoPromotionService.updateBogoPromotion(id, data),
+    mutationFn: ({
+      id,
+      data,
+      imageFile,
+    }: {
+      id: number;
+      data: UpdateBogoPromotionPayload;
+      imageFile?: File;
+    }) => bogoPromotionService.updateBogoPromotion(id, data, imageFile),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: BOGO_PROMOTION_KEYS.all });
       queryClient.invalidateQueries({ queryKey: BOGO_PROMOTION_KEYS.detail(variables.id) });
