@@ -27,6 +27,12 @@ export interface OrderItem {
   unitPrice: number;
   productDiscount: number;
   status: "pending" | "complete";
+  bogoPromotionId?: string | number;
+  productBundleId?: string | number;
+  isFreeItem?: boolean;
+  linkId?: string;
+  buyQuantity?: number;
+  getQuantity?: number;
   product?: {
     id: string | number;
     name: string;
@@ -115,6 +121,8 @@ export interface CreateOrderData {
     quantity: number;
     unitPrice: number;
     productDiscount: number;
+    bogoPromotionId?: string | number;
+    productBundleId?: string | number;
     status?: "pending" | "complete";
     modifications?: {
       modificationId: number;

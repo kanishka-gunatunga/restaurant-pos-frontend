@@ -243,6 +243,12 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
           unitPrice: item.price,
           productDiscount: item.productDiscount ?? 0,
           modifications: item.modifications,
+          bogoPromotionId: item.bogoPromotionId,
+          productBundleId: item.productBundleId,
+          isFreeItem: item.isFreeItem,
+          linkId: item.linkId,
+          buyQuantity: item.buyQuantity,
+          getQuantity: item.getQuantity,
         })),
       };
 
@@ -389,6 +395,12 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
         unitPrice: item.price,
         productDiscount: item.productDiscount ?? 0,
         modifications: item.modifications,
+        bogoPromotionId: item.bogoPromotionId,
+        productBundleId: item.productBundleId,
+        isFreeItem: item.isFreeItem,
+        linkId: item.linkId,
+        buyQuantity: item.buyQuantity,
+        getQuantity: item.getQuantity,
       }));
 
       let updated: Order;

@@ -183,12 +183,10 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
               {item.category}
             </span>
             <span className="product-card-title font-semibold text-zinc-800">{item.name}</span>
-            {item.category !== "BOGO" && (
-              <span className="product-card-price font-medium text-zinc-700">
-                From Rs.
-                {item.price.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-              </span>
-            )}
+            <span className="product-card-price font-medium text-zinc-700">
+              {item.isOffer ? "Offer Price: Rs." : "From Rs."}
+              {item.price.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+            </span>
           </div>
           <div className="mt-3 border-b-2 border-[#F1F5F9]" />
 
@@ -528,14 +526,12 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
             {item.category}
           </span>
           <span className="product-card-title font-semibold text-zinc-800">{item.name}</span>
-          {item.category !== "BOGO" && (
-            <span className="product-card-price font-medium text-zinc-700">
-              From Rs.
-              {item.price.toLocaleString("en-US", {
-                minimumFractionDigits: 2,
-              })}
-            </span>
-          )}
+          <span className="product-card-price font-medium text-zinc-700">
+            {item.isOffer ? "Offer Price: Rs." : "From Rs."}
+            {item.price.toLocaleString("en-US", {
+              minimumFractionDigits: 2,
+            })}
+          </span>
         </button>
       </div>
 

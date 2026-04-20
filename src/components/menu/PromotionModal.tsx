@@ -8,6 +8,7 @@ import { resolveProductImageSrc, normalizeProductImageUrl } from "@/lib/productI
 import { useGetComboPackById } from "@/hooks/useComboPack";
 import { useGetBogoPromotionById } from "@/hooks/useBogoPromotion";
 import { useGetAllModifications } from "@/hooks/useModification";
+import { useGetProductsByBranch } from "@/hooks/useProduct";
 import { collectAddOns } from "./menuItemMapper";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -24,7 +25,14 @@ type PromotionModalProps = {
     addOnsList?: string[],
     variationId?: number,
     variationOptionId?: number,
-    modifications?: { modificationId: number; price: number }[]
+    modifications?: { modificationId: number; price: number }[],
+    linkId?: string,
+    isFreeItem?: boolean,
+    promotionType?: "BOGO" | "COMBO",
+    buyQuantity?: number,
+    getQuantity?: number,
+    promotionId?: number,
+    qty?: number
   ) => void;
 };
 
@@ -54,6 +62,10 @@ export default function PromotionModal({
     promoInfo?.type === "bogo" ? promoInfo.promotionId : 0
   );
 
+  const { data: branchProducts } = useGetProductsByBranch(branchId, { 
+    status: 'active' 
+  });
+
   const isLoading = (promoInfo?.type === "combo" && isLoadingCombo) || (promoInfo?.type === "bogo" && isLoadingBogo);
 
   const augmentedPromoInfo = useMemo(() => {
@@ -69,13 +81,17 @@ export default function PromotionModal({
           price: 0,
           image: normalizeProductImageUrl(i.product?.image) || undefined,
           variationOptionId: i.variationOptionId,
-          quantity: 1,
-          addOns: i.product ? collectAddOns(i.product, allModifications) : undefined,
+          quantity: i.quantity || 1,
+          addOns: undefined, // No add-ons for combo packs as requested
         }))
       };
     }
 
     if (promoInfo.type === "bogo" && bogoData) {
+      // Find full product details to ensure modifications are loaded correctly
+      const fullBuyProduct = branchProducts?.find(p => p.id === bogoData.buyProductId);
+      const fullGetProduct = branchProducts?.find(p => p.id === bogoData.getProductId);
+
       return {
         ...promoInfo,
         buyItem: bogoData.buyProduct ? {
@@ -84,7 +100,7 @@ export default function PromotionModal({
           price: 0,
           image: normalizeProductImageUrl(bogoData.buyProduct.image) || undefined,
           quantity: bogoData.buyQuantity,
-          addOns: bogoData.buyProduct ? collectAddOns(bogoData.buyProduct, allModifications) : undefined,
+          addOns: fullBuyProduct ? collectAddOns(fullBuyProduct, allModifications) : collectAddOns(bogoData.buyProduct, allModifications),
         } : promoInfo.buyItem,
         getFreeItem: bogoData.getProduct ? {
           productId: bogoData.getProduct.id,
@@ -93,17 +109,17 @@ export default function PromotionModal({
           image: normalizeProductImageUrl(bogoData.getProduct.image) || undefined,
           variationOptionId: bogoData.getVariationOptionId,
           quantity: bogoData.getQuantity,
-          addOns: bogoData.getProduct ? collectAddOns(bogoData.getProduct, allModifications) : undefined,
+          addOns: undefined, // No add-ons for free item as per previous requirement
         } : promoInfo.getFreeItem
       };
     }
 
     return promoInfo;
-  }, [promoInfo, comboData, bogoData, isLoading, allModifications]);
+  }, [promoInfo, comboData, bogoData, isLoading, allModifications, branchProducts]);
 
   if (!augmentedPromoInfo) return null;
 
-  // Calculate total price: Offer base price + all selected add-ons across all items
+
   const basePrice = item.price;
   const allSelectedAddOns = Object.values(itemCustomizations).flat();
   const addOnsTotal = allSelectedAddOns.reduce((sum, { addOn, qty: n }) => sum + addOn.price * n, 0);
@@ -144,7 +160,6 @@ export default function PromotionModal({
   const handleAction = () => {
     const unitPrice = totalPrice / qty;
     
-    // Construct details string
     const parts: string[] = [];
     if (augmentedPromoInfo.type === "combo") {
       parts.push(`${item.name}`);
@@ -178,7 +193,6 @@ export default function PromotionModal({
 
     const image = resolveProductImageSrc(item.image, item.id);
     
-    // Flatten modifications for the cart
     const modifications: { modificationId: number; price: number }[] = [];
     Object.values(itemCustomizations).forEach(addOns => {
         addOns.forEach(a => {
@@ -193,7 +207,6 @@ export default function PromotionModal({
 
     const addOnsList = allSelectedAddOns.map(({ addOn, qty: n }) => (n > 1 ? `${addOn.name} x${n}` : addOn.name));
 
-    // If combo, we also add other items as modifications with 0 price to track internal breakdown
     if (augmentedPromoInfo.type === "combo" && augmentedPromoInfo.items) {
         augmentedPromoInfo.items.slice(1).forEach(i => {
             modifications.push({
@@ -207,34 +220,48 @@ export default function PromotionModal({
     }
 
     // Add main item with bundled logic
-    for (let i = 0; i < qty; i++) {
-        onAddToOrder(
-            item.productId,
-            item.name,
-            unitPrice,
-            details,
-            image,
-            "OFFER",
-            addOnsList.length > 0 ? addOnsList : undefined,
-            undefined,
-            undefined,
-            modifications.length > 0 ? modifications : undefined
-        );
+    const linkId = augmentedPromoInfo.type === "bogo" ? `bogo-${augmentedPromoInfo.promotionId}` : undefined;
+    
+    onAddToOrder(
+        item.productId,
+        item.name,
+        unitPrice,
+        details,
+        image,
+        "OFFER",
+        addOnsList.length > 0 ? addOnsList : undefined,
+        undefined,
+        undefined,
+        modifications.length > 0 ? modifications : undefined,
+        linkId,
+        false, // isFreeItem
+        augmentedPromoInfo.type === "bogo" ? "BOGO" : (augmentedPromoInfo.type === "combo" ? "COMBO" : undefined),
+        augmentedPromoInfo.type === "bogo" && bogoData ? bogoData.buyQuantity : undefined,
+        augmentedPromoInfo.type === "bogo" && bogoData ? bogoData.getQuantity : undefined,
+        augmentedPromoInfo.promotionId,
+        augmentedPromoInfo.type === "bogo" && bogoData ? qty * bogoData.buyQuantity : qty
+    );
 
-        // If BOGO, add the free item separately at 0 price
-        if (augmentedPromoInfo.type === "bogo" && augmentedPromoInfo.getFreeItem) {
-            onAddToOrder(
-                augmentedPromoInfo.getFreeItem.productId,
-                augmentedPromoInfo.getFreeItem.name,
-                0,
-                "FREE (BOGO)",
-                resolveProductImageSrc(augmentedPromoInfo.getFreeItem.image, augmentedPromoInfo.getFreeItem.productId.toString()),
-                "REGULAR",
-                undefined,
-                undefined,
-                augmentedPromoInfo.getFreeItem.variationOptionId
-            );
-        }
+    if (augmentedPromoInfo.type === "bogo" && augmentedPromoInfo.getFreeItem && bogoData) {
+        onAddToOrder(
+            augmentedPromoInfo.getFreeItem.productId,
+            augmentedPromoInfo.getFreeItem.name,
+            0,
+            "FREE (BOGO)",
+            resolveProductImageSrc(augmentedPromoInfo.getFreeItem.image, augmentedPromoInfo.getFreeItem.productId.toString()),
+            "REGULAR",
+            undefined,
+            undefined,
+            augmentedPromoInfo.getFreeItem.variationOptionId,
+            undefined, // modifications
+            linkId,
+            true, // isFreeItem
+            "BOGO",
+            bogoData.buyQuantity,
+            bogoData.getQuantity,
+            augmentedPromoInfo.promotionId,
+            qty * bogoData.getQuantity // Multiply by sets
+        );
     }
 
     onClose();
@@ -274,10 +301,10 @@ export default function PromotionModal({
                             </div>
                         </button>
                         {selected && (
-                            <div className="flex items-center gap-2 rounded-lg bg-white px-2 py-1 shadow-sm">
-                                <button type="button" onClick={() => updateSubItemAddOnQty(itemKey, addOn.id, -1)} className="text-zinc-400 hover:text-zinc-600"><Minus className="h-3 w-3" /></button>
-                                <span className="text-xs font-bold">{selected.qty}</span>
-                                <button type="button" onClick={() => updateSubItemAddOnQty(itemKey, addOn.id, 1)} className="text-zinc-400 hover:text-primary"><Plus className="h-3 w-3" /></button>
+                            <div className="flex items-center gap-2 rounded-lg bg-white px-2 py-1 shadow-sm border border-[#E2E8F0]">
+                                <button type="button" onClick={() => updateSubItemAddOnQty(itemKey, addOn.id, -1)} className="text-zinc-900 hover:text-zinc-600"><Minus className="h-3 w-3" /></button>
+                                <span className="text-sm font-black text-zinc-950 px-1">{selected.qty}</span>
+                                <button type="button" onClick={() => updateSubItemAddOnQty(itemKey, addOn.id, 1)} className="text-zinc-900 hover:text-primary"><Plus className="h-3 w-3" /></button>
                             </div>
                         )}
                     </div>
@@ -322,9 +349,11 @@ export default function PromotionModal({
           <div className="flex flex-col flex-1 min-h-0 bg-[#F8FAFC]">
             <div className="flex-1 overflow-y-auto p-6 scrollbar-hide">
               <div className="mb-8">
-                <p className="mb-4 text-[10px] font-black uppercase tracking-[2px] text-zinc-400">
-                  Select items to customize
-                </p>
+                {augmentedPromoInfo.type === "bogo" && augmentedPromoInfo.buyItem?.addOns && augmentedPromoInfo.buyItem.addOns.length > 0 && (
+                  <p className="mb-4 text-[10px] font-black uppercase tracking-[2px] text-zinc-400">
+                    Select items to customize
+                  </p>
+                )}
                 <div className="space-y-3 relative min-h-[200px]">
                   {isLoading && (
                     <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60">
@@ -374,23 +403,23 @@ export default function PromotionModal({
                       <div className="group">
                         <button
                           type="button"
-                          onClick={() => augmentedPromoInfo.buyItem?.addOns && toggleExpansion('bogo-buy')}
-                          disabled={!augmentedPromoInfo.buyItem?.addOns}
+                          onClick={() => augmentedPromoInfo.buyItem?.addOns && augmentedPromoInfo.buyItem.addOns.length > 0 && toggleExpansion('bogo-buy')}
+                          disabled={!augmentedPromoInfo.buyItem?.addOns || augmentedPromoInfo.buyItem.addOns.length === 0}
                           className={`flex w-full items-center gap-4 rounded-2xl border bg-white p-4 transition-all ${expandedItemKey === 'bogo-buy' ? 'border-primary ring-1 ring-primary' : 'border-[#E2E8F0] hover:border-zinc-300'}`}
                         >
                           <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-[#F1F5F9]">
                              <MenuProductImage productImageUrl={augmentedPromoInfo.buyItem?.image} fallbackImageId={augmentedPromoInfo.buyItem?.productId.toString() || ""} alt={augmentedPromoInfo.buyItem?.name || ""} width={56} height={56} className="object-cover" />
-                             {(itemCustomizations['bogo-buy']?.length || 0) > 0 && (
+                             {/* {(itemCustomizations['bogo-buy']?.length || 0) > 0 && (
                                 <div className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white shadow-lg">
                                   {itemCustomizations['bogo-buy']?.length}
                                 </div>
-                              )}
+                              )} */}
                           </div>
                           <div className="flex-1 text-left">
                             <p className="text-sm font-black text-zinc-800">Buy: {augmentedPromoInfo.buyItem?.name}</p>
                             <p className="text-[10px] font-bold text-zinc-400">{augmentedPromoInfo.buyItem?.quantity}x required</p>
                           </div>
-                          {augmentedPromoInfo.buyItem?.addOns && (
+                          {augmentedPromoInfo.buyItem?.addOns && augmentedPromoInfo.buyItem.addOns.length > 0 && (
                              <div className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors ${expandedItemKey === 'bogo-buy' ? 'bg-primary text-white' : 'bg-zinc-100 text-zinc-400 group-hover:bg-zinc-200'}`}>
                                 {expandedItemKey === 'bogo-buy' ? <ChevronUp className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
                              </div>
@@ -421,10 +450,10 @@ export default function PromotionModal({
 
             <div className="border-t border-[#E2E8F0] bg-white p-6 shadow-[0_-8px_30px_rgb(0,0,0,0.04)]">
               <div className="flex items-center justify-between mb-6">
-                <div className="flex items-stretch gap-2 rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-1.5">
-                  <button type="button" onClick={() => setQty((q) => Math.max(1, q - 1))} className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-zinc-700 shadow-sm hover:bg-zinc-50 active:scale-95 transition-all"><Minus className="h-4 w-4" /></button>
-                  <span className="flex min-w-[40px] items-center justify-center text-lg font-black">{qty}</span>
-                  <button type="button" onClick={() => setQty((q) => q + 1)} className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary/90 active:scale-95 transition-all"><Plus className="h-4 w-4" /></button>
+                <div className="flex items-stretch gap-2 rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-1.5 shadow-inner">
+                  <button type="button" onClick={() => setQty((q) => Math.max(1, q - 1))} className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-black shadow-sm hover:bg-zinc-50 active:scale-95 transition-all"><Minus className="h-4 w-4" /></button>
+                  <span className="flex min-w-[40px] items-center justify-center text-xl font-black text-zinc-950">{qty}</span>
+                  <button type="button" onClick={() => setQty((q) => q + 1)} className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary/90 active:scale-95 transition-all"><Plus className="h-4 w-4" strokeWidth={3} /></button>
                 </div>
                 <div className="text-right">
                   <p className="text-[10px] font-black uppercase tracking-[2px] text-zinc-400">Total payable</p>

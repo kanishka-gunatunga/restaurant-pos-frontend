@@ -64,6 +64,12 @@ export type OrderDetailItem = {
   addOns?: string[];
   addonLines?: OrderDetailAddonLine[];
   modifications?: { modificationId: number; price: number }[];
+  bogoPromotionId?: string | number;
+  productBundleId?: string | number;
+  isFreeItem?: boolean;
+  linkId?: string;
+  buyQuantity?: number;
+  getQuantity?: number;
 };
 
 export type OrderDetailsView = {
@@ -411,5 +417,11 @@ function mapOrderItemToDetail(item: ApiOrderItem): OrderDetailItem {
     addonLines: addonLines.length > 0 ? addonLines : undefined,
     addOns: addonLines.length > 0 ? addonLines.map((a) => `${a.qty}x ${a.name}`) : undefined,
     modifications: modifications.length > 0 ? modifications : undefined,
+    bogoPromotionId: item.bogoPromotionId ?? (rawItem.bogo_promotion_id as string | number),
+    productBundleId: item.productBundleId ?? (rawItem.product_bundle_id as string | number),
+    isFreeItem: item.isFreeItem ?? (rawItem.is_free_item as boolean),
+    linkId: item.linkId ?? (rawItem.link_id as string),
+    buyQuantity: item.buyQuantity ?? (rawItem.buy_quantity as number),
+    getQuantity: item.getQuantity ?? (rawItem.get_quantity as number),
   };
 }

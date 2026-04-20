@@ -132,8 +132,20 @@ export default function MenuContent({
       bogoPromotions.forEach((bogo: BogoPromotion) => {
         if (!bogo.buyProduct || !bogo.getProduct) return;
 
-        const branchPriceObj = bogo.buyProduct.variations?.[0]?.options?.[0]?.prices?.find(p => p.branchId === branchId);
+        const buyVariantId = bogo.buyVariationOptionId;
+        const buyProduct = bogo.buyProduct;
+        
+        let buyOption = null;
+        if (buyVariantId) {
+          buyOption = buyProduct.variations?.flatMap(v => v.options || []).find(o => o.id === buyVariantId);
+        }
+        if (!buyOption) {
+          buyOption = buyProduct.variations?.[0]?.options?.[0];
+        }
+
+        const branchPriceObj = buyOption?.prices?.find(p => p.branchId === branchId);
         const basePrice = branchPriceObj ? Number(branchPriceObj.price) : 0;
+        const offerPrice = basePrice * (bogo.buyQuantity || 1);
 
         items.push({
           id: `offer-bogo-${bogo.id}`,
@@ -141,7 +153,7 @@ export default function MenuContent({
           name: bogo.name,
           category: "BOGO",
           subCategory: "Offer",
-          price: basePrice,
+          price: offerPrice,
           image: normalizeProductImageUrl(bogo.image || bogo.buyProduct.image) || undefined,
           isOffer: true,
           promotionInfo: {
@@ -150,7 +162,7 @@ export default function MenuContent({
             buyItem: {
               productId: bogo.buyProduct.id,
               name: bogo.buyProduct.name,
-              price: basePrice,
+              price: offerPrice,
               image: normalizeProductImageUrl(bogo.buyProduct.image) || undefined,
               quantity: bogo.buyQuantity,
               addOns: bogo.buyProduct ? collectAddOns(bogo.buyProduct, allModifications) : undefined,

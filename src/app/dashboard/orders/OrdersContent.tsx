@@ -248,6 +248,12 @@ export default function OrdersContent() {
               variant: item.variant,
               addOns: item.addOns,
               modifications: item.modifications,
+              bogoPromotionId: item.bogoPromotionId,
+              productBundleId: item.productBundleId,
+              isFreeItem: item.isFreeItem,
+              linkId: item.linkId,
+              buyQuantity: item.buyQuantity,
+              getQuantity: item.getQuantity,
             })),
           }}
           onSubmit={handleEditOrderSubmit}

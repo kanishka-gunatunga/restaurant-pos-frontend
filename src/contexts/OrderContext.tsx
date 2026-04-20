@@ -42,6 +42,12 @@ export type OrderItem = {
   price: number;
   qty: number;
   image?: string;
+  linkId?: string;
+  isFreeItem?: boolean;
+  promotionType?: "BOGO" | "COMBO";
+  buyQuantity?: number;
+  getQuantity?: number;
+  promotionId?: number;
 };
 
 export type Order = {
@@ -81,7 +87,14 @@ type OrderContextType = {
     addOnsList?: string[],
     variationId?: number,
     variationOptionId?: number,
-    modifications?: { modificationId: number; price: number }[]
+    modifications?: { modificationId: number; price: number }[],
+    linkId?: string,
+    isFreeItem?: boolean,
+    promotionType?: "BOGO" | "COMBO",
+    buyQuantity?: number,
+    getQuantity?: number,
+    promotionId?: number,
+    qty?: number
   ) => void;
   updateQty: (id: string, delta: number) => void;
   removeItem: (id: string) => void;
@@ -116,6 +129,13 @@ export type PendingAddParams = {
   variationId?: number;
   variationOptionId?: number;
   modifications?: { modificationId: number; price: number }[];
+  linkId?: string;
+  isFreeItem?: boolean;
+  promotionType?: "BOGO" | "COMBO";
+  buyQuantity?: number;
+  getQuantity?: number;
+  promotionId?: number;
+  qty?: number;
 };
 
 const OrderContext = createContext<OrderContextType | null>(null);
@@ -406,7 +426,14 @@ export function OrderProvider({
       addOnsList?: string[],
       variationId?: number,
       variationOptionId?: number,
-      modifications?: { modificationId: number; price: number }[]
+      modifications?: { modificationId: number; price: number }[],
+      linkId?: string,
+      isFreeItem?: boolean,
+      promotionType?: "BOGO" | "COMBO",
+      buyQuantity?: number,
+      getQuantity?: number,
+      promotionId?: number,
+      qty = 1
     ) => {
       if (hasPendingPaymentLock()) return;
       const pending: PendingAddParams = {
@@ -420,6 +447,13 @@ export function OrderProvider({
         variationId,
         variationOptionId,
         modifications,
+        linkId,
+        isFreeItem,
+        promotionType,
+        buyQuantity,
+        getQuantity,
+        promotionId,
+        qty,
       };
       if (beforeAddItem && !beforeAddItem(pending)) return;
       const orderId = activeOrderId ?? orders[0]?.id;
@@ -435,13 +469,15 @@ export function OrderProvider({
               i.variationId === variationId &&
               i.variationOptionId === variationOptionId &&
               JSON.stringify(i.modifications) === JSON.stringify(modifications) &&
-              i.details === details
+              i.details === details &&
+              i.linkId === linkId &&
+              i.isFreeItem === isFreeItem
           );
           if (existing) {
             return {
               ...order,
               items: order.items.map((i) =>
-                i.id === existing.id ? { ...i, qty: i.qty + 1 } : i
+                i.id === existing.id ? { ...i, qty: i.qty + qty } : i
               ),
             };
           }
@@ -458,10 +494,16 @@ export function OrderProvider({
                 name,
                 details,
                 price,
-                qty: 1,
                 image,
                 variant,
                 addOnsList,
+                linkId,
+                isFreeItem,
+                promotionType,
+                buyQuantity,
+                getQuantity,
+                promotionId,
+                qty,
               },
             ],
           };
@@ -482,13 +524,41 @@ export function OrderProvider({
       setOrders((prev) => {
         const updated = prev.map((order) => {
           if (order.id !== orderId) return order;
+          
+          const targetItem = order.items.find(i => i.id === itemId);
+          if (!targetItem) return order;
+
+          let actualDelta = delta;
+          if (targetItem.promotionType === "BOGO" && !targetItem.isFreeItem && targetItem.buyQuantity) {
+            // Treat +/- 1 as +/- one full pack
+            if (Math.abs(delta) === 1) {
+              actualDelta = delta > 0 ? targetItem.buyQuantity : -targetItem.buyQuantity;
+            }
+          }
+
+          const newQty = Math.max(0, targetItem.qty + actualDelta);
+          
+          let updatedItems = order.items.map((i) =>
+            i.id === itemId ? { ...i, qty: newQty } : i
+          );
+
+          // Sync linked BOGO items
+          if (targetItem.promotionType === "BOGO" && targetItem.linkId) {
+            if (!targetItem.isFreeItem) {
+              // This is a "Buy" item, sync the "Free" one
+              const freeItem = updatedItems.find(i => i.linkId === targetItem.linkId && i.isFreeItem);
+              if (freeItem && freeItem.buyQuantity && freeItem.getQuantity) {
+                const newFreeQty = Math.floor(newQty / freeItem.buyQuantity) * freeItem.getQuantity;
+                updatedItems = updatedItems.map(i => 
+                  i.id === freeItem.id ? { ...i, qty: newFreeQty } : i
+                );
+              }
+            }
+          }
+
           return {
             ...order,
-            items: order.items
-              .map((i) =>
-                i.id === itemId ? { ...i, qty: Math.max(0, i.qty + delta) } : i
-              )
-              .filter((i) => i.qty > 0),
+            items: updatedItems.filter((i) => i.qty > 0),
           };
         });
         saveOrdersToStorage(updated);
@@ -507,9 +577,22 @@ export function OrderProvider({
       setOrders((prev) => {
         const updated = prev.map((order) => {
           if (order.id !== orderId) return order;
+          
+          const targetItem = order.items.find(i => i.id === itemId);
+          if (!targetItem) return order;
+
+          const filteredItems = order.items.filter((i) => {
+            if (i.id === itemId) return false;
+            // If we remove a BOGO "buy" item, remove all its linked items
+            if (targetItem.promotionType === "BOGO" && targetItem.linkId && !targetItem.isFreeItem) {
+              if (i.linkId === targetItem.linkId) return false;
+            }
+            return true;
+          });
+
           return {
             ...order,
-            items: order.items.filter((i) => i.id !== itemId),
+            items: filteredItems,
           };
         });
         saveOrdersToStorage(updated);
