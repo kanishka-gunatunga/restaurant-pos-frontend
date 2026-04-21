@@ -352,7 +352,7 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
               ? "takeaway"
               : "delivery",
         tableNumber: orderDetails.tableNumber,
-        orderDiscount: 0,
+        orderDiscount: totalItemDiscount,
         tax: cartTaxAmount,
         orderNote: activeOrderNote,
         kitchenNote: activeKitchenNote,
