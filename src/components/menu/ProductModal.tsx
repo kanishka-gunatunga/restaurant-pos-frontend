@@ -21,7 +21,14 @@ type ProductModalProps = {
     variationId?: number,
     variationOptionId?: number,
     modifications?: { modificationId: number; price: number }[],
-    options?: AddItemOptions
+    options?: AddItemOptions,
+    linkId?: string,
+    isFreeItem?: boolean,
+    promotionType?: "BOGO" | "COMBO",
+    buyQuantity?: number,
+    getQuantity?: number,
+    promotionId?: number,
+    qty?: number
   ) => void;
   onUpdateOrder?: (
     productId: number,

@@ -1,6 +1,64 @@
 import type { MenuItem, ProductAddOn, ProductVariant } from "./types";
-import type { Modification, Product } from "@/types/product";
+import type { Modification, Product, ModificationItem } from "@/types/product";
 import { normalizeProductImageUrl } from "@/lib/productImage";
+
+/**
+ * Collects all unique add-ons for a product, checking both nested data 
+ * and falling back to a global modifications list.
+ */
+export function collectAddOns(
+  product: Product,
+  allModifications: Modification[]
+): ProductAddOn[] {
+  const addOns: ProductAddOn[] = [];
+  const seenItemIds = new Set<string>();
+
+  const processModGroup = (mId: number, nestedMod?: Modification) => {
+    // Priority 1: Use nested items in the product data if available
+    if (nestedMod?.items && nestedMod.items.length > 0) {
+      nestedMod.items.forEach((mi: ModificationItem) => {
+        const itemId = mi.id.toString();
+        if (!seenItemIds.has(itemId)) {
+          addOns.push({
+            id: itemId,
+            name: mi.title,
+            price: Number(mi.price),
+          });
+          seenItemIds.add(itemId);
+        }
+      });
+      return;
+    }
+
+    // Priority 2: Fallback to global list if nested items are missing
+    const modGroup = allModifications.find((m) => m.id === mId);
+    modGroup?.items?.forEach((mi: ModificationItem) => {
+      const itemId = mi.id.toString();
+      if (!seenItemIds.has(itemId)) {
+        addOns.push({
+          id: itemId,
+          name: mi.title,
+          price: Number(mi.price),
+        });
+        seenItemIds.add(itemId);
+      }
+    });
+  };
+
+  // Check top-level product modifications
+  product.productModifications?.forEach((pm) => 
+    processModGroup(pm.modificationId, pm.Modification)
+  );
+
+  // Check variation-specific modifications
+  product.variations?.forEach((v) => {
+    v.variationModifications?.forEach((vm) => 
+      processModGroup(vm.modificationId, vm.Modification)
+    );
+  });
+
+  return addOns;
+}
 
 export function mapProductToMenuItem(
   product: Product,
@@ -28,34 +86,7 @@ export function mapProductToMenuItem(
     });
   });
 
-  const modificationIds = new Set<number>();
-  product.productModifications?.forEach((productModification) => {
-    modificationIds.add(productModification.modificationId);
-  });
-  product.variations?.forEach((variation) => {
-    variation.variationModifications?.forEach((variationModification) => {
-      modificationIds.add(variationModification.modificationId);
-    });
-  });
-
-  const addOns: ProductAddOn[] = [];
-  const seenItemIds = new Set<string>();
-
-  modificationIds.forEach((modificationId) => {
-    const modificationGroup = allModifications.find((modification) => modification.id === modificationId);
-    modificationGroup?.items?.forEach((item) => {
-      const itemId = item.id.toString();
-      if (seenItemIds.has(itemId)) return;
-
-      addOns.push({
-        id: itemId,
-        name: item.title,
-        price: Number(item.price),
-      });
-      seenItemIds.add(itemId);
-    });
-  });
-
+  const addOns = collectAddOns(product, allModifications);
   const basePrice = variants.length > 0 ? variants[0].price : 0;
 
   return {
@@ -65,7 +96,8 @@ export function mapProductToMenuItem(
     category: product.category?.name || "Other",
     subCategory: product.subCategory?.name || "General",
     price: basePrice,
-    image: normalizeProductImageUrl(product.image),
+    image: normalizeProductImageUrl(product.image) || undefined,
+    description: product.description || undefined,
     variants: variants.length > 0 ? variants : undefined,
     addOns: addOns.length > 0 ? addOns : undefined,
   };

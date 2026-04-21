@@ -302,19 +302,20 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
     }
     orderSubmitLockRef.current = true;
 
-    const normalizedName = orderDetails.customerName.trim();
-
-    const buildFingerprint = () => {
-      const line = itemsWithDiscounts
-        .map((i) => `${i.productId}|${i.id}|${i.qty}|${i.price}`)
-        .sort()
-        .join(";");
-      const orderTypeForFingerprint = isVoucherOnlyOrder ? "voucher_only" : orderDetails.orderType;
-      return `${line}@t${total.toFixed(2)}@p${orderDetails.phone.trim()}@${normalizedName}@${orderTypeForFingerprint}`;
-    };
-
     try {
       setCheckoutLockedOrderSlotId(localSlotId);
+
+      const normalizedName = orderDetails.customerName.trim();
+      const total = subtotal + cartTaxAmount + serviceChargeAmount + deliveryChargeAmount;
+
+      const buildFingerprint = () => {
+        const line = itemsWithDiscounts
+          .map((i) => `${i.productId}|${i.id}|${i.qty}|${i.price}`)
+          .sort()
+          .join(";");
+        const orderTypeForFingerprint = isVoucherOnlyOrder ? "voucher_only" : orderDetails.orderType;
+        return `${line}@t${total.toFixed(2)}@p${orderDetails.phone.trim()}@${normalizedName}@${orderTypeForFingerprint}`;
+      };
 
       if (hasMockOnlyItems) {
         if (!isPayNow) {
@@ -395,6 +396,7 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
           const baseUnitPrice = Math.max(0, Number(item.price) - modificationUnitSum);
           return {
             productId: item.productId,
+            variationId: item.variationId,
             variationOptionId: item.variationOptionId,
             quantity: item.qty,
             unitPrice: Number(baseUnitPrice.toFixed(2)),
@@ -404,6 +406,8 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
               modificationId: m.modificationId,
               price: m.price,
             })),
+            bogoPromotionId: item.promotionType === "BOGO" ? item.promotionId : undefined,
+            productBundleId: item.promotionType === "COMBO" ? item.promotionId : undefined,
             ...(item.recipientName || item.recipientMobile
               ? {
                   notes: `Recipient${item.recipientName ? `: ${item.recipientName}` : ""}${
@@ -451,35 +455,33 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
             order_products: orderProductsPayload,
           };
 
-      try {
-        const result = await createOrder(payload);
-        const serverOrderId = Number(result.id);
-        saveMenuOpenCheckout({ localSlotId, serverOrderId, fingerprint: fp });
-        if (!isPayNow) {
-          clearOrderById(localSlotId);
-          toast.success("Order submitted successfully");
-          setCheckoutLockedOrderSlotId(null);
-          return { serverOrderId, localSlotId, order: result };
-        }
-        return { serverOrderId, localSlotId, order: result };
-      } catch (err) {
+      const result = await createOrder(payload);
+      const serverOrderId = Number(result.id);
+      saveMenuOpenCheckout({ localSlotId, serverOrderId, fingerprint: fp });
+
+      if (!isPayNow) {
+        clearOrderById(localSlotId);
+        toast.success("Order submitted successfully");
         setCheckoutLockedOrderSlotId(null);
-        const message =
-          err instanceof AxiosError
-            ? (err.response?.data as { message?: string } | undefined)?.message
-            : err instanceof Error
-              ? err.message
-              : "Unknown error";
-        const networkOrTimeout =
-          err instanceof AxiosError &&
-          (!err.response || err.code === "ECONNABORTED" || err.message === "Network Error");
-        toast.error("Failed to submit order", {
-          description: networkOrTimeout
-            ? `${message ? `${message} ` : ""}If you are unsure, open Orders — the order may still have been created. Do not retry until you check.`.trim()
-            : message,
-        });
-        return null;
       }
+      return { serverOrderId, localSlotId, order: result };
+    } catch (err) {
+      setCheckoutLockedOrderSlotId(null);
+      const message =
+        err instanceof AxiosError
+          ? (err.response?.data as { message?: string } | undefined)?.message
+          : err instanceof Error
+            ? err.message
+            : "Unknown error";
+      const networkOrTimeout =
+        err instanceof AxiosError &&
+        (!err.response || err.code === "ECONNABORTED" || err.message === "Network Error");
+      toast.error("Failed to submit order", {
+        description: networkOrTimeout
+          ? `${message ? `${message} ` : ""}If you are unsure, open Orders — the order may still have been created. Do not retry until you check.`.trim()
+          : message,
+      });
+      return null;
     } finally {
       orderSubmitLockRef.current = false;
     }
@@ -756,8 +758,12 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
                   return (
                     <div
                       key={item.id}
-                      onClick={() => !hasPendingPayment && onEditItem?.(item)}
-                      className={`flex gap-4 rounded-[14px] border border-[#F1F5F9] bg-white px-3 pb-2.5 pt-3 transition-colors ${onEditItem ? "cursor-pointer hover:bg-[#F8FAFC]" : ""}`}
+                      onClick={() => {
+                        if (hasPendingPayment) return;
+                        if (item.promotionType === "BOGO" || item.promotionType === "COMBO") return; // Disable edit for BOGO and Combo offers
+                        onEditItem?.(item);
+                      }}
+                      className={`flex gap-4 rounded-[14px] border border-[#F1F5F9] bg-white px-3 pb-2.5 pt-3 transition-colors ${onEditItem && item.promotionType !== "BOGO" && item.promotionType !== "COMBO" ? "cursor-pointer hover:bg-[#F8FAFC]" : ""}`}
                     >
                       <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-zinc-200">
                         <MenuProductImage
@@ -801,18 +807,20 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
                               </p>
                             )}
                           </div>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              removeItem(item.id);
-                            }}
-                            disabled={hasPendingPayment}
-                            className="shrink-0 text-[#CAD5E2] hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:text-[#CAD5E2]"
-                            aria-label="Remove item"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                          {!item.isFreeItem && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeItem(item.id);
+                              }}
+                              disabled={hasPendingPayment}
+                              className="shrink-0 text-[#CAD5E2] hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:text-[#CAD5E2]"
+                              aria-label="Remove item"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
                         </div>
                         <div className="mt-1.5 flex items-center justify-between gap-2">
                           <span className="font-['Arial'] text-sm font-bold leading-5 text-[#0F172B]">
@@ -821,33 +829,42 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
                               minimumFractionDigits: 2,
                             })}
                           </span>
-                          <div className="flex items-center gap-3 rounded-[10px] border border-[#F1F5F9] bg-[#F8FAFC] px-2">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                updateQty(item.id, -1);
-                              }}
-                              disabled={hasPendingPayment}
-                              className="py-1 text-[#90A1B9] hover:text-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:text-[#90A1B9]"
-                            >
-                              −
-                            </button>
-                            <span className="flex min-w-[16px] items-center justify-center font-['Arial'] text-xs font-black text-[#0A0A0A]">
-                              {item.qty}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                updateQty(item.id, 1);
-                              }}
-                              disabled={hasPendingPayment}
-                              className="py-1 text-[#90A1B9] hover:text-primary disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:text-[#90A1B9]"
-                            >
-                              +
-                            </button>
-                          </div>
+                          {!item.isFreeItem ? (
+                            <div className="flex items-center gap-3 rounded-[10px] border border-[#F1F5F9] bg-[#F8FAFC] px-2">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateQty(item.id, -1);
+                                }}
+                                disabled={hasPendingPayment}
+                                className="py-1 text-[#90A1B9] hover:text-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:text-[#90A1B9]"
+                              >
+                                −
+                              </button>
+                              <span className="flex min-w-[16px] items-center justify-center font-['Arial'] text-xs font-black text-[#0A0A0A]">
+                                {item.qty}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateQty(item.id, 1);
+                                }}
+                                disabled={hasPendingPayment}
+                                className="py-1 text-[#90A1B9] hover:text-primary disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:text-[#90A1B9]"
+                              >
+                                +
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1.5 px-2">
+                              <span className="font-['Arial'] text-[10px] font-black tracking-wider text-[#90A1B9] uppercase">QTY:</span>
+                              <span className="font-['Arial'] text-xs font-black text-[#0A0A0A]">
+                                {item.qty}
+                              </span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>

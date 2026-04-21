@@ -43,6 +43,12 @@ export type OrderItem = {
   price: number;
   qty: number;
   image?: string;
+  linkId?: string;
+  isFreeItem?: boolean;
+  promotionType?: "BOGO" | "COMBO";
+  buyQuantity?: number;
+  getQuantity?: number;
+  promotionId?: number;
   itemType?: "food" | "voucher" | "promotion";
   recipientName?: string;
   recipientMobile?: string;
@@ -86,7 +92,14 @@ type OrderContextType = {
     variationId?: number,
     variationOptionId?: number,
     modifications?: { modificationId: number; price: number }[],
-    options?: AddItemOptions
+    options?: AddItemOptions,
+    linkId?: string,
+    isFreeItem?: boolean,
+    promotionType?: "BOGO" | "COMBO",
+    buyQuantity?: number,
+    getQuantity?: number,
+    promotionId?: number,
+    qty?: number
   ) => void;
   registerOpenOrderDetails: (fn: ((mode: OrderDetailsModalMode) => void) | null) => void;
   flushPendingAddsAfterOrderDetails: () => void;
@@ -136,6 +149,13 @@ export type PendingAddParams = {
   variationId?: number;
   variationOptionId?: number;
   modifications?: { modificationId: number; price: number }[];
+  linkId?: string;
+  isFreeItem?: boolean;
+  promotionType?: "BOGO" | "COMBO";
+  buyQuantity?: number;
+  getQuantity?: number;
+  promotionId?: number;
+  qty?: number;
   itemType?: "food" | "voucher" | "promotion";
   recipientName?: string;
   recipientMobile?: string;
@@ -448,7 +468,14 @@ export function OrderProvider({
       variationId?: number,
       variationOptionId?: number,
       modifications?: { modificationId: number; price: number }[],
-      options?: AddItemOptions
+      options?: AddItemOptions,
+      linkId?: string,
+      isFreeItem?: boolean,
+      promotionType?: "BOGO" | "COMBO",
+      buyQuantity?: number,
+      getQuantity?: number,
+      promotionId?: number,
+      qty = 1
     ) => {
       if (hasPendingPaymentLock()) return;
       const pending: PendingAddParams = {
@@ -465,6 +492,13 @@ export function OrderProvider({
         itemType: options?.itemType,
         recipientName: options?.recipientName,
         recipientMobile: options?.recipientMobile,
+        linkId,
+        isFreeItem,
+        promotionType,
+        buyQuantity,
+        getQuantity,
+        promotionId,
+        qty,
       };
 
       if (!options?.skipOrderDetailsCheck) {
@@ -495,6 +529,8 @@ export function OrderProvider({
               i.variationOptionId === variationOptionId &&
               JSON.stringify(i.modifications) === JSON.stringify(modifications) &&
               i.details === details &&
+              i.linkId === linkId &&
+              i.isFreeItem === isFreeItem &&
               i.itemType === options?.itemType &&
               (i.recipientName ?? "") === (options?.recipientName ?? "") &&
               (i.recipientMobile ?? "") === (options?.recipientMobile ?? "")
@@ -503,7 +539,7 @@ export function OrderProvider({
             return {
               ...order,
               items: order.items.map((i) =>
-                i.id === existing.id ? { ...i, qty: i.qty + 1 } : i
+                i.id === existing.id ? { ...i, qty: i.qty + qty } : i
               ),
             };
           }
@@ -520,13 +556,19 @@ export function OrderProvider({
                 name,
                 details,
                 price,
-                qty: 1,
                 image,
                 variant,
                 addOnsList,
                 itemType: options?.itemType,
                 recipientName: options?.recipientName,
                 recipientMobile: options?.recipientMobile,
+                linkId,
+                isFreeItem,
+                promotionType,
+                buyQuantity,
+                getQuantity,
+                promotionId,
+                qty,
               },
             ],
           };
@@ -559,7 +601,14 @@ export function OrderProvider({
           itemType: p.itemType,
           recipientName: p.recipientName,
           recipientMobile: p.recipientMobile,
-        }
+        },
+        p.linkId,
+        p.isFreeItem,
+        p.promotionType,
+        p.buyQuantity,
+        p.getQuantity,
+        p.promotionId,
+        p.qty
       );
     }
   }, [addItem]);
@@ -573,13 +622,41 @@ export function OrderProvider({
       setOrders((prev) => {
         const updated = prev.map((order) => {
           if (order.id !== orderId) return order;
+
+          const targetItem = order.items.find(i => i.id === itemId);
+          if (!targetItem) return order;
+
+          let actualDelta = delta;
+          if (targetItem.promotionType === "BOGO" && !targetItem.isFreeItem && targetItem.buyQuantity) {
+            // Treat +/- 1 as +/- one full pack
+            if (Math.abs(delta) === 1) {
+              actualDelta = delta > 0 ? targetItem.buyQuantity : -targetItem.buyQuantity;
+            }
+          }
+
+          const newQty = Math.max(0, targetItem.qty + actualDelta);
+
+          let updatedItems = order.items.map((i) =>
+            i.id === itemId ? { ...i, qty: newQty } : i
+          );
+
+          // Sync linked BOGO items
+          if (targetItem.promotionType === "BOGO" && targetItem.linkId) {
+            if (!targetItem.isFreeItem) {
+              // This is a "Buy" item, sync the "Free" one
+              const freeItem = updatedItems.find(i => i.linkId === targetItem.linkId && i.isFreeItem);
+              if (freeItem && freeItem.buyQuantity && freeItem.getQuantity) {
+                const newFreeQty = Math.floor(newQty / freeItem.buyQuantity) * freeItem.getQuantity;
+                updatedItems = updatedItems.map(i =>
+                  i.id === freeItem.id ? { ...i, qty: newFreeQty } : i
+                );
+              }
+            }
+          }
+
           return {
             ...order,
-            items: order.items
-              .map((i) =>
-                i.id === itemId ? { ...i, qty: Math.max(0, i.qty + delta) } : i
-              )
-              .filter((i) => i.qty > 0),
+            items: updatedItems.filter((i) => i.qty > 0),
           };
         });
         saveOrdersToStorage(updated);
@@ -598,9 +675,22 @@ export function OrderProvider({
       setOrders((prev) => {
         const updated = prev.map((order) => {
           if (order.id !== orderId) return order;
+
+          const targetItem = order.items.find(i => i.id === itemId);
+          if (!targetItem) return order;
+
+          const filteredItems = order.items.filter((i) => {
+            if (i.id === itemId) return false;
+            // If we remove a BOGO "buy" item, remove all its linked items
+            if (targetItem.promotionType === "BOGO" && targetItem.linkId && !targetItem.isFreeItem) {
+              if (i.linkId === targetItem.linkId) return false;
+            }
+            return true;
+          });
+
           return {
             ...order,
-            items: order.items.filter((i) => i.id !== itemId),
+            items: filteredItems,
           };
         });
         saveOrdersToStorage(updated);

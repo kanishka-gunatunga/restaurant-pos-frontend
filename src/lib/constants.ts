@@ -25,6 +25,7 @@ export const ROUTES = {
   DASHBOARD_VOUCHERS: "/dashboard/vouchers",
   DASHBOARD_VOUCHERS_CREATED: "/dashboard/vouchers/create-vouchers",
   DASHBOARD_REPORTS: "/dashboard/reports",
+  DASHBOARD_PROMOTIONS: "/dashboard/promotions",
   DASHBOARD_CALCULATOR: "/dashboard/calculator",
   ORDERS: "/orders",
   MENU: "/menu",

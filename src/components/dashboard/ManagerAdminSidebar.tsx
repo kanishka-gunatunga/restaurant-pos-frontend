@@ -15,6 +15,7 @@ import {
   UserCog,
   Activity,
   Truck,
+  Tag,
 } from "lucide-react";
 import OrdersIcon from "@/components/icons/OrdersIcon";
 import BranchesIcon from "@/components/icons/BranchesIcon";
@@ -43,6 +44,7 @@ const navLinks = [
   { href: ROUTES.DASHBOARD_USERS, label: "Users", icon: UserCog },
   { href: ROUTES.DASHBOARD_BRANCHES, label: "Branches", icon: BranchesIcon },
   { href: ROUTES.DASHBOARD_VOUCHERS, label: "Vouchers", icon: GiftVoucherIcon },
+  { href: ROUTES.DASHBOARD_PROMOTIONS, label: "Promotions", icon: Tag },
   { href: ROUTES.DASHBOARD_INVENTORY, label: "Inventory", icon: Package },
   { href: ROUTES.DASHBOARD_DRAWER, label: "Drawer", icon: DrawerIcon },
   { href: ROUTES.DASHBOARD_EXTRA_FEE, label: "Extra Fee", icon: ExtraFeeIcon },
