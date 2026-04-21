@@ -65,7 +65,8 @@ export default function ProcessPaymentModal({
                 orderId: Number(payment.id),
                 paymentMethod: payMethod,
                 amount: draft.amount,
-                paidAmount: payMethod === "cash" ? (parseFloat(String(amountGiven).replace(/[^0-9.]/g, "")) || draft.amount) : draft.amount,
+                paidAmount: payMethod === "cash" ? (Number((parseFloat(String(amountGiven).replace(/[^0-9.]/g, "")) || draft.amount).toFixed(2))) : draft.amount,
+                paid_amount: payMethod === "cash" ? (Number((parseFloat(String(amountGiven).replace(/[^0-9.]/g, "")) || draft.amount).toFixed(2))) : draft.amount,
                 status: "paid",
                 ...(draft.paymentRole === "balance_due" ? { paymentRole: "balance_due" as const } : {}),
             });
