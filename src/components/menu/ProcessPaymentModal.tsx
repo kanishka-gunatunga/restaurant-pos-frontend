@@ -39,7 +39,7 @@ export default function ProcessPaymentModal({
   const { mutateAsync: createPayment, isPending: isSavingPayment } = useCreatePayment();
   const isBusy = isSubmitting || isSavingPayment;
 
-  const amountNum = parseFloat(amountGiven.replace(/[^0-9.]/g, "")) || 0;
+  const amountNum = parseFloat(String(amountGiven).replace(/[^0-9.]/g, "")) || 0;
   const change = step === "cash" ? Math.max(0, amountNum - amountDue) : changeReturned;
   const cashCoversDue = amountNum + ORDER_MONEY_EPS >= amountDue;
 
@@ -71,7 +71,7 @@ export default function ProcessPaymentModal({
             orderId,
             paymentMethod: method,
             amount: draft.amount,
-            paidAmount: method === "cash" ? amountNum : draft.amount,
+            paidAmount: method === "cash" ? (amountNum || draft.amount) : draft.amount,
             status: "paid",
             ...(draft.paymentRole === "balance_due" ? { paymentRole: "balance_due" } : {}),
           });
