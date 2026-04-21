@@ -15,6 +15,7 @@ type Props = {
   title?: string;
   submitButtonText?: string;
   isSubmitting?: boolean;
+  variant?: "full" | "voucherSale";
 };
 
 const DineInIcon = ({ active }: { active: boolean }) => (
@@ -150,10 +151,14 @@ export default function NewOrderDetailsModal({
   onSubmit,
   onClose,
   initialData,
-  title = "New Order Details",
-  submitButtonText = "Proceed to Menu",
+  title,
+  submitButtonText,
   isSubmitting = false,
+  variant = "full",
 }: Props) {
+  const resolvedTitle = title ?? (variant === "voucherSale" ? "Customer details" : "New Order Details");
+  const resolvedSubmitText =
+    submitButtonText ?? (variant === "voucherSale" ? "Continue" : "Proceed to Menu");
   const [customerName, setCustomerName] = useState(initialData?.customerName ?? "");
   const [phone, setPhone] = useState(initialData?.phone ?? "");
   const [hasManualNameEdit, setHasManualNameEdit] = useState(false);
@@ -189,6 +194,16 @@ export default function NewOrderDetailsModal({
     const mobileDigits = phone.replace(/[-\s]/g, "");
     if (mobileDigits.length > 0 && !/^0{1}7{1}[01245678]{1}[0-9]{7}$/.test(mobileDigits)) {
       return showToast("Invalid mobile number.");
+    }
+    if (variant === "voucherSale") {
+      onSubmit({
+        customerName: resolvedCustomerName.trim(),
+        phone: phone.trim(),
+        customerId: resolvedCustomerId,
+        originalCustomerName: resolvedOriginalCustomerName,
+        orderType: "Take Away",
+      });
+      return;
     }
     if (orderType === "Dine In" && !tableNumber.trim())
       return showToast("Please enter table number.");
@@ -253,7 +268,7 @@ export default function NewOrderDetailsModal({
         >
           <X className="h-5 w-5" />
         </button>
-        <h2 className="font-['Arial'] text-2xl font-bold leading-8 text-[#1D293D]">{title}</h2>
+        <h2 className="font-['Arial'] text-2xl font-bold leading-8 text-[#1D293D]">{resolvedTitle}</h2>
 
         <div className="mt-6 grid grid-cols-2 gap-4">
           <div>
@@ -291,6 +306,8 @@ export default function NewOrderDetailsModal({
           </div>
         </div>
 
+        {variant === "full" && (
+          <>
         <div className="mt-6">
           <label className={labelClass}>Order Type</label>
           <div className="mt-2 grid grid-cols-3 gap-3">
@@ -435,6 +452,8 @@ export default function NewOrderDetailsModal({
             </div>
           </>
         )}
+          </>
+        )}
 
         <button
           type="button"
@@ -442,7 +461,7 @@ export default function NewOrderDetailsModal({
           disabled={isSubmitting}
           className="mt-8 w-full rounded-[14px] bg-[#EA580C] py-4 font-['Arial'] text-lg font-bold leading-7 text-white shadow-[0px_4px_6px_-4px_#EA580C4D,0px_10px_15px_-3px_#EA580C4D] transition-all duration-300 ease-out hover:bg-[#DC4C04] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {isSubmitting ? "Saving..." : submitButtonText}
+          {isSubmitting ? "Saving..." : resolvedSubmitText}
         </button>
       </div>
 

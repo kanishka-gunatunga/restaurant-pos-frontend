@@ -11,6 +11,7 @@ import { useGetAllModifications } from "@/hooks/useModification";
 import { useGetProductsByBranch } from "@/hooks/useProduct";
 import { collectAddOns } from "./menuItemMapper";
 import { useAuth } from "@/contexts/AuthContext";
+import type { AddItemOptions } from "@/contexts/OrderContext";
 
 type PromotionModalProps = {
   item: MenuItem;
@@ -26,6 +27,7 @@ type PromotionModalProps = {
     variationId?: number,
     variationOptionId?: number,
     modifications?: { modificationId: number; price: number }[],
+    options?: AddItemOptions,
     linkId?: string,
     isFreeItem?: boolean,
     promotionType?: "BOGO" | "COMBO",
@@ -233,6 +235,7 @@ export default function PromotionModal({
         undefined,
         undefined,
         modifications.length > 0 ? modifications : undefined,
+        undefined,
         linkId,
         false, // isFreeItem
         augmentedPromoInfo.type === "bogo" ? "BOGO" : (augmentedPromoInfo.type === "combo" ? "COMBO" : undefined),
@@ -254,6 +257,7 @@ export default function PromotionModal({
             undefined,
             augmentedPromoInfo.getFreeItem.variationOptionId,
             undefined, // modifications
+            undefined, // options
             linkId,
             true, // isFreeItem
             "BOGO",

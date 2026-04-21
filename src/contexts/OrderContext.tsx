@@ -7,6 +7,7 @@ import {
   useCallback,
   useLayoutEffect,
   useRef,
+  type MutableRefObject,
   type ReactNode,
 } from "react";
 import { clearMenuOpenCheckoutForSlot } from "@/lib/menuOpenCheckout";
@@ -48,6 +49,9 @@ export type OrderItem = {
   buyQuantity?: number;
   getQuantity?: number;
   promotionId?: number;
+  itemType?: "food" | "voucher" | "promotion";
+  recipientName?: string;
+  recipientMobile?: string;
 };
 
 export type Order = {
@@ -88,6 +92,7 @@ type OrderContextType = {
     variationId?: number,
     variationOptionId?: number,
     modifications?: { modificationId: number; price: number }[],
+    options?: AddItemOptions,
     linkId?: string,
     isFreeItem?: boolean,
     promotionType?: "BOGO" | "COMBO",
@@ -96,6 +101,9 @@ type OrderContextType = {
     promotionId?: number,
     qty?: number
   ) => void;
+  registerOpenOrderDetails: (fn: ((mode: OrderDetailsModalMode) => void) | null) => void;
+  flushPendingAddsAfterOrderDetails: () => void;
+  clearPendingAddsAfterOrderDetails: () => void;
   updateQty: (id: string, delta: number) => void;
   removeItem: (id: string) => void;
   updateItem: (
@@ -110,11 +118,23 @@ type OrderContextType = {
     variationId?: number,
     variationOptionId?: number,
     modifications?: { modificationId: number; price: number }[],
-    qty?: number
+    qty?: number,
+    options?: AddItemOptions
   ) => void;
   canAddOrder: boolean;
   canCloseOrder: boolean;
   loadOrderById: (orderId: string, orderData?: Partial<Order>) => void;
+};
+
+export type MenuOrderSurface = "menu" | "vouchers" | "promotions";
+
+export type OrderDetailsModalMode = "full" | "minimalVoucher";
+
+export type AddItemOptions = {
+  skipOrderDetailsCheck?: boolean;
+  itemType?: "food" | "voucher" | "promotion";
+  recipientName?: string;
+  recipientMobile?: string;
 };
 
 /** Params for one add-item call. Used when blocking add (e.g. no drawer session) so we can replay after session starts. */
@@ -136,6 +156,9 @@ export type PendingAddParams = {
   getQuantity?: number;
   promotionId?: number;
   qty?: number;
+  itemType?: "food" | "voucher" | "promotion";
+  recipientName?: string;
+  recipientMobile?: string;
 };
 
 const OrderContext = createContext<OrderContextType | null>(null);
@@ -259,11 +282,18 @@ export function OrderProvider({
   children,
   beforeAddItem,
   beforeAddOrder,
+  menuSurfaceRef: menuSurfaceRefProp,
 }: {
   children: ReactNode;
   beforeAddItem?: (pending?: PendingAddParams) => boolean;
   beforeAddOrder?: () => boolean;
+  menuSurfaceRef?: MutableRefObject<MenuOrderSurface>;
 }) {
+  const defaultMenuSurfaceRef = useRef<MenuOrderSurface>("menu");
+  const menuSurfaceRef = menuSurfaceRefProp ?? defaultMenuSurfaceRef;
+  const pendingAfterOrderDetailsRef = useRef<PendingAddParams[]>([]);
+  const openOrderDetailsRef = useRef<((mode: OrderDetailsModalMode) => void) | null>(null);
+
   const initialOrders = (() => {
     const loaded = loadOrdersFromStorage();
     const ordersWithData = loaded.filter(hasOrderData);
@@ -415,6 +445,17 @@ export function OrderProvider({
     clearOrderById(orderId);
   }, [activeOrderId, clearOrderById]);
 
+  const registerOpenOrderDetails = useCallback(
+    (fn: ((mode: OrderDetailsModalMode) => void) | null) => {
+      openOrderDetailsRef.current = fn;
+    },
+    []
+  );
+
+  const clearPendingAddsAfterOrderDetails = useCallback(() => {
+    pendingAfterOrderDetailsRef.current = [];
+  }, []);
+
   const addItem = useCallback(
     (
       productId: number,
@@ -427,6 +468,7 @@ export function OrderProvider({
       variationId?: number,
       variationOptionId?: number,
       modifications?: { modificationId: number; price: number }[],
+      options?: AddItemOptions,
       linkId?: string,
       isFreeItem?: boolean,
       promotionType?: "BOGO" | "COMBO",
@@ -447,6 +489,9 @@ export function OrderProvider({
         variationId,
         variationOptionId,
         modifications,
+        itemType: options?.itemType,
+        recipientName: options?.recipientName,
+        recipientMobile: options?.recipientMobile,
         linkId,
         isFreeItem,
         promotionType,
@@ -455,6 +500,20 @@ export function OrderProvider({
         promotionId,
         qty,
       };
+
+      if (!options?.skipOrderDetailsCheck) {
+        const surface = menuSurfaceRef.current;
+        const orderIdForActive = activeOrderId ?? orders[0]?.id;
+        const activeOrder = orders.find((o) => o.id === orderIdForActive);
+        const hasOrderDetails = activeOrder?.orderDetails != null;
+
+        if (!hasOrderDetails && (surface === "menu" || surface === "promotions" || surface === "vouchers")) {
+          pendingAfterOrderDetailsRef.current = [...pendingAfterOrderDetailsRef.current, pending];
+          openOrderDetailsRef.current?.(surface === "vouchers" ? "minimalVoucher" : "full");
+          return;
+        }
+      }
+
       if (beforeAddItem && !beforeAddItem(pending)) return;
       const orderId = activeOrderId ?? orders[0]?.id;
       if (!orderId) return;
@@ -471,7 +530,10 @@ export function OrderProvider({
               JSON.stringify(i.modifications) === JSON.stringify(modifications) &&
               i.details === details &&
               i.linkId === linkId &&
-              i.isFreeItem === isFreeItem
+              i.isFreeItem === isFreeItem &&
+              i.itemType === options?.itemType &&
+              (i.recipientName ?? "") === (options?.recipientName ?? "") &&
+              (i.recipientMobile ?? "") === (options?.recipientMobile ?? "")
           );
           if (existing) {
             return {
@@ -497,6 +559,9 @@ export function OrderProvider({
                 image,
                 variant,
                 addOnsList,
+                itemType: options?.itemType,
+                recipientName: options?.recipientName,
+                recipientMobile: options?.recipientMobile,
                 linkId,
                 isFreeItem,
                 promotionType,
@@ -512,8 +577,41 @@ export function OrderProvider({
         return updated;
       });
     },
-    [activeOrderId, beforeAddItem, orders]
+    [activeOrderId, beforeAddItem, menuSurfaceRef, orders]
   );
+
+  const flushPendingAddsAfterOrderDetails = useCallback(() => {
+    const pending = pendingAfterOrderDetailsRef.current;
+    if (pending.length === 0) return;
+    pendingAfterOrderDetailsRef.current = [];
+    for (const p of pending) {
+      addItem(
+        p.productId,
+        p.name,
+        p.price,
+        p.details,
+        p.image,
+        p.variant,
+        p.addOnsList,
+        p.variationId,
+        p.variationOptionId,
+        p.modifications,
+        {
+          skipOrderDetailsCheck: true,
+          itemType: p.itemType,
+          recipientName: p.recipientName,
+          recipientMobile: p.recipientMobile,
+        },
+        p.linkId,
+        p.isFreeItem,
+        p.promotionType,
+        p.buyQuantity,
+        p.getQuantity,
+        p.promotionId,
+        p.qty
+      );
+    }
+  }, [addItem]);
 
   const updateQty = useCallback(
     (itemId: string, delta: number) => {
@@ -524,7 +622,7 @@ export function OrderProvider({
       setOrders((prev) => {
         const updated = prev.map((order) => {
           if (order.id !== orderId) return order;
-          
+
           const targetItem = order.items.find(i => i.id === itemId);
           if (!targetItem) return order;
 
@@ -537,7 +635,7 @@ export function OrderProvider({
           }
 
           const newQty = Math.max(0, targetItem.qty + actualDelta);
-          
+
           let updatedItems = order.items.map((i) =>
             i.id === itemId ? { ...i, qty: newQty } : i
           );
@@ -549,7 +647,7 @@ export function OrderProvider({
               const freeItem = updatedItems.find(i => i.linkId === targetItem.linkId && i.isFreeItem);
               if (freeItem && freeItem.buyQuantity && freeItem.getQuantity) {
                 const newFreeQty = Math.floor(newQty / freeItem.buyQuantity) * freeItem.getQuantity;
-                updatedItems = updatedItems.map(i => 
+                updatedItems = updatedItems.map(i =>
                   i.id === freeItem.id ? { ...i, qty: newFreeQty } : i
                 );
               }
@@ -577,7 +675,7 @@ export function OrderProvider({
       setOrders((prev) => {
         const updated = prev.map((order) => {
           if (order.id !== orderId) return order;
-          
+
           const targetItem = order.items.find(i => i.id === itemId);
           if (!targetItem) return order;
 
@@ -615,7 +713,8 @@ export function OrderProvider({
       variationId?: number,
       variationOptionId?: number,
       modifications?: { modificationId: number; price: number }[],
-      qty?: number
+      qty?: number,
+      options?: AddItemOptions
     ) => {
       if (hasPendingPaymentLock()) return;
       const orderId = activeOrderId ?? orders[0]?.id;
@@ -641,6 +740,9 @@ export function OrderProvider({
                   image,
                   variant,
                   addOnsList,
+                  itemType: options?.itemType ?? i.itemType,
+                  recipientName: options?.recipientName ?? i.recipientName,
+                  recipientMobile: options?.recipientMobile ?? i.recipientMobile,
                 }
                 : i
             ),
@@ -780,6 +882,9 @@ export function OrderProvider({
         setActiveKitchenNote,
         setActiveOrderNote,
         addItem,
+        registerOpenOrderDetails,
+        flushPendingAddsAfterOrderDetails,
+        clearPendingAddsAfterOrderDetails,
         updateQty,
         removeItem,
         updateItem,

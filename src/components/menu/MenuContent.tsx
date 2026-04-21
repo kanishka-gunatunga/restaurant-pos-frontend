@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, type MutableRefObject } from "react";
 import { Search, Loader2 } from "lucide-react";
 import ProductCard from "./ProductCard";
 import { useGetParentCategories, useGetSubCategories } from "@/hooks/useCategory";
@@ -10,7 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { mapProductsToMenuItems, collectAddOns } from "./menuItemMapper";
 import type { MenuItem, ProductVariant, ProductAddOn } from "./types";
 import type { Product, Modification } from "@/types/product";
-import { useOrder, type OrderItem } from "@/contexts/OrderContext";
+import { useOrder, type OrderItem, type MenuOrderSurface } from "@/contexts/OrderContext";
 import ProductModal from "./ProductModal";
 import { normalizeProductImageUrl } from "@/lib/productImage";
 import { useGetComboPacksByBranch } from "@/hooks/useComboPack";
@@ -34,10 +34,78 @@ function useColumnCount() {
   return cols;
 }
 
+function isVoucherMenuItem(item: MenuItem): boolean {
+  const c = item.category.toLowerCase();
+  const n = item.name.toLowerCase();
+  return c.includes("voucher") || n.includes("voucher") || n.includes("gift voucher");
+}
+
+const DUMMY_VOUCHER_ITEMS: MenuItem[] = [
+  { id: "voucher-2000", productId: 910001, name: "Gift Voucher", category: "Vouchers", subCategory: "All", price: 2000, image: "/voucer-img.png" },
+  { id: "voucher-3000", productId: 910002, name: "Gift Voucher", category: "Vouchers", subCategory: "All", price: 3000, image: "/voucer-img.png" },
+  { id: "voucher-5000", productId: 910003, name: "Gift Voucher", category: "Vouchers", subCategory: "All", price: 5000, image: "/voucer-img.png" },
+  { id: "voucher-6000", productId: 910004, name: "Gift Voucher", category: "Vouchers", subCategory: "All", price: 6000, image: "/voucer-img.png" },
+  { id: "voucher-8000", productId: 910005, name: "Gift Voucher", category: "Vouchers", subCategory: "All", price: 8000, image: "/voucer-img.png" },
+  { id: "voucher-10000", productId: 910006, name: "Gift Voucher", category: "Vouchers", subCategory: "All", price: 10000, image: "/voucer-img.png" },
+];
+
+const DUMMY_PROMOTION_ITEMS: MenuItem[] = [
+  {
+    id: "promo-bogo-classic-beef",
+    productId: 930001,
+    name: "Classic Beef Burger - Buy 1 Get 1",
+    category: "Promotions",
+    subCategory: "BOGO",
+    price: 2500,
+    image: "/product-placeholder.jpg",
+    bundleItems: [
+      { productId: 300101, name: "Classic Beef Burger", qty: 2, unitPrice: 1250, details: "BOGO Deal" },
+    ],
+  },
+  {
+    id: "promo-bogo-latte",
+    productId: 930002,
+    name: "Iced Latte - Buy 1 Get 1",
+    category: "Promotions",
+    subCategory: "BOGO",
+    price: 2500,
+    image: "/product-placeholder.jpg",
+    bundleItems: [{ productId: 300102, name: "Iced Latte", qty: 2, unitPrice: 1250, details: "BOGO Deal" }],
+  },
+  {
+    id: "promo-combo-burger-latte",
+    productId: 930003,
+    name: "Burger + Iced Latte Combo",
+    category: "Promotions",
+    subCategory: "Combo",
+    price: 4200,
+    image: "/product-placeholder.jpg",
+    bundleItems: [
+      { productId: 300101, name: "Classic Beef Burger", qty: 1, unitPrice: 2500, details: "Combo Deal" },
+      { productId: 300102, name: "Iced Latte", qty: 1, unitPrice: 1700, details: "Combo Deal" },
+    ],
+  },
+  {
+    id: "promo-combo-pizza-cocktail",
+    productId: 930004,
+    name: "Margherita + Fruit Cocktail Combo",
+    category: "Promotions",
+    subCategory: "Combo",
+    price: 4600,
+    image: "/product-placeholder.jpg",
+    bundleItems: [
+      { productId: 300103, name: "Margherita Pizza", qty: 1, unitPrice: 3000, details: "Combo Deal" },
+      { productId: 300104, name: "Fruit Cocktail", qty: 1, unitPrice: 1600, details: "Combo Deal" },
+    ],
+  },
+];
+
 export default function MenuContent({
+  menuSurfaceRef,
   editingOrderItem,
   onCancelEdit,
 }: {
+  menuSurfaceRef: MutableRefObject<MenuOrderSurface>;
   editingOrderItem?: OrderItem | null;
   onCancelEdit?: () => void;
 }) {
@@ -46,11 +114,18 @@ export default function MenuContent({
   const branchId = user?.branchId || 1;
 
   const [search, setSearch] = useState("");
+  const [menuSurface, setMenuSurface] = useState<MenuOrderSurface>("menu");
   const [activeCategoryId, setActiveCategoryId] = useState<number | "All">("All");
   const [activeSubCategoryId, setActiveSubCategoryId] = useState<number | "All">("All");
+  const [voucherPriceFilter, setVoucherPriceFilter] = useState<number | "All">("All");
+  const [promotionTypeFilter, setPromotionTypeFilter] = useState<"All" | "BOGO" | "Combo">("All");
   const [activeMainTab, setActiveMainTab] = useState<"Categories" | "Vouchers" | "Promotions">("Categories");
   const [promoFilter, setPromoFilter] = useState<"All" | "Combo" | "BOGO">("All");
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
+
+  useEffect(() => {
+    menuSurfaceRef.current = menuSurface;
+  }, [menuSurface, menuSurfaceRef]);
 
   const { data: categories = [], isLoading: isLoadingCats } = useGetParentCategories("active");
 
@@ -59,11 +134,21 @@ export default function MenuContent({
     "active"
   );
 
-  const { data: products = [], isLoading: isLoadingProducts } = useGetProductsByBranch(branchId, {
-    categoryId: typeof activeCategoryId === "number" ? activeCategoryId : undefined,
-    subCategoryId: typeof activeSubCategoryId === "number" ? activeSubCategoryId : undefined,
-    status: "active",
-  });
+  const { data: products = [], isLoading: isLoadingProducts } = useGetProductsByBranch(
+    branchId,
+    {
+      categoryId: typeof activeCategoryId === "number" ? activeCategoryId : undefined,
+      subCategoryId: typeof activeSubCategoryId === "number" ? activeSubCategoryId : undefined,
+      status: "active",
+    },
+    { enabled: menuSurface === "menu" }
+  );
+
+  const { data: voucherCatalog = [], isLoading: isLoadingVoucherCatalog } = useGetProductsByBranch(
+    branchId,
+    { status: "active" },
+    { enabled: menuSurface === "vouchers" }
+  );
 
   const { data: allModifications = [] } = useGetAllModifications("active");
   const { data: comboPacks = [] } = useGetComboPacksByBranch();
@@ -71,24 +156,22 @@ export default function MenuContent({
 
 
 
+
   const menuItems = useMemo(() => {
     return mapProductsToMenuItems(products, branchId, allModifications);
   }, [products, branchId, allModifications]);
 
-  const filteredItems = useMemo(() => {
-    return menuItems.filter((item) =>
-      item.name.toLowerCase().includes(search.toLowerCase())
-    );
-  }, [menuItems, search]);
+  const voucherMenuItems = useMemo(() => {
+    const mapped = mapProductsToMenuItems(voucherCatalog, branchId, allModifications);
+    const filtered = mapped.filter(isVoucherMenuItem);
+    return filtered.length > 0 ? filtered : DUMMY_VOUCHER_ITEMS;
+  }, [voucherCatalog, branchId, allModifications]);
 
-  const columnCount = useColumnCount();
-
-
-  const handleCategoryChange = (id: number | "All") => {
-    setActiveMainTab("Categories");
-    setActiveCategoryId(id);
-    setActiveSubCategoryId("All");
-  };
+  const voucherPriceOptions = useMemo(() => {
+    const s = new Set<number>();
+    voucherMenuItems.forEach((i) => s.add(i.price));
+    return [...s].sort((a, b) => a - b);
+  }, [voucherMenuItems]);
 
   const promotionItems = useMemo(() => {
     const items: MenuItem[] = [];
@@ -120,7 +203,7 @@ export default function MenuContent({
               price: 0,
               image: normalizeProductImageUrl(i.product?.image) || undefined,
               variationOptionId: i.variationOptionId,
-              quantity: 1, 
+              quantity: 1,
               addOns: i.product ? collectAddOns(i.product, allModifications) : undefined,
             }))
           }
@@ -134,7 +217,7 @@ export default function MenuContent({
 
         const buyVariantId = bogo.buyVariationOptionId;
         const buyProduct = bogo.buyProduct;
-        
+
         let buyOption = null;
         if (buyVariantId) {
           buyOption = buyProduct.variations?.flatMap(v => v.options || []).find(o => o.id === buyVariantId);
@@ -184,32 +267,69 @@ export default function MenuContent({
     return items;
   }, [comboPacks, bogoPromotions, branchId, promoFilter, allModifications]);
 
+  const itemLookupList = useMemo(
+    () => [...menuItems, ...voucherMenuItems],
+    [menuItems, voucherMenuItems]
+  );
 
-  const sectionedPromotions = useMemo(() => {
-    const groups: { title: string; items: MenuItem[] }[] = [];
-    
-    const comboItems = promotionItems.filter(i => i.category === "Combo Packs");
-    if (comboItems.length > 0) {
-      groups.push({ title: "Combo Packs", items: comboItems });
+  const displayItems: MenuItem[] = useMemo(() => {
+    if (menuSurface === "vouchers") {
+      let list = voucherMenuItems;
+      if (voucherPriceFilter !== "All") {
+        list = list.filter((i) => i.price === voucherPriceFilter);
+      }
+      return list.filter((item) => item.name.toLowerCase().includes(search.toLowerCase()));
     }
-    
-    const bogoItems = promotionItems.filter(i => i.category === "BOGO");
-    if (bogoItems.length > 0) {
-      groups.push({ title: "BOGO", items: bogoItems });
+    if (menuSurface === "promotions") {
+      let list = promotionItems;
+      if (promotionTypeFilter !== "All") {
+        list = list.filter((i) => i.subCategory === promotionTypeFilter);
+      }
+      return list.filter((item) => item.name.toLowerCase().includes(search.toLowerCase()));
     }
-    
-    return groups;
-  }, [promotionItems]);
+    return menuItems.filter((item) => item.name.toLowerCase().includes(search.toLowerCase()));
+  }, [menuSurface, voucherMenuItems, promotionItems, menuItems, voucherPriceFilter, promotionTypeFilter, search]);
 
-  const displayItems = activeMainTab === "Promotions" ? promotionItems : filteredItems;
+  const columnCount = useColumnCount();
 
   const columns = useMemo(() => {
-    const cols: typeof displayItems[] = Array.from({ length: columnCount }, () => []);
+    const cols: (typeof displayItems)[] = Array.from({ length: columnCount }, () => []);
     displayItems.forEach((item, i) => {
       cols[i % columnCount].push(item);
     });
     return cols;
   }, [displayItems, columnCount]);
+
+  const handleCategoryChange = (id: number | "All") => {
+    setActiveMainTab("Categories");
+    setMenuSurface("menu");
+    setActiveCategoryId(id);
+    setActiveSubCategoryId("All");
+  };
+
+  const isLoadingMain =
+    menuSurface === "menu" && (isLoadingCats || isLoadingSubCats || isLoadingProducts);
+  const isLoadingVouchers = menuSurface === "vouchers" && isLoadingVoucherCatalog;
+
+
+
+  const sectionedPromotions = useMemo(() => {
+    const groups: { title: string; items: MenuItem[] }[] = [];
+
+    const comboItems = promotionItems.filter(i => i.category === "Combo Packs");
+    if (comboItems.length > 0) {
+      groups.push({ title: "Combo Packs", items: comboItems });
+    }
+
+    const bogoItems = promotionItems.filter(i => i.category === "BOGO");
+    if (bogoItems.length > 0) {
+      groups.push({ title: "BOGO", items: bogoItems });
+    }
+
+    return groups;
+  }, [promotionItems]);
+
+
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
@@ -218,7 +338,9 @@ export default function MenuContent({
           <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-400" />
           <input
             type="text"
-            placeholder="Search menu items..."
+            placeholder={
+              menuSurface === "promotions" ? "Search promotions..." : "Search menu items..."
+            }
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFC] py-[12px] pl-12 pr-4 text-zinc-800 placeholder:text-zinc-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
@@ -229,22 +351,22 @@ export default function MenuContent({
           <button
             type="button"
             onClick={() => handleCategoryChange("All")}
-            className={`rounded-[14px] px-5.5 py-2.5 text-center text-sm font-bold leading-5 tracking-normal transition-colors ${activeMainTab === "Categories" && activeCategoryId === "All"
+            className={`rounded-[14px] px-5.5 py-2.5 text-center text-sm font-bold leading-5 tracking-normal transition-colors ${activeMainTab === "Categories" && activeCategoryId === "All" && menuSurface === "menu"
               ? "bg-primary text-white"
               : "bg-[#F1F5F9] text-[#45556C] hover:bg-[#E2E8F0]"
               }`}
           >
             All
           </button>
-          {categories.reduce((acc: any[], cat) => {
-            if (!acc.find(c => c.id === cat.id)) acc.push(cat);
+          {categories.reduce((acc: { id: number; name: string }[], cat) => {
+            if (!acc.find((c) => c.id === cat.id)) acc.push(cat);
             return acc;
           }, []).map((cat) => (
             <button
               key={`cat-${cat.id}`}
               type="button"
               onClick={() => handleCategoryChange(cat.id)}
-              className={`rounded-[14px] px-5.5 py-2.5 text-center text-sm font-bold leading-5 tracking-normal transition-colors ${activeMainTab === "Categories" && activeCategoryId === cat.id
+              className={`rounded-[14px] px-5.5 py-2.5 text-center text-sm font-bold leading-5 tracking-normal transition-colors ${activeMainTab === "Categories" && activeCategoryId === cat.id && menuSurface === "menu"
                 ? "bg-primary text-white"
                 : "bg-[#F1F5F9] text-[#45556C] hover:bg-[#E2E8F0]"
                 }`}
@@ -253,23 +375,8 @@ export default function MenuContent({
             </button>
           ))}
 
-          <div className="mx-2 h-8 w-[1px] bg-[#E2E8F0]" />
 
-          <button
-            type="button"
-            onClick={() => {
-              setActiveMainTab("Vouchers");
-              setPromoFilter("All");
-            }}
-            className={`rounded-[14px] px-5.5 py-2.5 text-center text-sm font-bold leading-5 tracking-normal transition-colors ${activeMainTab === "Vouchers"
-              ? "bg-primary text-white"
-              : "bg-[#F1F5F9] text-[#45556C] hover:bg-[#E2E8F0]"
-              }`}
-          >
-            Vouchers
-          </button>
-
-          <div className="mx-2 h-8 w-[1px] bg-[#E2E8F0]" />
+          <div className="mx-0.5 hidden h-8 border-l border-[#45556C] sm:block" aria-hidden />
 
           <button
             type="button"
@@ -284,77 +391,127 @@ export default function MenuContent({
           >
             Promotions
           </button>
+
+          <div className="mx-0.5 hidden h-8 border-l border-[#45556C] sm:block" aria-hidden />
+
+          <button
+            type="button"
+            onClick={() => {
+              setActiveMainTab("Categories");
+              setMenuSurface("vouchers");
+              setActiveCategoryId("All");
+              setActiveSubCategoryId("All");
+              setVoucherPriceFilter("All");
+            }}
+            className={`rounded-[14px] px-5.5 py-2.5 text-center text-sm font-bold leading-5 tracking-normal transition-colors ${
+              menuSurface === "vouchers" && activeMainTab === "Categories"
+                ? "bg-primary text-white"
+                : "bg-[#F1F5F9] text-[#45556C] hover:bg-[#E2E8F0]"
+            }`}
+          >
+            Vouchers
+          </button>
         </div>
 
         {/* Sub-category filter row */}
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-medium uppercase tracking-wider text-zinc-500">
-            SUB:
-          </span>
-          {activeMainTab === "Promotions" ? (
-            <>
-              <button
-                type="button"
-                onClick={() => setPromoFilter("All")}
-                className={`rounded-[10px] text-center text-sm font-bold leading-4 tracking-normal transition-colors ${promoFilter === "All"
-                  ? "bg-[#1D293D] px-4 py-2 text-white"
-                  : "border border-[#F1F5F9] bg-white px-4 py-2 text-[#62748E] hover:bg-zinc-50"
-                  }`}
-              >
-                All
-              </button>
-              <button
-                type="button"
-                onClick={() => setPromoFilter("Combo")}
-                className={`rounded-[10px] text-center text-sm font-bold leading-4 tracking-normal transition-colors ${promoFilter === "Combo"
-                  ? "bg-[#1D293D] px-4 py-2 text-white"
-                  : "border border-[#F1F5F9] bg-white px-4 py-2 text-[#62748E] hover:bg-zinc-50"
-                  }`}
-              >
-                Combo Packs
-              </button>
-              <button
-                type="button"
-                onClick={() => setPromoFilter("BOGO")}
-                className={`rounded-[10px] text-center text-sm font-bold leading-4 tracking-normal transition-colors ${promoFilter === "BOGO"
-                  ? "bg-[#1D293D] px-4 py-2 text-white"
-                  : "border border-[#F1F5F9] bg-white px-4 py-2 text-[#62748E] hover:bg-zinc-50"
-                  }`}
-              >
-                BOGO
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={() => setActiveSubCategoryId("All")}
-                className={`rounded-[10px] text-center text-sm font-bold leading-4 tracking-normal transition-colors ${activeSubCategoryId === "All"
-                  ? "bg-[#1D293D] px-4 py-2 text-white"
-                  : "border border-[#F1F5F9] bg-white px-4 py-2 text-[#62748E] hover:bg-zinc-50"
-                  }`}
-              >
-                All
-              </button>
-              {subCats.reduce((acc: any[], sub) => {
-                if (!acc.find(s => s.id === sub.id)) acc.push(sub);
-                return acc;
-              }, []).map((sub) => (
+        {(activeMainTab === "Promotions" || menuSurface === "vouchers" || menuSurface === "menu") && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+              SUB:
+            </span>
+            {activeMainTab === "Promotions" ? (
+              <>
                 <button
-                  key={`sub-${sub.id}`}
                   type="button"
-                  onClick={() => setActiveSubCategoryId(sub.id)}
-                  className={`rounded-[10px] text-center text-sm font-bold leading-4 tracking-normal transition-colors ${activeSubCategoryId === sub.id
+                  onClick={() => setPromoFilter("All")}
+                  className={`rounded-[10px] text-center text-sm font-bold leading-4 tracking-normal transition-colors ${promoFilter === "All"
                     ? "bg-[#1D293D] px-4 py-2 text-white"
                     : "border border-[#F1F5F9] bg-white px-4 py-2 text-[#62748E] hover:bg-zinc-50"
                     }`}
                 >
-                  {sub.name}
+                  All
                 </button>
-              ))}
-            </>
-          )}
-        </div>
+                <button
+                  type="button"
+                  onClick={() => setPromoFilter("Combo")}
+                  className={`rounded-[10px] text-center text-sm font-bold leading-4 tracking-normal transition-colors ${promoFilter === "Combo"
+                    ? "bg-[#1D293D] px-4 py-2 text-white"
+                    : "border border-[#F1F5F9] bg-white px-4 py-2 text-[#62748E] hover:bg-zinc-50"
+                    }`}
+                >
+                  Combo Packs
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPromoFilter("BOGO")}
+                  className={`rounded-[10px] text-center text-sm font-bold leading-4 tracking-normal transition-colors ${promoFilter === "BOGO"
+                    ? "bg-[#1D293D] px-4 py-2 text-white"
+                    : "border border-[#F1F5F9] bg-white px-4 py-2 text-[#62748E] hover:bg-zinc-50"
+                    }`}
+                >
+                  BOGO
+                </button>
+              </>
+            ) : menuSurface === "vouchers" && voucherPriceOptions.length > 0 ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setVoucherPriceFilter("All")}
+                  className={`rounded-[10px] text-center text-sm font-bold leading-4 tracking-normal transition-colors ${
+                    voucherPriceFilter === "All"
+                      ? "bg-[#1D293D] px-4 py-2 text-white"
+                      : "border border-[#F1F5F9] bg-white px-4 py-2 text-[#62748E] hover:bg-zinc-50"
+                  }`}
+                >
+                  All
+                </button>
+                {voucherPriceOptions.map((price) => (
+                  <button
+                    key={`vp-${price}`}
+                    type="button"
+                    onClick={() => setVoucherPriceFilter(price)}
+                    className={`rounded-[10px] text-center text-sm font-bold leading-4 tracking-normal transition-colors ${
+                      voucherPriceFilter === price
+                        ? "bg-[#1D293D] px-4 py-2 text-white"
+                        : "border border-[#F1F5F9] bg-white px-4 py-2 text-[#62748E] hover:bg-zinc-50"
+                    }`}
+                  >
+                    Rs.{price.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                  </button>
+                ))}
+              </>
+            ) : menuSurface === "menu" ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setActiveSubCategoryId("All")}
+                  className={`rounded-[10px] text-center text-sm font-bold leading-4 tracking-normal transition-colors ${activeSubCategoryId === "All"
+                    ? "bg-[#1D293D] px-4 py-2 text-white"
+                    : "border border-[#F1F5F9] bg-white px-4 py-2 text-[#62748E] hover:bg-zinc-50"
+                    }`}
+                >
+                  All
+                </button>
+                {subCats.reduce((acc: any[], sub) => {
+                  if (!acc.find(s => s.id === sub.id)) acc.push(sub);
+                  return acc;
+                }, []).map((sub) => (
+                  <button
+                    key={`sub-${sub.id}`}
+                    type="button"
+                    onClick={() => setActiveSubCategoryId(sub.id)}
+                    className={`rounded-[10px] text-center text-sm font-bold leading-4 tracking-normal transition-colors ${activeSubCategoryId === sub.id
+                      ? "bg-[#1D293D] px-4 py-2 text-white"
+                      : "border border-[#F1F5F9] bg-white px-4 py-2 text-[#62748E] hover:bg-zinc-50"
+                      }`}
+                  >
+                    {sub.name}
+                  </button>
+                ))}
+              </>
+            ) : null}
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 pb-6">
@@ -405,7 +562,7 @@ export default function MenuContent({
               </div>
             )}
           </div>
-        ) : isLoadingProducts ? (
+        ) : isLoadingMain || isLoadingVouchers ? (
           <div className="flex h-full items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
@@ -428,9 +585,9 @@ export default function MenuContent({
         )}
       </div>
 
-      {editingOrderItem && (
+      {editingOrderItem &&
         (() => {
-          const menuItem = menuItems.find(mi => mi.productId === editingOrderItem.productId);
+          const menuItem = itemLookupList.find((mi) => mi.productId === editingOrderItem.productId);
           if (!menuItem) return null;
           return (
             <ProductModal
@@ -439,16 +596,17 @@ export default function MenuContent({
               initialQty={editingOrderItem.qty}
               initialVariantId={editingOrderItem.variationOptionId}
               initialAddOns={editingOrderItem.modifications}
+              initialRecipientName={editingOrderItem.recipientName}
+              initialRecipientMobile={editingOrderItem.recipientMobile}
               onClose={() => onCancelEdit?.()}
               onUpdateOrder={(...args) => {
                 updateItem(editingOrderItem.id, ...args);
                 onCancelEdit?.();
               }}
-              onAddToOrder={() => {}} // Not used in edit mode
+              onAddToOrder={() => {}}
             />
           );
-        })()
-      )}
-    </div >
+        })()}
+    </div>
   );
 }

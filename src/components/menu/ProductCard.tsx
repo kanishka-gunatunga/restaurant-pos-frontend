@@ -18,6 +18,9 @@ type ProductCardProps = {
 
 export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: ProductCardProps) {
   const { addItem } = useOrder();
+  const isVoucherItem =
+    item.category.toLowerCase().includes("voucher") || item.name.toLowerCase().includes("voucher");
+  const isPromotionDeal = (item.bundleItems?.length ?? 0) > 0;
   const [isAddOnsOpen, setIsAddOnsOpen] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
     item.variants?.[0] ?? null
@@ -59,6 +62,10 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
 
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (isVoucherItem || isPromotionDeal) {
+      setShowModal(true);
+      return;
+    }
     if (item.isOffer || (item.addOns && item.addOns.length > 0)) {
       setShowModal(true);
       return;
@@ -76,7 +83,9 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
       variantName,
       undefined,
       variant?.variationId,
-      variant?.id
+      variant?.id,
+      undefined,
+      { itemType: "food" }
     );
   };
 
@@ -115,6 +124,31 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
     selectedAddOns.map(({ addOn, qty: n }) => (n > 1 ? `${addOn.name} x${n}` : addOn.name));
 
   const handleAddToOrder = () => {
+    if (isPromotionDeal) {
+      for (let i = 0; i < qty; i++) {
+        item.bundleItems?.forEach((bundle) => {
+          for (let j = 0; j < bundle.qty; j++) {
+            addItem(
+              bundle.productId,
+              bundle.name,
+              bundle.unitPrice,
+              bundle.details ?? item.name,
+              bundle.image ?? resolveProductImageSrc(item.image, item.id),
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              { itemType: "promotion" }
+            );
+          }
+        });
+      }
+      setQty(1);
+      onCollapse();
+      return;
+    }
+
     const unitPrice = totalPrice / qty;
     const details = getDetailsString();
     const image = resolveProductImageSrc(item.image, item.id);
@@ -136,7 +170,8 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
         addOnsParsed.length > 0 ? addOnsParsed : undefined,
         selectedVariant?.variationId,
         selectedVariant?.id,
-        modifications.length > 0 ? modifications : undefined
+        modifications.length > 0 ? modifications : undefined,
+        { itemType: isVoucherItem ? "voucher" : "food" }
       );
     }
     setSelectedAddOns([]);
@@ -358,7 +393,7 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
                                 )}
                               </div>
                               <div className="flex min-w-0 flex-col">
-                                <span className="product-card-variant-text break-words font-medium text-zinc-800">
+                                <span className="product-card-variant-text wrap-break-word font-medium text-zinc-800">
                                   {addOn.name}
                                 </span>
                                 <span className="product-card-price-small text-zinc-600">

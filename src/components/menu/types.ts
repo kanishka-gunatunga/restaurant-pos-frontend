@@ -23,6 +23,14 @@ export type MenuItem = {
   isOffer?: boolean;
   variants?: ProductVariant[];
   addOns?: ProductAddOn[];
+  bundleItems?: {
+    productId: number;
+    name: string;
+    qty: number;
+    unitPrice: number;
+    details?: string;
+    image?: string;
+  }[];
   promotionInfo?: {
     type: "combo" | "bogo";
     promotionId: number;
