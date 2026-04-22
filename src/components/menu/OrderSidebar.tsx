@@ -394,20 +394,37 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
             0
           );
           const baseUnitPrice = Math.max(0, Number(item.price) - modificationUnitSum);
+
+          // Backend expects `variationOptionId` (row id from `variationoptions`) only.
+          // Never send the parent `variationId` (row id from `variations`) — the backend
+          // treats that as a FK into `variationoptions` and rejects it.
+          // Omit the field entirely when the line has no variation (do not send 0/"").
+          const hasVariationOption =
+            typeof item.variationOptionId === "number" && item.variationOptionId > 0;
+
+          const isBundleLine = item.promotionType === "COMBO";
+          const isBogoLine = item.promotionType === "BOGO";
+
           return {
-            productId: item.productId,
-            variationId: item.variationId,
-            variationOptionId: item.variationOptionId,
+            // Bundle lines are identified solely by productBundleId on the backend.
+            ...(isBundleLine ? {} : { productId: item.productId }),
+            ...(hasVariationOption && !isBundleLine
+              ? { variationOptionId: item.variationOptionId }
+              : {}),
             quantity: item.qty,
             unitPrice: Number(baseUnitPrice.toFixed(2)),
             productDiscount:
               (itemsWithDiscounts.find((i) => i.id === item.id)?.discountAmount || 0) / item.qty,
-            modifications: item.modifications?.map((m) => ({
-              modificationId: m.modificationId,
-              price: m.price,
-            })),
-            bogoPromotionId: item.promotionType === "BOGO" ? item.promotionId : undefined,
-            productBundleId: item.promotionType === "COMBO" ? item.promotionId : undefined,
+            ...(item.modifications && item.modifications.length > 0
+              ? {
+                  modifications: item.modifications.map((m) => ({
+                    modificationId: m.modificationId,
+                    price: m.price,
+                  })),
+                }
+              : {}),
+            ...(isBogoLine && item.promotionId ? { bogoPromotionId: item.promotionId } : {}),
+            ...(isBundleLine && item.promotionId ? { productBundleId: item.promotionId } : {}),
             ...(item.recipientName || item.recipientMobile
               ? {
                   notes: `Recipient${item.recipientName ? `: ${item.recipientName}` : ""}${
