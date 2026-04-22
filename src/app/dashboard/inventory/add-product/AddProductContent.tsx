@@ -14,6 +14,7 @@ import {
   X,
   Check,
   ChevronDown,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useSearchParams } from "next/navigation";
@@ -24,6 +25,7 @@ import { useGetAllCategories } from "@/hooks/useCategory";
 import { useGetAllModifications } from "@/hooks/useModification";
 import { useCreateProduct, useUpdateProduct, useGetProductById } from "@/hooks/useProduct";
 import { useGetAllBranches } from "@/hooks/useBranch";
+import { readIsUnlimitedFromPrice } from "@/types/product";
 
 const PRIMARY = "#EA580C";
 
@@ -41,6 +43,7 @@ interface VariantCombination {
 interface BranchVariantConfig {
   price: string;
   quantity: string;
+  isUnlimited: boolean;
   addonGroups: number[];
   expireDate: string;
   batchNo: string;
@@ -140,10 +143,11 @@ export default function AddProductContent() {
             const branchVariantConfig: Record<string, BranchVariantConfig> = {};
 
             options.forEach((opt) => {
-              const priceData = opt.prices?.find((p) => p.branchId === bIdNum);
+              const priceData = opt.prices?.find((p) => Number(p.branchId) === bIdNum);
               branchVariantConfig[opt.name] = {
                 price: priceData?.price?.toString() || "",
                 quantity: priceData?.quantity?.toString() || "",
+                isUnlimited: readIsUnlimitedFromPrice(priceData),
                 addonGroups: variation.variationModifications?.map((m) => m.modificationId) || [], // This is a bit simplified
                 expireDate: priceData?.expireDate || "",
                 batchNo: priceData?.batchNo || "",
@@ -232,6 +236,7 @@ export default function AddProductContent() {
         initialConfig[combo.combination] = {
           price: "",
           quantity: "",
+          isUnlimited: false,
           addonGroups: [],
           expireDate: "",
           batchNo: "",
@@ -248,7 +253,7 @@ export default function AddProductContent() {
     branchId: string,
     combination: string,
     field: keyof BranchVariantConfig,
-    value: string | string[] | number[]
+    value: string | string[] | number[] | boolean
   ) => {
     setBranchConfigs({
       ...branchConfigs,
@@ -260,6 +265,7 @@ export default function AddProductContent() {
             ...(branchConfigs[branchId]?.variants[combination] || {
               price: "",
               quantity: "",
+              isUnlimited: false,
               addonGroups: [],
               expireDate: "",
               batchNo: "",
@@ -285,7 +291,9 @@ export default function AddProductContent() {
 
     for (const branchId of selectedBranches) {
       const config = branchConfigs[branchId];
-      const hasValid = Object.values(config?.variants ?? {}).some((v) => v.price && v.quantity);
+      const hasValid = Object.values(config?.variants ?? {}).some(
+        (v) => v.price && (v.isUnlimited || v.quantity)
+      );
       if (!hasValid) {
         alert(
           `Please complete configuration for branch: ${allBranches?.find((b) => b.id.toString() === branchId)?.name}`
@@ -312,11 +320,13 @@ export default function AddProductContent() {
               name: combo.combination,
               prices: selectedBranches.map((branchId) => {
                 const variantData = branchConfigs[branchId]?.variants[combo.combination];
+                const unlimited = Boolean(variantData?.isUnlimited);
                 return {
                   branchId: parseInt(branchId),
                   price: parseFloat(variantData?.price || "0"),
                   discountPrice: 0, // Added discountPrice
-                  quantity: parseInt(variantData?.quantity || "0"),
+                  quantity: unlimited ? 0 : parseInt(variantData?.quantity || "0", 10),
+                  isUnlimited: unlimited,
                   batchNo: variantData?.batchNo,
                   expireDate: variantData?.expireDate || null,
                 };
@@ -823,6 +833,7 @@ export default function AddProductContent() {
                             const variantData: BranchVariantConfig = {
                               price: rawVariantData?.price ?? "",
                               quantity: rawVariantData?.quantity ?? "",
+                              isUnlimited: rawVariantData?.isUnlimited ?? false,
                               addonGroups: rawVariantData?.addonGroups ?? [],
                               expireDate: rawVariantData?.expireDate ?? "",
                               batchNo: rawVariantData?.batchNo ?? "",
@@ -860,13 +871,17 @@ export default function AddProductContent() {
                                   </div>
                                   <div>
                                     <label className="mb-1 block font-['Inter'] text-xs font-bold text-[#45556C]">
-                                      Quantity <span className="text-[#EC003F]">*</span>
+                                      Quantity{" "}
+                                      {!variantData.isUnlimited && (
+                                        <span className="text-[#EC003F]">*</span>
+                                      )}
                                     </label>
                                     <input
                                       type="number"
                                       min={0}
                                       step={1}
                                       value={variantData.quantity}
+                                      disabled={variantData.isUnlimited}
                                       onChange={(e) =>
                                         handleUpdateBranchVariant(
                                           branchId,
@@ -876,8 +891,24 @@ export default function AddProductContent() {
                                         )
                                       }
                                       placeholder="0"
-                                      className="w-full rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 font-['Inter'] text-sm text-[#1D293D] placeholder:text-[#90A1B9] focus:border-[#EA580C] focus:outline-none focus:ring-2 focus:ring-[#EA580C]/20"
+                                      className="w-full rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 font-['Inter'] text-sm text-[#1D293D] placeholder:text-[#90A1B9] focus:border-[#EA580C] focus:outline-none focus:ring-2 focus:ring-[#EA580C]/20 disabled:cursor-not-allowed disabled:opacity-60"
                                     />
+                                    <label className="mt-2 flex cursor-pointer items-center gap-2 font-['Inter'] text-xs text-[#45556C]">
+                                      <input
+                                        type="checkbox"
+                                        checked={variantData.isUnlimited}
+                                        onChange={(e) =>
+                                          handleUpdateBranchVariant(
+                                            branchId,
+                                            combo.combination,
+                                            "isUnlimited",
+                                            e.target.checked
+                                          )
+                                        }
+                                        className="h-4 w-4 shrink-0 cursor-pointer rounded border-[#CAD5E2] accent-[#EA580C] focus:outline-none focus:ring-2 focus:ring-[#EA580C]/35"
+                                      />
+                                      <span>Unlimited quantity (prepared on demand)</span>
+                                    </label>
                                   </div>
                                   <div>
                                     <label className="mb-1 block font-['Inter'] text-xs font-bold text-[#45556C]">
@@ -959,7 +990,8 @@ export default function AddProductContent() {
                 <button
                   type="button"
                   onClick={() => setCurrentStep(1)}
-                  className="flex items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white px-6 py-3 font-['Inter'] text-sm font-bold text-[#45556C] transition-colors hover:bg-[#F8FAFC]"
+                  disabled={isMutating}
+                  className="flex items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white px-6 py-3 font-['Inter'] text-sm font-bold text-[#45556C] transition-colors hover:bg-[#F8FAFC] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <ArrowLeft className="h-5 w-5" />
                   Previous Step
@@ -967,12 +999,22 @@ export default function AddProductContent() {
                 <button
                   type="button"
                   onClick={handleFinalSubmit}
-                  disabled={selectedBranches.length === 0}
-                  className="flex items-center gap-2 rounded-xl px-8 py-3 font-['Inter'] text-sm font-bold text-white shadow-lg transition-all hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={selectedBranches.length === 0 || isMutating}
+                  aria-busy={isMutating}
+                  className="flex min-w-44 items-center justify-center gap-2 rounded-xl px-8 py-3 font-['Inter'] text-sm font-bold text-white shadow-lg transition-all hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
                   style={{ backgroundColor: PRIMARY }}
                 >
-                  <Check className="h-5 w-5" />
-                  Create Product
+                  {isMutating ? (
+                    <>
+                      <Loader2 className="h-5 w-5 shrink-0 animate-spin" aria-hidden />
+                      <span>{isEditing ? "Updating…" : "Creating…"}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="h-5 w-5 shrink-0" aria-hidden />
+                      <span>{isEditing ? "Update Product" : "Create Product"}</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>

@@ -40,6 +40,7 @@ export function normalizePaymentStats(raw: unknown): PaymentStats {
 }
 
 export const createPayment = async (payload: CreatePaymentPayload): Promise<any> => {
+  console.log("Creating payment with payload:", payload);
   const res = await axiosInstance.post("/payments", {
     ...payload,
     amount: roundMoney2(Number(payload.amount)),
