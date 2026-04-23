@@ -17,10 +17,10 @@ export const useGetAllComboPacks = (status: "active" | "inactive" | "all" = "act
   });
 };
 
-export const useGetComboPacksByBranch = () => {
+export const useGetComboPacksByBranch = (excludeExpired: boolean = false) => {
   return useQuery({
-    queryKey: [...COMBO_PACK_KEYS.all, "by-branch"],
-    queryFn: () => comboPackService.getComboPacksByBranch(),
+    queryKey: [...COMBO_PACK_KEYS.all, "by-branch", { excludeExpired }],
+    queryFn: () => comboPackService.getComboPacksByBranch(excludeExpired),
   });
 };
 

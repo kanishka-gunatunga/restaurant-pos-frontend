@@ -8,8 +8,8 @@ export const getAllBogoPromotions = async (status: "active" | "inactive" | "all"
   return response.data;
 };
 
-export const getBogoPromotionsByBranch = async (): Promise<BogoPromotion[]> => {
-  const response = await axiosInstance.get(`${API_URL}/branch-specific`);
+export const getBogoPromotionsByBranch = async (excludeExpired: boolean = false): Promise<BogoPromotion[]> => {
+  const response = await axiosInstance.get(`${API_URL}/branch-specific`, { params: { excludeExpired } });
   return response.data;
 };
 

@@ -151,8 +151,8 @@ export default function MenuContent({
   );
 
   const { data: allModifications = [] } = useGetAllModifications("active");
-  const { data: comboPacks = [] } = useGetComboPacksByBranch();
-  const { data: bogoPromotions = [] } = useGetBogoPromotionsByBranch();
+  const { data: comboPacks = [] } = useGetComboPacksByBranch(true);
+  const { data: bogoPromotions = [] } = useGetBogoPromotionsByBranch(true);
 
 
 
