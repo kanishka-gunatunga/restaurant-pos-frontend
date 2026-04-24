@@ -65,3 +65,14 @@ export const deactivateCustomer = async (id: string | number): Promise<{ message
   const res = await axiosInstance.post(`/customers/${id}/deactivate`);
   return res.data;
 };
+
+export const getLoyaltyPointsByMobile = async (mobile: string): Promise<{
+  customerId: number | string;
+  name: string;
+  mobile: string;
+  loyaltyPoints: number;
+}> => {
+  const res = await axiosInstance.get(`/customers/loyalty-points/${mobile}`);
+  return res.data;
+};
+
