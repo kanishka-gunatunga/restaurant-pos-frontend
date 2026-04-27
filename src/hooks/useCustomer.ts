@@ -17,6 +17,7 @@ export const CUSTOMER_KEYS = {
   details: () => [...CUSTOMER_KEYS.all, "detail"] as const,
   detail: (id: string | number) => [...CUSTOMER_KEYS.details(), id] as const,
   byMobile: (mobile: string) => [...CUSTOMER_KEYS.all, "mobile", mobile] as const,
+  loyalty: (mobile: string) => [...CUSTOMER_KEYS.all, "loyalty", mobile] as const,
 };
 
 export const useGetAllCustomers = (params?: CustomerFilterParams) => {
@@ -151,5 +152,13 @@ export const useDeactivateCustomer = () => {
       queryClient.invalidateQueries({ queryKey: CUSTOMER_KEYS.lists() });
       queryClient.invalidateQueries({ queryKey: CUSTOMER_KEYS.detail(id) });
     },
+  });
+};
+
+export const useGetLoyaltyPoints = (mobile: string) => {
+  return useQuery({
+    queryKey: CUSTOMER_KEYS.loyalty(mobile),
+    queryFn: () => customerService.getLoyaltyPointsByMobile(mobile),
+    enabled: !!mobile && mobile.length >= 9,
   });
 };

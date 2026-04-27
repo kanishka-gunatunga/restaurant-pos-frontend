@@ -95,14 +95,15 @@ function BogoCard({ offer, onEdit }: { offer: BogoPromotion; onEdit?: (bogo: Bog
           <button 
             onClick={handleToggleStatus}
             disabled={isActivating || isDeactivating}
-            className={`flex h-[36px] w-[100px] items-center justify-center rounded-[10px] px-4 font-['Inter'] text-sm font-bold transition-all disabled:opacity-50 ${
+            className={`flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-bold transition-colors ${
             isActive 
               ? "bg-[#F1F5F9] text-[#314158] hover:bg-[#E2E8F0]" 
-              : "bg-[#D0FAE5] text-[#007A55] hover:bg-[#BBF7D0]"
+              : "bg-[#EA580C] text-white hover:bg-[#c2410c]"
           }`}>
-            {(isActivating || isDeactivating) ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : isActive ? "Deactivate" : "Activate"}
+            {(isActivating || isDeactivating) && (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            )}
+            {isActive ? "Deactivate" : "Activate"}
           </button>
           <button 
             onClick={() => onEdit?.(offer)}
@@ -110,9 +111,9 @@ function BogoCard({ offer, onEdit }: { offer: BogoPromotion; onEdit?: (bogo: Bog
           >
             <Pencil className="h-[18px] w-[18px]" strokeWidth={2} />
           </button>
-          <button className="flex h-[34px] w-[34px] items-center justify-center rounded-[10px] text-[#EC003F] transition-all hover:bg-[#F1F5F9]">
+          {/* <button className="flex h-[34px] w-[34px] items-center justify-center rounded-[10px] text-[#EC003F] transition-all hover:bg-[#F1F5F9]">
             <Trash2 className="h-[18px] w-[18px]" strokeWidth={2} />
-          </button>
+          </button> */}
         </div>
       </div>
 

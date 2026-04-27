@@ -8,6 +8,9 @@ import {
   buildCreatePaymentDraftFromOrder,
   ORDER_MONEY_EPS,
 } from "@/domains/orders/orderCollectionAmount";
+import { useGetLoyaltyPoints } from "@/hooks/useCustomer";
+import { createPayment } from "@/services/paymentService";
+import { CreatePaymentPayload, IndividualPaymentPayload } from "@/types/payment";
 
 const formatRs = (n: number) =>
   `Rs.${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -32,6 +35,8 @@ type ProcessPaymentModalProps = {
   customerMobile?: string;
   amountDue: number;
   orderId?: number;
+  customerId?: number | string;
+  loyaltyPoints?: number;
   onClose: () => void;
   onComplete: () => void;
 };
@@ -127,9 +132,12 @@ export default function ProcessPaymentModal({
   customerMobile,
   amountDue,
   orderId,
+  customerId,
+  loyaltyPoints: propLoyaltyPoints,
   onClose,
   onComplete,
 }: ProcessPaymentModalProps) {
+
   const [activeMethod, setActiveMethod] = useState<PaymentMethod>("cash");
   const [cashAmount, setCashAmount] = useState("");
   const [cards, setCards] = useState<CardPaymentRow[]>([]);
@@ -140,23 +148,39 @@ export default function ProcessPaymentModal({
   const [voucherCode, setVoucherCode] = useState("");
   const [vouchers, setVouchers] = useState<VoucherRedemptionRow[]>([]);
   const [pointsToUse, setPointsToUse] = useState("");
+  const [appliedPoints, setAppliedPoints] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
   const cashApplied = Number.parseFloat(cashAmount || "0") || 0;
   const cardApplied = cards.reduce((sum, c) => sum + c.amount, 0);
   const voucherApplied = vouchers.reduce((sum, v) => sum + v.amount, 0);
-  const hasCustomerForPoints = customerName.trim().length > 0;
-  const availablePoints = hasCustomerForPoints ? 5000 : 0;
+  const hasCustomerForPoints = customerId != null;
+  const availablePoints = propLoyaltyPoints || 0;
   const pointsRate = 1;
   const pointsNumRaw = Number.parseInt(pointsToUse || "0", 10) || 0;
-  const pointsNum = Math.max(0, Math.min(pointsNumRaw, availablePoints));
-  const pointsApplied = pointsNum * pointsRate;
+  // pointsNum is what's in the input, but appliedPoints is what's confirmed
+  const pointsApplied = appliedPoints * pointsRate;
   const totalPaid = cashApplied + cardApplied + voucherApplied + pointsApplied;
   const remaining = amountDue - totalPaid;
   const canConfirm = remaining <= ORDER_MONEY_EPS;
   const fullyPaid = remaining <= ORDER_MONEY_EPS;
   const cardCountText = `${cards.length}/5 cards`;
+
+  const handleApplyPoints = () => {
+    const num = Number.parseInt(pointsToUse || "0", 10) || 0;
+    if (num <= 0) return toast.error("Enter a valid points amount.");
+    if (num > availablePoints) return toast.error("Not enough points.");
+    
+    const value = num * pointsRate;
+    if (value > remaining + pointsApplied + ORDER_MONEY_EPS) {
+      toast.error("Points value exceeds remaining balance.");
+      return;
+    }
+
+    setAppliedPoints(num);
+    toast.success(`${num} points applied (Rs.${value.toFixed(2)})`);
+  };
 
   const voucherCodeMap = useMemo(
     () => ({
@@ -213,29 +237,70 @@ export default function ProcessPaymentModal({
     if (!canConfirm || isSubmitting) return;
     setIsSubmitting(true);
     try {
-      if (orderId) {
-        try {
-          const fresh = await fetchOrderStateForPaymentCreate(orderId);
-          const draft = buildCreatePaymentDraftFromOrder(fresh);
-          if (draft.amount <= ORDER_MONEY_EPS) {
-            toast.message(
-              "This order is already fully paid on the server. Clearing checkout so you can start a new order."
-            );
-            onComplete();
-            onClose();
-            return;
-          }
-        } catch {
-          toast.error("Could not reload latest order state.");
-          return;
-        }
+      if (!orderId) {
+        toast.error("Order ID is missing.");
+        return;
       }
-      // Split payment API is not ready; we keep this as frontend flow.
+
+      const fresh = await fetchOrderStateForPaymentCreate(orderId);
+      const draft = buildCreatePaymentDraftFromOrder(fresh);
+      if (draft.amount <= ORDER_MONEY_EPS) {
+        toast.message(
+          "This order is already fully paid on the server. Clearing checkout so you can start a new order."
+        );
+        onComplete();
+        onClose();
+        return;
+      }
+
+      const payments: IndividualPaymentPayload[] = [];
+      if (cashApplied > 0) {
+        payments.push({
+          paymentMethod: "cash",
+          amount: cashApplied,
+          paidAmount: cashApplied,
+        });
+      }
+      cards.forEach((c) => {
+        payments.push({
+          paymentMethod: "card",
+          amount: c.amount,
+          paidAmount: c.amount,
+          cardType: c.cardType,
+          cardLastFour: c.last4,
+        });
+      });
+      vouchers.forEach((v) => {
+        payments.push({
+          paymentMethod: "voucher",
+          amount: v.amount,
+          transactionId: v.code,
+        });
+      });
+      if (appliedPoints > 0) {
+        payments.push({
+          paymentMethod: "loyalty_points",
+          amount: appliedPoints * pointsRate,
+          pointsUsed: appliedPoints,
+        });
+      }
+
+      const payload: CreatePaymentPayload = {
+        orderId,
+        status: "paid",
+        payments,
+      };
+
+      await createPayment(payload);
+      
       setIsSuccess(true);
       setTimeout(() => {
         onComplete();
         onClose();
       }, 1400);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to process payment";
+      toast.error(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -352,7 +417,7 @@ export default function ProcessPaymentModal({
                     id: "loyalty",
                     label: "Loyalty Points",
                     icon: Star,
-                    sub: `${pointsNum} pts • ${formatRs(pointsApplied)}`,
+                    sub: `${appliedPoints} pts • ${formatRs(pointsApplied)}`,
                   },
                 ].map((m) => (
                   <button
@@ -432,9 +497,15 @@ export default function ProcessPaymentModal({
                     <div className="flex min-h-11 items-center justify-between rounded-[10px] bg-[#FEF9C3] px-3 py-2">
                       <span className="inline-flex items-center gap-2 font-['Inter'] text-sm font-medium leading-5 tracking-normal text-[#314158]">
                         <Star className="h-4 w-4 text-[#E17100]" />
-                        <span>Loyalty Points ({pointsNum})</span>
+                        <span>Loyalty Points ({appliedPoints})</span>
                       </span>
                       <span className="font-['Inter'] text-sm font-bold leading-5 tracking-normal text-[#BB4D00]">{formatRs(pointsApplied)}</span>
+                      <button 
+                        onClick={() => setAppliedPoints(0)}
+                        className="ml-2 text-red-500 hover:text-red-700"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
                     </div>
                   )}
                   {cashApplied + cards.length + vouchers.length + (pointsApplied > 0 ? 1 : 0) ===
@@ -708,6 +779,7 @@ export default function ProcessPaymentModal({
                         />
                         <button
                           type="button"
+                          onClick={handleApplyPoints}
                           className="mt-3 flex w-full items-center justify-center gap-2 rounded-[14px] bg-[#E17100] py-3 font-['Inter'] text-base font-bold leading-6 tracking-normal text-white transition-colors duration-300 ease-out hover:bg-[#c76000]"
                         >
                           <Star className="h-5 w-5 text-white" />

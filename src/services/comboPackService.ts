@@ -14,8 +14,12 @@ export const getAllComboPacks = async (
   return res.data;
 };
 
-export const getComboPacksByBranch = async (): Promise<ComboPack[]> => {
-  const res = await axiosInstance.get("/product-bundles/branch-specific");
+export const getComboPacksByBranch = async (
+  excludeExpired: boolean = false
+): Promise<ComboPack[]> => {
+  const res = await axiosInstance.get("/product-bundles/branch-specific", {
+    params: { excludeExpired },
+  });
   return res.data;
 };
 

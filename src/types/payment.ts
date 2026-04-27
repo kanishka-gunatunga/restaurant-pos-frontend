@@ -25,14 +25,28 @@ export interface PaymentUpdatePayload {
   refund_amount?: number;
 }
 
-export interface CreatePaymentPayload {
-  orderId: number;
-  paymentMethod: "cash" | "card";
+export interface IndividualPaymentPayload {
+  paymentMethod: "cash" | "card" | "voucher" | "loyalty_points";
   amount: number;
   paidAmount?: number;
   paid_amount?: number;
   transactionId?: string;
+  paymentRole?: "sale" | "balance_due";
+  cardType?: string;
+  cardLastFour?: string;
+  pointsUsed?: number;
+}
+
+export interface CreatePaymentPayload {
+  orderId: number;
   status?: PaymentStatus;
+  points_used?: number;
+  payments?: IndividualPaymentPayload[];
+  paymentMethod?: "cash" | "card" | "voucher" | "loyalty_points";
+  amount?: number;
+  paidAmount?: number;
+  paid_amount?: number;
+  transactionId?: string;
   paymentRole?: "sale" | "balance_due";
 }
 

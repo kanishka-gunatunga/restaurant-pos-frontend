@@ -46,6 +46,9 @@ export default function CustomerTable({
               <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-[#90A1B9] text-center">
                 Orders
               </th>
+              <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-[#90A1B9] text-center">
+                Loyalty
+              </th>
               <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-[#90A1B9] text-right">
                 Actions
               </th>
@@ -119,6 +122,11 @@ export default function CustomerTable({
                   <td className="px-6 py-4 text-center">
                     <span className="inline-flex h-7 min-w-[32px] items-center justify-center rounded-full bg-[#EEF2FF] px-3 text-[12px] font-bold text-[#4F39F6]">
                       {customer.orders_count || 0}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-center">
+                    <span className="inline-flex h-7 min-w-[32px] items-center justify-center border border-1-[#FFE6BE] rounded-full bg-[#FEF7DB80] px-3 text-[12px] font-bold text-[#F58F00]">
+                      {customer.loyalty_points || 0}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right">

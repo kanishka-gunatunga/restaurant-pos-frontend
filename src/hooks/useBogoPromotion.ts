@@ -17,10 +17,10 @@ export const useGetAllBogoPromotions = (status: "active" | "inactive" | "all" = 
   });
 };
 
-export const useGetBogoPromotionsByBranch = () => {
+export const useGetBogoPromotionsByBranch = (excludeExpired: boolean = false) => {
   return useQuery({
-    queryKey: [...BOGO_PROMOTION_KEYS.lists(), "branch-specific"],
-    queryFn: () => bogoPromotionService.getBogoPromotionsByBranch(),
+    queryKey: [...BOGO_PROMOTION_KEYS.lists(), "branch-specific", { excludeExpired }],
+    queryFn: () => bogoPromotionService.getBogoPromotionsByBranch(excludeExpired),
   });
 };
 

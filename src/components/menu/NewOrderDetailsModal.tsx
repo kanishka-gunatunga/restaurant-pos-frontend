@@ -201,6 +201,7 @@ export default function NewOrderDetailsModal({
         phone: phone.trim(),
         customerId: resolvedCustomerId,
         originalCustomerName: resolvedOriginalCustomerName,
+        loyaltyPoints: customerData?.loyalty_points,
         orderType: "Take Away",
       });
       return;
@@ -219,6 +220,7 @@ export default function NewOrderDetailsModal({
       phone: phone.trim(),
       customerId: resolvedCustomerId,
       originalCustomerName: resolvedOriginalCustomerName,
+      loyaltyPoints: customerData?.loyalty_points,
       orderType,
       ...(orderType === "Dine In" && { tableNumber }),
       ...(orderType === "Delivery" && {
