@@ -3,6 +3,7 @@ export type ProductVariant = {
   variationId?: number;
   name: string;
   price: number;
+  barcode?: string;
 };
 
 export type ProductAddOn = {
@@ -20,6 +21,7 @@ export type MenuItem = {
   price: number;
   image?: string;
   description?: string;
+  barcode?: string;
   isOffer?: boolean;
   variants?: ProductVariant[];
   addOns?: ProductAddOn[];

@@ -82,6 +82,7 @@ export function mapProductToMenuItem(
         variationId: variation.id,
         name: isGeneric ? option.name : `${variation.name}: ${option.name}`,
         price: Number(branchPrice.price),
+        barcode: option.barcode,
       });
     });
   });
@@ -98,6 +99,7 @@ export function mapProductToMenuItem(
     price: basePrice,
     image: normalizeProductImageUrl(product.image) || undefined,
     description: product.description || undefined,
+    barcode: product.barcode || undefined,
     variants: variants.length > 0 ? variants : undefined,
     addOns: addOns.length > 0 ? addOns : undefined,
   };

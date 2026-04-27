@@ -323,7 +323,7 @@ export default function AddComboModal({
     }
 
     try {
-      // Group branches by identical items configuration
+
       const configGroups: Record<string, number[]> = {};
 
       activeBranches.forEach((branch) => {
