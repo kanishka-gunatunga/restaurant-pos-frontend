@@ -7,6 +7,7 @@ export interface GetReportParams {
   reportTypePath: string;
   product?: string;
   export?: string;
+  print?: boolean;
 }
 
 export const getReportData = async (params: GetReportParams) => {

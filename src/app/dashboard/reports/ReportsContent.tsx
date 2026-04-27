@@ -17,6 +17,7 @@ import {
   generateOrdersReport,
   generateProductWiseReport,
   generatePaymentReport,
+  generateSalesReport,
 } from "@/lib/pdfGenerator";
 import { format } from "date-fns";
 
@@ -50,6 +51,7 @@ export default function ReportsContent() {
   const [toDate, setToDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [branch, setBranch] = useState("all");
   const [selectedProduct, setSelectedProduct] = useState("all");
+  const [printSalesReport, setPrintSalesReport] = useState(false);
 
   const generateReportMutation = useGenerateReport();
 
@@ -71,9 +73,10 @@ export default function ReportsContent() {
         branch: branch === "all" ? "all" : branch,
         reportTypePath,
         product: selectedProduct !== "all" ? selectedProduct : undefined,
+        print: selectedReport === "sales" ? printSalesReport : undefined,
       });
 
-      if (selectedReport === "sales") {
+      if (selectedReport === "sales" && printSalesReport) {
         if (reportDataRaw.success !== false) {
           toast.success(reportDataRaw.message || "Sales report has been sent to the printer successfully.");
         } else {
@@ -104,6 +107,8 @@ export default function ReportsContent() {
         generatePaymentReport(reportData, conf);
       } else if (selectedReport === "order_summary") {
         generateOrdersReport(reportData, conf);
+      } else if (selectedReport === "sales") {
+        generateSalesReport(reportData, conf);
       }
     } catch (error) {
       console.error("Failed to generate report", error);
@@ -240,6 +245,22 @@ export default function ReportsContent() {
                         ▼
                       </span>
                     </div>
+                  </div>
+                )}
+
+                {(selectedReport === "sales") && (
+                  <div className="min-w-0 flex-1 flex flex-col justify-end pb-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={printSalesReport}
+                        onChange={(e) => setPrintSalesReport(e.target.checked)}
+                        className="h-5 w-5 rounded border-[#E2E8F0] text-primary focus:ring-primary"
+                      />
+                      <span className="font-['Inter'] text-[14px] font-medium text-[#1D293D]">
+                        Print Report
+                      </span>
+                    </label>
                   </div>
                 )}
 
