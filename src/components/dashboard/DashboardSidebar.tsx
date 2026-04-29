@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutGrid, ShoppingBag, CreditCard, Users, Calculator, LogOut, X } from "lucide-react";
+import { LayoutGrid, ShoppingBag, CreditCard, Users, Calculator, LogOut, X, Square } from "lucide-react";
 import OrdersIcon from "@/components/icons/OrdersIcon";
 import DrawerIcon from "@/components/icons/DrawerIcon";
 import { ROUTES } from "@/lib/constants";
@@ -24,6 +24,7 @@ const navLinks = [
   { href: ROUTES.DASHBOARD_ORDERS, label: "Orders", icon: OrdersIcon },
   { href: ROUTES.DASHBOARD_PAYMENTS, label: "Payments", icon: CreditCard },
   { href: ROUTES.DASHBOARD_CUSTOMERS, label: "Customers", icon: Users },
+  { href: ROUTES.DASHBOARD_TABLES, label: "Tables", icon: Square },
 ] as const;
 
 const drawerLink = { href: ROUTES.DASHBOARD_DRAWER, label: "Drawer", icon: DrawerIcon } as const;
