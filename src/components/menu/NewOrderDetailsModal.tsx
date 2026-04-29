@@ -360,7 +360,8 @@ export default function NewOrderDetailsModal({
               </div>
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-4">
+            {/* <div className="mt-4 grid grid-cols-2 gap-4"> */}
+            <div className="mt-4">
               <div>
                 <label className={labelClass}>Landmark</label>
                 <div className="relative mt-1.5">
@@ -374,6 +375,7 @@ export default function NewOrderDetailsModal({
                   />
                 </div>
               </div>
+              {/*
               <div>
                 <label className={labelClass}>Zip Code</label>
                 <div className="relative mt-1.5">
@@ -387,6 +389,7 @@ export default function NewOrderDetailsModal({
                   />
                 </div>
               </div>
+              */}
             </div>
 
             <div className="mt-4">
