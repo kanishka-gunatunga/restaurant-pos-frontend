@@ -1,4 +1,4 @@
-import api from './api';
+import api from '@/lib/api/axiosInstance';
 import { Table, CreateTableRequest, UpdateTableRequest } from '../types/table';
 
 export const tableService = {
