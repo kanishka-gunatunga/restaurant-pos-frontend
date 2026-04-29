@@ -458,6 +458,7 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
             customerId: orderDetails.customerId,
             totalAmount: total,
             orderType: resolvedOrderType,
+            tableId: orderDetails.tableId ?? null,
             tableNumber: orderDetails.tableNumber,
             orderDiscount: 0,
             tax: cartTaxAmount,

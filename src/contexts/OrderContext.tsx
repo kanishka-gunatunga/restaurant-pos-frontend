@@ -20,6 +20,7 @@ export type OrderDetailsData = {
   customerId?: string | number;
   originalCustomerName?: string;
   orderType: OrderType;
+  tableId?: number | null;
   tableNumber?: string;
   deliveryAddress?: string;
   landmark?: string;

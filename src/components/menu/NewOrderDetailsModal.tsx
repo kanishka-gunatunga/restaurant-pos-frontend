@@ -7,6 +7,7 @@ import type { OrderDetailsData, OrderType } from "@/contexts/OrderContext";
 import { useGetCustomerByMobile } from "@/hooks/useCustomer";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDeliveryChargesByBranch } from "@/hooks/useDeliveryCharge";
+import { useGetTables } from "@/hooks/useTable";
 
 type Props = {
   onSubmit: (data: OrderDetailsData) => void;
@@ -163,7 +164,11 @@ export default function NewOrderDetailsModal({
   const [phone, setPhone] = useState(initialData?.phone ?? "");
   const [hasManualNameEdit, setHasManualNameEdit] = useState(false);
   const [orderType, setOrderType] = useState<OrderType>(initialData?.orderType ?? "Dine In");
-  const [tableNumber, setTableNumber] = useState(initialData?.tableNumber ?? "");
+  const [tableId, setTableId] = useState(
+    initialData?.tableId != null && Number.isFinite(Number(initialData.tableId))
+      ? String(initialData.tableId)
+      : ""
+  );
   const [deliveryAddress, setDeliveryAddress] = useState(initialData?.deliveryAddress ?? "");
   const [landmark, setLandmark] = useState(initialData?.landmark ?? "");
   const [zipCode, setZipCode] = useState(initialData?.zipCode ?? "");
@@ -176,6 +181,7 @@ export default function NewOrderDetailsModal({
   const [toast, setToast] = useState<string | null>(null);
   const { user } = useAuth();
   const userBranchId = user?.branchId ?? null;
+  const { data: allTables = [], isLoading: isLoadingTables } = useGetTables();
   const { data: deliveryChargesByBranch = [], isLoading: isLoadingDeliveryCharges } =
     useDeliveryChargesByBranch(userBranchId);
   const { data: customerData, isLoading: isLoadingCustomer } = useGetCustomerByMobile(phone.length >= 10 ? phone : "");
@@ -206,13 +212,14 @@ export default function NewOrderDetailsModal({
       });
       return;
     }
-    if (orderType === "Dine In" && !tableNumber.trim())
-      return showToast("Please enter table number.");
+    if (orderType === "Dine In" && !tableId)
+      return showToast("Please select a table.");
     if (orderType === "Delivery" && !deliveryAddress.trim())
       return showToast("Please enter delivery address.");
     if (orderType === "Delivery" && !deliveryCharge)
       return showToast("Please select a delivery charge.");
 
+    const selectedTable = availableTables.find((table) => String(table.id) === tableId);
     const selectedDeliveryCharge = deliveryChargeOptions.find((option) => option.value === deliveryCharge);
 
     onSubmit({
@@ -222,7 +229,10 @@ export default function NewOrderDetailsModal({
       originalCustomerName: resolvedOriginalCustomerName,
       loyaltyPoints: customerData?.loyalty_points,
       orderType,
-      ...(orderType === "Dine In" && { tableNumber }),
+      ...(orderType === "Dine In" && {
+        tableId: selectedTable?.id ?? null,
+        tableNumber: selectedTable?.table_name ?? "",
+      }),
       ...(orderType === "Delivery" && {
         deliveryAddress,
         landmark,
@@ -243,6 +253,7 @@ export default function NewOrderDetailsModal({
   const iconClass = "absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#90A1B9]";
 
   const orderTypes: OrderType[] = ["Dine In", "Take Away", "Delivery"];
+  const availableTables = allTables.filter((table) => table.status === "available");
   const deliveryChargeOptions = deliveryChargesByBranch.map((charge) => ({
     value: String(charge.id),
     title: charge.title,
@@ -350,15 +361,27 @@ export default function NewOrderDetailsModal({
 
         {orderType === "Dine In" && (
           <div className="mt-6">
-            <label className={labelClass}>Table Number</label>
+            <label className={labelClass}>Table</label>
             <div className="relative mt-1.5">
-              <input
-                type="text"
-                value={tableNumber}
-                onChange={(e) => setTableNumber(e.target.value)}
-                placeholder="e.g. T6"
-                className="w-full rounded-[14px] border border-[#E3E4EA] bg-[#F8FAFC] px-4 py-3 font-['Arial'] text-base leading-[100%] text-[#0A0A0A80] placeholder:text-[#0A0A0A80] focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C]/20"
-              />
+              <select
+                value={tableId}
+                onChange={(e) => setTableId(e.target.value)}
+                className={selectClass}
+              >
+                <option value="" disabled>
+                  {isLoadingTables
+                    ? "Loading tables..."
+                    : availableTables.length > 0
+                      ? "Select table"
+                      : "No available tables"}
+                </option>
+                {availableTables.map((table) => (
+                  <option key={table.id} value={String(table.id)}>
+                    {table.table_name}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#90A1B9]" />
             </div>
           </div>
         )}

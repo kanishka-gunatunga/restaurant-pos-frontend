@@ -62,6 +62,8 @@ export interface Order {
   customerId?: string | number;
   totalAmount: number;
   orderType: OrderType;
+  tableId?: number | null;
+  tableName?: string | null;
   tableNumber?: string;
   orderDiscount: number;
   tax: number;
@@ -100,6 +102,7 @@ export interface CreateOrderData {
   customerId?: string | number;
   totalAmount: number;
   orderType?: OrderType;
+  tableId?: number | null;
   tableNumber?: string;
   orderDiscount: number;
   tax: number;

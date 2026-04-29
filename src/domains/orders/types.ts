@@ -84,6 +84,8 @@ export type OrderDetailsView = {
   customerId?: string | number;
   totalAmount: number;
   orderType?: OrderTypeLabel;
+  tableId?: number | null;
+  tableName?: string | null;
   tableNumber?: string;
   deliveryAddress?: string;
   landmark?: string;
@@ -115,6 +117,8 @@ export type OrderRow = {
   status: OrderStatus;
   paymentStatus: PaymentStatus;
   orderType?: OrderTypeLabel;
+  tableId?: number | null;
+  tableName?: string | null;
   tableNumber?: string;
   deliveryAddress?: string;
   landmark?: string;
@@ -205,6 +209,15 @@ export function mapOrderToRow(apiOrder: ApiOrder): OrderRow {
     status: apiOrder.status || "pending",
     paymentStatus: orderPaymentStatus,
     orderType,
+    tableId:
+      apiOrder.tableId != null && Number.isFinite(Number(apiOrder.tableId))
+        ? Number(apiOrder.tableId)
+        : null,
+    tableName:
+      (raw.tableName as string | undefined) ??
+      (raw.table_name as string | undefined) ??
+      apiOrder.tableNumber ??
+      null,
     tableNumber: apiOrder.tableNumber,
     deliveryAddress: apiOrder.deliveryAddress,
     landmark: apiOrder.landmark,
