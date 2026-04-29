@@ -1,12 +1,13 @@
 "use client";
 
-import { Search, UserPlus, Megaphone } from "lucide-react";
+import { Search, UserPlus, Megaphone, Percent } from "lucide-react";
 
 interface CustomerHeaderProps {
   searchTerm: string;
   onSearchChange: (value: string) => void;
   onAddClick: () => void;
   onSendPromotionClick: () => void;
+  onDiscountClick: () => void;
 }
 
 export default function CustomerHeader({
@@ -14,6 +15,7 @@ export default function CustomerHeader({
   onSearchChange,
   onAddClick,
   onSendPromotionClick,
+  onDiscountClick,
 }: CustomerHeaderProps) {
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
@@ -35,12 +37,14 @@ export default function CustomerHeader({
             className="h-11 w-full text-[#1D293D] rounded-xl border border-[#E2E8F0] bg-white pl-10 pr-4 text-[14px] outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10"
           />
         </div>
+          Send Promotion
+        </button>
         <button
-          onClick={onSendPromotionClick}
+          onClick={onDiscountClick}
           className="flex h-11 items-center gap-2 rounded-xl bg-white border border-[#E2E8F0] text-[#1D293D] cursor-pointer px-5 text-[14px] font-bold shadow-sm transition-all hover:bg-[#F8FAFC] hover:scale-[1.02] active:scale-[0.98]"
         >
-          <Megaphone className="h-4 w-4" />
-          Send Promotion
+          <Percent className="h-4 w-4" />
+          Discounts
         </button>
         <button
           onClick={onAddClick}

@@ -27,6 +27,7 @@ export default function AddCustomerModal({ onClose, onSave, initialData }: AddCu
     mobile: initialData?.mobile || "",
     email: initialData?.email || "",
     address: initialData?.address || "",
+    category: initialData?.category || "normal",
     promotions_enabled: initialData?.promotions_enabled ?? true,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -57,7 +58,7 @@ export default function AddCustomerModal({ onClose, onSave, initialData }: AddCu
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
@@ -138,6 +139,27 @@ export default function AddCustomerModal({ onClose, onSave, initialData }: AddCu
               onChange={handleChange}
               className="h-12 w-full rounded-xl bg-[#F8FAFC] px-4 text-[14px] text-[#1D293D] outline-none transition-all focus:ring-2 focus:ring-primary/10"
             />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[12px] font-bold uppercase text-[#90A1B9]">CATEGORY</label>
+            <div className="relative">
+              <select
+                name="category"
+                value={formData.category}
+                onChange={handleChange}
+                className="h-12 w-full rounded-xl bg-[#F8FAFC] px-4 text-[14px] text-[#1D293D] outline-none transition-all focus:ring-2 focus:ring-primary/10 appearance-none cursor-pointer"
+              >
+                <option value="normal">Normal</option>
+                <option value="staff">Staff</option>
+                <option value="management">Management</option>
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-[#90A1B9]">
+                <svg className="h-4 w-4 fill-current" viewBox="0 0 20 20">
+                  <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                </svg>
+              </div>
+            </div>
           </div>
 
           <div className="mt-8 flex items-center gap-4">

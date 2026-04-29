@@ -41,6 +41,9 @@ export default function CustomerTable({
                 Address
               </th>
               <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-[#90A1B9]">
+                Category
+              </th>
+              <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-[#90A1B9]">
                 Promotions
               </th>
               <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-[#90A1B9] text-center">
@@ -104,6 +107,19 @@ export default function CustomerTable({
                       <MapPin className="h-3.5 w-3.5 text-[#90A1B9] shrink-0" />
                       {customer.address || "-"}
                     </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${
+                        customer.category === "management"
+                          ? "bg-purple-100 text-purple-700 border border-purple-200"
+                          : customer.category === "staff"
+                          ? "bg-blue-100 text-blue-700 border border-blue-200"
+                          : "bg-gray-100 text-gray-600 border border-gray-200"
+                      }`}
+                    >
+                      {customer.category}
+                    </span>
                   </td>
                   <td className="px-6 py-4">
                     <button

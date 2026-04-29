@@ -5,7 +5,8 @@ import {
   UpdateCustomerData, 
   CustomerSearchParams, 
   CustomerFilterParams,
-  BulkPromotionData
+  BulkPromotionData,
+  CategoryDiscount
 } from "@/types/customer";
 
 export const getAllCustomers = async (params?: CustomerFilterParams): Promise<Customer[]> => {
@@ -73,6 +74,16 @@ export const getLoyaltyPointsByMobile = async (mobile: string): Promise<{
   loyaltyPoints: number;
 }> => {
   const res = await axiosInstance.get(`/customers/loyalty-points/${mobile}`);
+  return res.data;
+};
+
+export const getCategoryDiscounts = async (): Promise<CategoryDiscount[]> => {
+  const res = await axiosInstance.get("/customer-category-discounts");
+  return res.data;
+};
+
+export const updateCategoryDiscounts = async (discounts: CategoryDiscount[]): Promise<{ message: string }> => {
+  const res = await axiosInstance.post("/customer-category-discounts", { discounts });
   return res.data;
 };
 
