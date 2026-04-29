@@ -178,7 +178,7 @@ export default function NewOrderDetailsModal({
   const userBranchId = user?.branchId ?? null;
   const { data: deliveryChargesByBranch = [], isLoading: isLoadingDeliveryCharges } =
     useDeliveryChargesByBranch(userBranchId);
-  const { data: customerData } = useGetCustomerByMobile(phone.length >= 10 ? phone : "");
+  const { data: customerData, isLoading: isLoadingCustomer } = useGetCustomerByMobile(phone.length >= 10 ? phone : "");
   const resolvedCustomerName =
     !hasManualNameEdit && customerData?.name ? customerData.name : customerName;
   const resolvedCustomerId = customerData?.id ?? initialData?.customerId;
@@ -274,22 +274,6 @@ export default function NewOrderDetailsModal({
 
         <div className="mt-6 grid grid-cols-2 gap-4">
           <div>
-            <label className={labelClass}>Customer Name</label>
-            <div className="relative mt-1.5">
-              <User className={iconClass} />
-              <input
-                type="text"
-                value={resolvedCustomerName}
-                onChange={(e) => {
-                  setCustomerName(e.target.value);
-                  setHasManualNameEdit(true);
-                }}
-                placeholder="Enter name"
-                className={inputClass}
-              />
-            </div>
-          </div>
-          <div>
             <label className={labelClass}>Mobile Number</label>
             <div className="relative mt-1.5">
               <Phone className={iconClass} />
@@ -304,6 +288,28 @@ export default function NewOrderDetailsModal({
                 placeholder="07X-XXXX-XXX"
                 className={inputClass}
               />
+            </div>
+          </div>
+          <div>
+            <label className={labelClass}>Customer Name</label>
+            <div className="relative mt-1.5">
+              <User className={iconClass} />
+              <input
+                type="text"
+                value={resolvedCustomerName}
+                onChange={(e) => {
+                  setCustomerName(e.target.value);
+                  setHasManualNameEdit(true);
+                }}
+                placeholder={isLoadingCustomer ? "Searching..." : "Enter name"}
+                className={inputClass}
+                disabled={isLoadingCustomer}
+              />
+              {isLoadingCustomer && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#EA580C] border-t-transparent"></div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -373,7 +379,8 @@ export default function NewOrderDetailsModal({
               </div>
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-4">
+            {/* <div className="mt-4 grid grid-cols-2 gap-4"> */}
+            <div className="mt-4">
               <div>
                 <label className={labelClass}>Landmark</label>
                 <div className="relative mt-1.5">
@@ -387,6 +394,7 @@ export default function NewOrderDetailsModal({
                   />
                 </div>
               </div>
+              {/*
               <div>
                 <label className={labelClass}>Zip Code</label>
                 <div className="relative mt-1.5">
@@ -400,6 +408,7 @@ export default function NewOrderDetailsModal({
                   />
                 </div>
               </div>
+              */}
             </div>
 
             <div className="mt-4">
