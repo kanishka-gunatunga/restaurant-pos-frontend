@@ -4,10 +4,13 @@ import { AxiosError } from "axios";
 import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import MenuProductImage from "./MenuProductImage";
 import { toast } from "sonner";
-import { User, Phone, ChefHat, Trash2, X } from "lucide-react";
+import { User, Phone, ChefHat, Trash2, X, Gem, ShoppingBasket } from "lucide-react";
 import { useOrder } from "@/contexts/OrderContext";
 import { useCreateOrder } from "@/hooks/useOrder";
-import { useUpdateCustomer } from "@/hooks/useCustomer";
+import {
+  useUpdateCustomer,
+  useGetCustomerByMobile,
+} from "@/hooks/useCustomer";
 import { useAuth } from "@/contexts/AuthContext";
 import { useServiceCharge } from "@/hooks/useServiceCharge";
 import {
@@ -233,6 +236,7 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
 
   const { data: discountsData } = useGetAllDiscounts({ status: "active" });
   const discounts = discountsData || [];
+  const { data: customerData } = useGetCustomerByMobile(activeOrderDetails?.phone || "");
 
   const orderDetails = activeOrderDetails;
   const orderLabel = "Current Order";
@@ -394,20 +398,37 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
             0
           );
           const baseUnitPrice = Math.max(0, Number(item.price) - modificationUnitSum);
+
+          // Backend expects `variationOptionId` (row id from `variationoptions`) only.
+          // Never send the parent `variationId` (row id from `variations`) — the backend
+          // treats that as a FK into `variationoptions` and rejects it.
+          // Omit the field entirely when the line has no variation (do not send 0/"").
+          const hasVariationOption =
+            typeof item.variationOptionId === "number" && item.variationOptionId > 0;
+
+          const isBundleLine = item.promotionType === "COMBO";
+          const isBogoLine = item.promotionType === "BOGO";
+
           return {
-            productId: item.productId,
-            variationId: item.variationId,
-            variationOptionId: item.variationOptionId,
+            // Bundle lines are identified solely by productBundleId on the backend.
+            ...(isBundleLine ? {} : { productId: item.productId }),
+            ...(hasVariationOption && !isBundleLine
+              ? { variationOptionId: item.variationOptionId }
+              : {}),
             quantity: item.qty,
             unitPrice: Number(baseUnitPrice.toFixed(2)),
             productDiscount:
               (itemsWithDiscounts.find((i) => i.id === item.id)?.discountAmount || 0) / item.qty,
-            modifications: item.modifications?.map((m) => ({
-              modificationId: m.modificationId,
-              price: m.price,
-            })),
-            bogoPromotionId: item.promotionType === "BOGO" ? item.promotionId : undefined,
-            productBundleId: item.promotionType === "COMBO" ? item.promotionId : undefined,
+            ...(item.modifications && item.modifications.length > 0
+              ? {
+                  modifications: item.modifications.map((m) => ({
+                    modificationId: m.modificationId,
+                    price: m.price,
+                  })),
+                }
+              : {}),
+            ...(isBogoLine && item.promotionId ? { bogoPromotionId: item.promotionId } : {}),
+            ...(isBundleLine && item.promotionId ? { productBundleId: item.promotionId } : {}),
             ...(item.recipientName || item.recipientMobile
               ? {
                   notes: `Recipient${item.recipientName ? `: ${item.recipientName}` : ""}${
@@ -572,81 +593,26 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
                   EDIT INFO
                 </button>
               </div>
-              <div className="flex items-center gap-4 bg-[#F8FAFC80] px-5 pb-2.5">
-                <div className="flex min-w-0 w-1/2 items-center gap-1.5 font-['Arial'] text-sm leading-5 text-[#45556C]">
-                  <User className="h-3.5 w-3.5 shrink-0" />
-                  <span className="min-w-0 truncate">{orderDetails.customerName}</span>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 border-b border-[#F1F5F9] bg-[#F8FAFC80] px-5 pb-3 pt-1">
+                <div className="flex min-w-0 items-center gap-2 font-['Arial'] text-[14px] leading-5 text-[#45556C]">
+                  <User className="h-4 w-4 shrink-0 text-[#90A1B9]" />
+                  <span className="truncate">{orderDetails.customerName}</span>
                 </div>
-                <div className="flex min-w-0 w-1/2 items-center gap-1.5 font-['Arial'] text-sm leading-5 text-[#45556C]">
-                  <Phone className="h-3.5 w-3.5 shrink-0" />
-                  <span className="min-w-0 truncate">{orderDetails.phone}</span>
+                <div className="flex min-w-0 items-center gap-2 font-['Arial'] text-[14px] leading-5 text-[#45556C]">
+                  <Phone className="h-4 w-4 shrink-0 text-[#90A1B9]" />
+                  <span className="truncate">{orderDetails.phone}</span>
+                </div>
+                {!isVoucherOnlyOrder && (
+                  <div className="flex min-w-0 items-center gap-2 font-['Arial'] text-[14px] font-bold leading-5 text-[#E26522]">
+                    <ShoppingBasket className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{orderDetails.orderType}</span>
+                  </div>
+                )}
+                <div className="flex min-w-0 items-center gap-2 font-['Arial'] text-[14px] font-bold leading-5 text-[#F58F00]">
+                  <Gem className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{customerData?.loyalty_points || 0} Points</span>
                 </div>
               </div>
-              {!isVoucherOnlyOrder && (
-                <div className="flex items-center gap-1.5 border-b border-[#F1F5F9] bg-[#F8FAFC80] px-5 py-1.5">
-                  <svg
-                    className="h-4 w-4 shrink-0"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 16 16"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M10 7.33331L9.33337 13.3333"
-                      stroke="#E26522"
-                      strokeWidth="1.33333"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M12.6667 7.33335L10 2.66669"
-                      stroke="#E26522"
-                      strokeWidth="1.33333"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M1.33337 7.33331H14.6667"
-                      stroke="#E26522"
-                      strokeWidth="1.33333"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M2.33337 7.33331L3.40004 12.2666C3.46238 12.5723 3.62994 12.8465 3.87356 13.0414C4.11719 13.2363 4.42145 13.3396 4.73337 13.3333H11.2667C11.5786 13.3396 11.8829 13.2363 12.1265 13.0414C12.3701 12.8465 12.5377 12.5723 12.6 12.2666L13.7334 7.33331"
-                      stroke="#E26522"
-                      strokeWidth="1.33333"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M3 10.3333H13"
-                      stroke="#E26522"
-                      strokeWidth="1.33333"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M3.33337 7.33335L6.00004 2.66669"
-                      stroke="#E26522"
-                      strokeWidth="1.33333"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M6 7.33331L6.66667 13.3333"
-                      stroke="#E26522"
-                      strokeWidth="1.33333"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                  <span className="font-['Arial'] text-sm font-bold leading-5 text-[#E26522]">
-                    {orderDetails.orderType}
-                  </span>
-                </div>
-              )}
             </>
           ) : (
             <>
@@ -1087,6 +1053,8 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
           customerMobile={paymentFlow.customerMobile ?? orderDetails?.phone}
           amountDue={paymentFlow.settlementAmount}
           orderId={paymentFlow.orderId}
+          customerId={orderDetails?.customerId}
+          loyaltyPoints={customerData?.loyalty_points}
           onClose={() => {
             setPaymentFlow(null);
             setCheckoutLockedOrderSlotId(null);

@@ -10,6 +10,7 @@ export interface Customer {
   promotions_enabled: boolean;
   orders_count?: number;
   latest_order_date?: string;
+  loyalty_points?: number;
   createdAt?: string;
   updatedAt?: string;
 }

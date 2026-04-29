@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, X, ChevronDown, Link2, Package, Calendar, Loader2 } from "lucide-react";
+import { Plus, X, ChevronDown, Link2, Package, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { Product, UpdateProductPayload } from "@/types/product";
+import { Product, UpdateProductPayload, readIsUnlimitedFromPrice } from "@/types/product";
 import { useGetAllCategories } from "@/hooks/useCategory";
 import { useGetAllModifications } from "@/hooks/useModification";
 import { useUpdateProduct, useCreateProduct } from "@/hooks/useProduct";
@@ -32,9 +32,11 @@ export default function AddProductModal({
     image: "",
     price: "",
     quantity: "",
+    isUnlimited: false,
     categoryId: 0,
     subCategoryId: 0,
-    variants: [] as { name: string; price: string }[],
+    barcode: "",
+    variants: [] as { name: string; price: string; barcode?: string }[],
     addonGroupIds: [] as number[],
     selectedBranchIds: [] as number[],
   });
@@ -51,20 +53,31 @@ export default function AddProductModal({
   useEffect(() => {
     if (open) {
       if (product) {
-        // Find price/quantity for this branch if possible, else take first
         const variation = product.variations?.[0];
         const option = variation?.options?.[0];
-        const branchPrice = option?.prices?.[0]; // Simplified for modal
+        const prices = option?.prices ?? [];
+        const contextBranchNum = Number.parseInt(branchId, 10);
+        const productBranchIds = product.branches?.map((pb) => Number(pb.branchId)) ?? [];
+        const branchPrice =
+          prices.find((p) => Number(p.branchId) === contextBranchNum) ??
+          prices.find((p) => productBranchIds.includes(Number(p.branchId))) ??
+          prices[0];
 
         setFormData({
           name: product.name,
           code: product.code,
           image: product.image || "",
-          price: branchPrice?.price.toString() || "",
-          quantity: branchPrice?.quantity.toString() || "",
+          price: branchPrice?.price != null ? String(branchPrice.price) : "",
+          quantity: branchPrice?.quantity != null ? String(branchPrice.quantity) : "",
+          isUnlimited: readIsUnlimitedFromPrice(branchPrice),
           categoryId: product.categoryId || 0,
           subCategoryId: product.subCategoryId || 0,
-          variants: variation?.options?.map(o => ({ name: o.name, price: o.prices?.[0]?.price.toString() || "" })) || [],
+          barcode: product.barcode || "",
+          variants: variation?.options?.map(o => ({
+            name: o.name,
+            price: o.prices?.[0]?.price.toString() || "",
+            barcode: o.barcode || ""
+          })) || [],
           addonGroupIds: product.productModifications?.map(pm => pm.modificationId) || [],
           selectedBranchIds: product.branches?.map(pb => pb.branchId) || [],
         });
@@ -75,18 +88,23 @@ export default function AddProductModal({
           image: "",
           price: "",
           quantity: "",
+          isUnlimited: false,
           categoryId: 0,
           subCategoryId: 0,
+          barcode: "",
           variants: [],
           addonGroupIds: [],
           selectedBranchIds: [parseInt(branchId)],
         });
       }
     }
-  }, [open, product]);
+  }, [open, product, branchId]);
 
   const handleSave = async () => {
     if (!formData.name.trim() || !formData.code.trim()) return;
+
+    const unlimited = formData.isUnlimited;
+    const qty = unlimited ? 0 : parseInt(formData.quantity, 10) || 0;
 
     const payload: UpdateProductPayload = {
       name: formData.name,
@@ -97,6 +115,7 @@ export default function AddProductModal({
       description: formData.name,
       categoryId: formData.categoryId || undefined,
       subCategoryId: formData.subCategoryId || undefined,
+      barcode: formData.barcode || undefined,
       branches: formData.selectedBranchIds,
       variations: [
         {
@@ -104,20 +123,24 @@ export default function AddProductModal({
           options: formData.variants.length > 0
             ? formData.variants.map(v => ({
               name: v.name,
+              barcode: v.barcode || undefined,
               prices: formData.selectedBranchIds.map(bid => ({
                 branchId: bid,
                 price: parseFloat(v.price) || 0,
                 discountPrice: 0,
-                quantity: parseInt(formData.quantity) || 0
+                quantity: qty,
+                isUnlimited: unlimited,
               }))
             }))
             : [{
               name: "Standard",
+              barcode: formData.barcode || undefined,
               prices: formData.selectedBranchIds.map(bid => ({
                 branchId: bid,
                 price: parseFloat(formData.price) || 0,
                 discountPrice: 0,
-                quantity: parseInt(formData.quantity) || 0
+                quantity: qty,
+                isUnlimited: unlimited,
               }))
             }]
         }
@@ -324,10 +347,22 @@ export default function AddProductModal({
                   type="text"
                   inputMode="numeric"
                   value={formData.quantity}
+                  disabled={formData.isUnlimited}
                   onChange={(e) => setFormData(prev => ({ ...prev, quantity: e.target.value }))}
                   placeholder="0"
-                  className="w-full rounded-[10px] border border-[#E2E8F0] bg-white px-3 py-2.5 font-['Inter'] text-sm text-[#1D293D] placeholder:text-[#90A1B9] focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C]"
+                  className="w-full rounded-[10px] border border-[#E2E8F0] bg-white px-3 py-2.5 font-['Inter'] text-sm text-[#1D293D] placeholder:text-[#90A1B9] focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C] disabled:cursor-not-allowed disabled:opacity-60"
                 />
+                <label className="mt-2 flex cursor-pointer items-center gap-2 font-['Inter'] text-xs text-[#45556C]">
+                  <input
+                    type="checkbox"
+                    checked={formData.isUnlimited}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, isUnlimited: e.target.checked }))
+                    }
+                    className="h-4 w-4 shrink-0 cursor-pointer rounded border-[#CAD5E2] accent-[#EA580C] focus:outline-none focus:ring-2 focus:ring-[#EA580C]/35"
+                  />
+                  <span>Unlimited quantity (prepared on demand)</span>
+                </label>
               </div>
             </div>
           </div>
@@ -384,6 +419,7 @@ export default function AddProductModal({
                         />
                       </div>
                     </div>
+
                     <div className="flex items-end pb-1">
                       <button
                         type="button"
@@ -440,7 +476,8 @@ export default function AddProductModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-[14px] border border-[#E2E8F0] bg-white px-4 py-2.5 font-['Inter'] text-sm font-bold text-[#45556C] hover:bg-[#F8FAFC]"
+            disabled={isLoading}
+            className="rounded-[14px] border border-[#E2E8F0] bg-white px-4 py-2.5 font-['Inter'] text-sm font-bold text-[#45556C] hover:bg-[#F8FAFC] disabled:cursor-not-allowed disabled:opacity-50"
           >
             Discard
           </button>
@@ -448,10 +485,17 @@ export default function AddProductModal({
             type="button"
             onClick={handleSave}
             disabled={isLoading || !formData.name.trim() || !formData.code.trim()}
-            className="flex items-center gap-2 rounded-[14px] bg-[#EA580C] px-4 py-2.5 font-['Inter'] text-sm font-bold text-white shadow-[0px_4px_6px_-4px_#EA580C33,0px_10px_15px_-3px_#EA580C33] hover:bg-[#c2410c] disabled:opacity-50"
+            aria-busy={isLoading}
+            className="flex min-w-40 items-center justify-center gap-2 rounded-[14px] bg-[#EA580C] px-4 py-2.5 font-['Inter'] text-sm font-bold text-white shadow-[0px_4px_6px_-4px_#EA580C33,0px_10px_15px_-3px_#EA580C33] hover:bg-[#c2410c] disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-            {isEditing ? "Update Product" : "Create Product"}
+            {isLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+                <span>{isEditing ? "Updating…" : "Creating…"}</span>
+              </>
+            ) : (
+              <span>{isEditing ? "Update Product" : "Create Product"}</span>
+            )}
           </button>
         </div>
       </div>

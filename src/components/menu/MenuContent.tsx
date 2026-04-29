@@ -151,8 +151,8 @@ export default function MenuContent({
   );
 
   const { data: allModifications = [] } = useGetAllModifications("active");
-  const { data: comboPacks = [] } = useGetComboPacksByBranch();
-  const { data: bogoPromotions = [] } = useGetBogoPromotionsByBranch();
+  const { data: comboPacks = [] } = useGetComboPacksByBranch(true);
+  const { data: bogoPromotions = [] } = useGetBogoPromotionsByBranch(true);
 
 
 
@@ -287,7 +287,11 @@ export default function MenuContent({
       }
       return list.filter((item) => item.name.toLowerCase().includes(search.toLowerCase()));
     }
-    return menuItems.filter((item) => item.name.toLowerCase().includes(search.toLowerCase()));
+    return menuItems.filter((item) => 
+      item.name.toLowerCase().includes(search.toLowerCase()) || 
+      item.barcode?.toLowerCase().includes(search.toLowerCase()) ||
+      item.variants?.some(v => v.barcode?.toLowerCase().includes(search.toLowerCase()))
+    );
   }, [menuSurface, voucherMenuItems, promotionItems, menuItems, voucherPriceFilter, promotionTypeFilter, search]);
 
   const columnCount = useColumnCount();

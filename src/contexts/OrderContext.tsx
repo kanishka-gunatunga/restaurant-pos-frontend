@@ -28,6 +28,7 @@ export type OrderDetailsData = {
   deliveryChargeId?: number | null;
   deliveryChargeAmount?: number;
   deliveryChargeTitle?: string;
+  loyaltyPoints?: number;
 };
 
 export type OrderItem = {

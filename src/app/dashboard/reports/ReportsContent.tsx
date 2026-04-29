@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import {
   Filter,
   Calendar,
@@ -16,7 +17,6 @@ import {
   generateOrdersReport,
   generateProductWiseReport,
   generatePaymentReport,
-  generateSalesReport,
 } from "@/lib/pdfGenerator";
 import { format } from "date-fns";
 
@@ -60,7 +60,7 @@ export default function ReportsContent() {
 
   const handleGenerateReport = async () => {
     try {
-      let reportTypePath: string = selectedReport; // "sales", "payment", "product_performance"
+      let reportTypePath: string = selectedReport;
       if (selectedReport === "order_summary") reportTypePath = "orders";
       if (selectedReport === "product_performance") reportTypePath = "product-performance";
       if (selectedReport === "payment") reportTypePath = "payments";
@@ -73,11 +73,20 @@ export default function ReportsContent() {
         product: selectedProduct !== "all" ? selectedProduct : undefined,
       });
 
+      if (selectedReport === "sales") {
+        if (reportDataRaw.success !== false) {
+          toast.success(reportDataRaw.message || "Sales report has been sent to the printer successfully.");
+        } else {
+          toast.error(reportDataRaw.message || "Failed to process the sales report.");
+        }
+        return;
+      }
+
       const reportData = reportDataRaw.data || [];
       const reportSummary = reportDataRaw.summary || {};
 
       if (!reportData || reportData.length === 0) {
-        alert("No data found for the selected criteria.");
+        toast.error("No data found for the selected criteria.");
         return;
       }
 
@@ -91,16 +100,14 @@ export default function ReportsContent() {
 
       if (selectedReport === "product_performance") {
         generateProductWiseReport(reportData, conf);
-      } else if (selectedReport === "sales") {
-        generateSalesReport(reportData, conf);
       } else if (selectedReport === "payment") {
         generatePaymentReport(reportData, conf);
-      } else {
+      } else if (selectedReport === "order_summary") {
         generateOrdersReport(reportData, conf);
       }
     } catch (error) {
       console.error("Failed to generate report", error);
-      alert("An error occurred while generating the report. Please check the console.");
+      toast.error("An error occurred while generating the report.");
     }
   };
 

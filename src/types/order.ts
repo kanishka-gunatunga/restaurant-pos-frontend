@@ -115,8 +115,11 @@ export interface CreateOrderData {
   deliveryChargeId?: number | null;
   deliveryChargeSelectedId?: number | null;
   order_products: {
-    productId: string | number;
-    variationId?: string | number;
+    // Optional so bundle lines (productBundleId only) can omit productId.
+    productId?: string | number;
+    // IMPORTANT: send only `variationOptionId` (id from `variationoptions`).
+    // Do NOT send `variationId` (parent group id) — the backend no longer
+    // has a fallback for it and will fail a foreign key check.
     variationOptionId?: string | number;
     quantity: number;
     unitPrice: number;

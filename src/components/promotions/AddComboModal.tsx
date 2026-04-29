@@ -310,8 +310,20 @@ export default function AddComboModal({
       return;
     }
 
+    const branchesWithoutPrice = activeBranches.filter((b) => {
+      const price = comboPricesByBranch[b.id] || 0;
+      return price <= 0;
+    });
+
+    if (branchesWithoutPrice.length > 0) {
+      toast.error(
+        `Please enter a valid offer price for: ${branchesWithoutPrice.map((b) => b.name).join(", ")}`
+      );
+      return;
+    }
+
     try {
-      // Group branches by identical items configuration
+
       const configGroups: Record<string, number[]> = {};
 
       activeBranches.forEach((branch) => {

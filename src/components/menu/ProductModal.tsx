@@ -75,9 +75,6 @@ export default function ProductModal({
   const [selectedAddOns, setSelectedAddOns] = useState<{ addOn: ProductAddOn; qty: number }[]>(
     () => {
       if (initialAddOns && item.addOns) {
-        // Group by modificationId and count occurrences (or use the price if unique)
-        // Actually, myOrderItem modifications is a list of {modificationId, price}
-        // ProductModal selectedAddOns is {addOn, qty}
         const mapped: { addOn: ProductAddOn; qty: number }[] = [];
         initialAddOns.forEach((mod) => {
           const addOn = item.addOns?.find((a) => Number(a.id) === mod.modificationId);

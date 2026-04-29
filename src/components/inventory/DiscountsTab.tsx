@@ -66,24 +66,18 @@ function DiscountCard({ offer, onEdit }: { offer: Discount; onEdit: (offer: Disc
           </p>
         </div>
         <div className="flex items-center">
-          <button
-            type="button"
-            role="switch"
-            aria-checked={isActive}
-            aria-label={isActive ? "Deactivate" : "Activate"}
+          <button 
             onClick={handleToggleActive}
             disabled={isToggling}
-            className={`flex h-5 w-9 shrink-0 items-center mr-2 rounded-full border-2 bg-white p-1 transition-colors duration-200 ${isActive ? "border-[#00BC7D] justify-end" : "border-[#CBD5E1] justify-start"
-              } ${isToggling ? "opacity-50 cursor-not-allowed" : ""}`}
-          >
-            {isToggling ? (
-              <Loader2 className="h-3 w-3 animate-spin text-[#94A3B8]" />
-            ) : (
-              <span
-                className={`h-3 w-3 shrink-0 rounded-full transition-all duration-200 ${isActive ? "bg-[#00BC7D]" : "bg-[#94A3B8]"
-                  }`}
-              />
+            className={`flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-bold transition-colors ${
+            isActive 
+              ? "bg-[#F1F5F9] text-[#314158] hover:bg-[#E2E8F0]" 
+              : "bg-[#EA580C] text-white hover:bg-[#c2410c]"
+          }`}>
+            {isToggling && (
+              <Loader2 className="h-3 w-3 animate-spin" />
             )}
+            {isActive ? "Deactivate" : "Activate"}
           </button>
           <button
             type="button"
