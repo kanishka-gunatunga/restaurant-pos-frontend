@@ -29,13 +29,15 @@ export type ReportType =
   | "payment"
   | "product_performance"
   | "branch_performance"
-  | "discount_usage";
+  | "discount_usage"
+  | "products";
 
 const REPORT_TYPES: { id: ReportType; label: string }[] = [
   { id: "sales", label: "Sales Report" },
   { id: "order_summary", label: "Orders Report" },
   { id: "payment", label: "Payment Report" },
   { id: "product_performance", label: "Product Performance Report" },
+  { id: "products", label: "Products Report" },
 ];
 
 export default function ReportsContent() {
@@ -101,8 +103,11 @@ export default function ReportsContent() {
         summary: reportSummary,
       };
 
-      if (selectedReport === "product_performance") {
-        generateProductWiseReport(reportData, conf);
+      if (selectedReport === "product_performance" || selectedReport === "products") {
+        generateProductWiseReport(reportData, {
+          ...conf,
+          dateRange: selectedReport === "products" ? "N/A" : conf.dateRange
+        });
       } else if (selectedReport === "payment") {
         generatePaymentReport(reportData, conf);
       } else if (selectedReport === "order_summary") {
@@ -166,58 +171,62 @@ export default function ReportsContent() {
                   </div>
                 </div>
 
-                <div className="min-w-0 flex-1">
-                  <label className="mb-1.5 block font-['Inter'] text-[12px] font-bold uppercase leading-4 text-[#45556C]">
-                    Select Date Range
-                  </label>
-                  <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#90A1B9]" />
-                    <div className="flex h-11 w-full items-center gap-2 rounded-[14px] border-2 border-[#E2E8F0] bg-white pl-10 pr-3">
-                      <input
-                        type="date"
-                        value={fromDate}
-                        onChange={(e) => setFromDate(e.target.value)}
-                        className="min-w-0 flex-1 bg-transparent text-[14px] text-[#1D293D] outline-none"
-                        aria-label="From date"
-                      />
-                      <span className="text-[#90A1B9]">—</span>
-                      <input
-                        type="date"
-                        value={toDate}
-                        onChange={(e) => setToDate(e.target.value)}
-                        className="min-w-0 flex-1 bg-transparent text-[14px] text-[#1D293D] outline-none"
-                        aria-label="To date"
-                      />
+                {selectedReport !== "products" && (
+                  <div className="min-w-0 flex-1">
+                    <label className="mb-1.5 block font-['Inter'] text-[12px] font-bold uppercase leading-4 text-[#45556C]">
+                      Select Date Range
+                    </label>
+                    <div className="relative">
+                      <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#90A1B9]" />
+                      <div className="flex h-11 w-full items-center gap-2 rounded-[14px] border-2 border-[#E2E8F0] bg-white pl-10 pr-3">
+                        <input
+                          type="date"
+                          value={fromDate}
+                          onChange={(e) => setFromDate(e.target.value)}
+                          className="min-w-0 flex-1 bg-transparent text-[14px] text-[#1D293D] outline-none"
+                          aria-label="From date"
+                        />
+                        <span className="text-[#90A1B9]">—</span>
+                        <input
+                          type="date"
+                          value={toDate}
+                          onChange={(e) => setToDate(e.target.value)}
+                          className="min-w-0 flex-1 bg-transparent text-[14px] text-[#1D293D] outline-none"
+                          aria-label="To date"
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
 
-                <div className="min-w-0 flex-1">
-                  <label className="mb-1.5 block font-['Inter'] text-[12px] font-bold uppercase leading-4 text-[#45556C]">
-                    Branch
-                  </label>
-                  <div className="relative">
-                    <Building className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#90A1B9]" />
-                    <select
-                      value={branchSelectValue}
-                      onChange={(e) => setBranch(e.target.value)}
-                      disabled={branchesLoading}
-                      className="h-11 w-full appearance-none rounded-[14px] border-2 border-[#E2E8F0] bg-white pl-10 pr-10 text-[14px] text-[#1D293D] outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      <option value="all">
-                        {branchesLoading ? "Loading branches…" : "All Branches"}
-                      </option>
-                      {branches.map((b) => (
-                        <option key={b.id} value={String(b.id)}>
-                          {b.name}
+                {selectedReport !== "products" && (
+                  <div className="min-w-0 flex-1">
+                    <label className="mb-1.5 block font-['Inter'] text-[12px] font-bold uppercase leading-4 text-[#45556C]">
+                      Branch
+                    </label>
+                    <div className="relative">
+                      <Building className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#90A1B9]" />
+                      <select
+                        value={branchSelectValue}
+                        onChange={(e) => setBranch(e.target.value)}
+                        disabled={branchesLoading}
+                        className="h-11 w-full appearance-none rounded-[14px] border-2 border-[#E2E8F0] bg-white pl-10 pr-10 text-[14px] text-[#1D293D] outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <option value="all">
+                          {branchesLoading ? "Loading branches…" : "All Branches"}
                         </option>
-                      ))}
-                    </select>
-                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#90A1B9]">
-                      ▼
-                    </span>
+                        {branches.map((b) => (
+                          <option key={b.id} value={String(b.id)}>
+                            {b.name}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#90A1B9]">
+                        ▼
+                      </span>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {(selectedReport === "sales" || selectedReport === "product_performance") && (
                   <div className="min-w-0 flex-1">
