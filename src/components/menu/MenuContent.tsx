@@ -158,14 +158,14 @@ export default function MenuContent({
 
 
   const menuItems = useMemo(() => {
-    return mapProductsToMenuItems(products, branchId, allModifications);
-  }, [products, branchId, allModifications]);
+    return mapProductsToMenuItems(products, branchId, allModifications, categories);
+  }, [products, branchId, allModifications, categories]);
 
   const voucherMenuItems = useMemo(() => {
-    const mapped = mapProductsToMenuItems(voucherCatalog, branchId, allModifications);
+    const mapped = mapProductsToMenuItems(voucherCatalog, branchId, allModifications, categories);
     const filtered = mapped.filter(isVoucherMenuItem);
     return filtered.length > 0 ? filtered : DUMMY_VOUCHER_ITEMS;
-  }, [voucherCatalog, branchId, allModifications]);
+  }, [voucherCatalog, branchId, allModifications, categories]);
 
   const voucherPriceOptions = useMemo(() => {
     const s = new Set<number>();

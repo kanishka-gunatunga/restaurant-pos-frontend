@@ -39,6 +39,7 @@ export type OrderItem = {
   variationOptionId?: number;
   modifications?: { modificationId: number; price: number }[];
   name: string;
+  category?: string;
   details: string;
   variant?: string;
   addOnsList?: string[];
@@ -101,7 +102,8 @@ type OrderContextType = {
     buyQuantity?: number,
     getQuantity?: number,
     promotionId?: number,
-    qty?: number
+    qty?: number,
+    category?: string
   ) => void;
   registerOpenOrderDetails: (fn: ((mode: OrderDetailsModalMode) => void) | null) => void;
   flushPendingAddsAfterOrderDetails: () => void;
@@ -121,7 +123,8 @@ type OrderContextType = {
     variationOptionId?: number,
     modifications?: { modificationId: number; price: number }[],
     qty?: number,
-    options?: AddItemOptions
+    options?: AddItemOptions,
+    category?: string
   ) => void;
   canAddOrder: boolean;
   canCloseOrder: boolean;
@@ -161,6 +164,7 @@ export type PendingAddParams = {
   itemType?: "food" | "voucher" | "promotion";
   recipientName?: string;
   recipientMobile?: string;
+  category?: string;
 };
 
 const OrderContext = createContext<OrderContextType | null>(null);
@@ -477,7 +481,8 @@ export function OrderProvider({
       buyQuantity?: number,
       getQuantity?: number,
       promotionId?: number,
-      qty = 1
+      qty = 1,
+      category?: string
     ) => {
       if (hasPendingPaymentLock()) return;
       const pending: PendingAddParams = {
@@ -501,6 +506,7 @@ export function OrderProvider({
         getQuantity,
         promotionId,
         qty,
+        category,
       };
 
       if (!options?.skipOrderDetailsCheck) {
@@ -571,6 +577,7 @@ export function OrderProvider({
                 getQuantity,
                 promotionId,
                 qty,
+                category,
               },
             ],
           };
@@ -610,7 +617,8 @@ export function OrderProvider({
         p.buyQuantity,
         p.getQuantity,
         p.promotionId,
-        p.qty
+        p.qty,
+        p.category
       );
     }
   }, [addItem]);
@@ -716,7 +724,8 @@ export function OrderProvider({
       variationOptionId?: number,
       modifications?: { modificationId: number; price: number }[],
       qty?: number,
-      options?: AddItemOptions
+      options?: AddItemOptions,
+      category?: string
     ) => {
       if (hasPendingPaymentLock()) return;
       const orderId = activeOrderId ?? orders[0]?.id;
@@ -745,6 +754,7 @@ export function OrderProvider({
                   itemType: options?.itemType ?? i.itemType,
                   recipientName: options?.recipientName ?? i.recipientName,
                   recipientMobile: options?.recipientMobile ?? i.recipientMobile,
+                  category: category ?? i.category,
                 }
                 : i
             ),

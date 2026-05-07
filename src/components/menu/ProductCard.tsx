@@ -85,7 +85,15 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
       variant?.variationId,
       variant?.id,
       undefined,
-      { itemType: "food" }
+      { itemType: "food" },
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      item.category
     );
   };
 
@@ -139,7 +147,15 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
               undefined,
               undefined,
               undefined,
-              { itemType: "promotion" }
+              { itemType: "promotion" },
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              item.category
             );
           }
         });
@@ -171,7 +187,15 @@ export default function ProductCard({ item, isExpanded, onExpand, onCollapse }: 
         selectedVariant?.variationId,
         selectedVariant?.id,
         modifications.length > 0 ? modifications : undefined,
-        { itemType: isVoucherItem ? "voucher" : "food" }
+        { itemType: isVoucherItem ? "voucher" : "food" },
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        item.category
       );
     }
     setSelectedAddOns([]);

@@ -32,6 +32,7 @@ import {
   saveMenuOpenCheckout,
   clearMenuOpenCheckoutForSlot,
 } from "@/lib/menuOpenCheckout";
+import { useGetCategoryDiscounts } from "@/hooks/useCategoryDiscount";
 
 
 type NoteModalType = "kitchen" | "order" | null;
@@ -237,6 +238,7 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
   const { data: discountsData } = useGetAllDiscounts({ status: "active" });
   const discounts = discountsData || [];
   const { data: customerData } = useGetCustomerByMobile(activeOrderDetails?.phone || "");
+  const { data: categoryDiscounts = [] } = useGetCategoryDiscounts();
 
   const orderDetails = activeOrderDetails;
   const orderLabel = "Current Order";
@@ -253,18 +255,40 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
   const itemsWithDiscounts = items.map((item) => {
     const applicable = findApplicableDiscount(item, discounts);
     let discountAmount = 0;
-    if (applicable) {
-      discountAmount = calculateItemDiscount(item.price, item.qty, applicable.discountItem);
+    let discountName = applicable?.discountName;
+    let discountOffer = applicable
+      ? applicable.discountItem.discountType === "percentage"
+        ? `${applicable.discountItem.discountValue}%`
+        : `Rs.${Number(applicable.discountItem.discountValue).toLocaleString()}`
+      : "";
+
+    // Customer category discount (staff/management)
+    // Applied only if:
+    // 1. No standard discount is applicable
+    // 2. Customer is staff or management
+    // 3. Item is in "Hot Kitchen" category
+    if (
+      !applicable &&
+      customerData &&
+      (customerData.category === "staff" || customerData.category === "management") &&
+      item.category?.toLowerCase().trim() === "hot kitchen"
+    ) {
+      const catDiscount = categoryDiscounts.find(
+        (cd) => cd.category.toLowerCase() === customerData.category.toLowerCase()
+      );
+      if (catDiscount && Number(catDiscount.discount_percentage) > 0) {
+        const percentage = Number(catDiscount.discount_percentage);
+        discountAmount = (item.price * item.qty * percentage) / 100;
+        discountName = `${customerData.category.charAt(0).toUpperCase() + customerData.category.slice(1)} Discount`;
+        discountOffer = `${percentage}%`;
+      }
     }
+
     return {
       ...item,
       discountAmount,
-      discountName: applicable?.discountName,
-      discountOffer: applicable
-        ? applicable.discountItem.discountType === "percentage"
-          ? `${applicable.discountItem.discountValue}%`
-          : `Rs.${Number(applicable.discountItem.discountValue).toLocaleString()}`
-        : "",
+      discountName,
+      discountOffer,
     };
   });
 

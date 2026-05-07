@@ -35,18 +35,27 @@ function PendingAddReplay({
       if (pending.length > 0) {
         pendingAddRef.current = [];
         for (const p of pending) {
-          order.addItem(
-            p.productId,
-            p.name,
-            p.price,
-            p.details ?? "REGULAR",
-            p.image,
-            p.variant,
-            p.addOnsList,
-            p.variationId,
-            p.variationOptionId,
-            p.modifications
-          );
+            order.addItem(
+              p.productId,
+              p.name,
+              p.price,
+              p.details ?? "REGULAR",
+              p.image,
+              p.variant,
+              p.addOnsList,
+              p.variationId,
+              p.variationOptionId,
+              p.modifications,
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              p.category
+            );
         }
         onReplayed?.();
       }

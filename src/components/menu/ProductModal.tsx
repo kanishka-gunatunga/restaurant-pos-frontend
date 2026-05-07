@@ -28,7 +28,8 @@ type ProductModalProps = {
     buyQuantity?: number,
     getQuantity?: number,
     promotionId?: number,
-    qty?: number
+    qty?: number,
+    category?: string
   ) => void;
   onUpdateOrder?: (
     productId: number,
@@ -42,7 +43,8 @@ type ProductModalProps = {
     variationOptionId?: number,
     modifications?: { modificationId: number; price: number }[],
     qty?: number,
-    options?: AddItemOptions
+    options?: AddItemOptions,
+    category?: string
   ) => void;
   initialQty?: number;
   initialVariantId?: number;
@@ -167,7 +169,15 @@ export default function ProductModal({
               undefined,
               undefined,
               undefined,
-              { itemType: "promotion" }
+              { itemType: "promotion" },
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              item.category
             );
           }
         });
@@ -205,7 +215,8 @@ export default function ProductModal({
           itemType: isPromotionDeal ? "promotion" : isVoucherItem ? "voucher" : "food",
           recipientName: isVoucherItem ? recipientName.trim() || undefined : undefined,
           recipientMobile: isVoucherItem ? recipientPhone.trim() || undefined : undefined,
-        }
+        },
+        item.category
       );
     } else {
       for (let i = 0; i < qty; i++) {
@@ -224,7 +235,15 @@ export default function ProductModal({
             itemType: isPromotionDeal ? "promotion" : isVoucherItem ? "voucher" : "food",
             recipientName: isVoucherItem ? recipientName.trim() || undefined : undefined,
             recipientMobile: isVoucherItem ? recipientPhone.trim() || undefined : undefined,
-          }
+          },
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          item.category
         );
       }
     }

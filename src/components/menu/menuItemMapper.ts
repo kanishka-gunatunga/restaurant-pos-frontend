@@ -1,5 +1,5 @@
 import type { MenuItem, ProductAddOn, ProductVariant } from "./types";
-import type { Modification, Product, ModificationItem } from "@/types/product";
+import type { Modification, Product, ModificationItem, Category } from "@/types/product";
 import { normalizeProductImageUrl } from "@/lib/productImage";
 
 /**
@@ -63,9 +63,30 @@ export function collectAddOns(
 export function mapProductToMenuItem(
   product: Product,
   branchId: number,
-  allModifications: Modification[]
+  allModifications: Modification[],
+  categoryList?: Category[]
 ): MenuItem {
   const variants: ProductVariant[] = [];
+
+  // Resolve category name from list if object is missing
+  let categoryName = product.category?.name;
+  if (!categoryName && product.categoryId && categoryList) {
+    const found = categoryList.find(c => c.id === product.categoryId);
+    if (found) categoryName = found.name;
+  }
+
+  // Resolve sub-category name from list if object is missing
+  let subCategoryName = product.subCategory?.name;
+  if (!subCategoryName && product.subCategoryId && categoryList) {
+    // Sub-categories are usually nested in parent categories
+    for (const cat of categoryList) {
+      const foundSub = cat.subcategories?.find(s => s.id === product.subCategoryId);
+      if (foundSub) {
+        subCategoryName = foundSub.name;
+        break;
+      }
+    }
+  }
 
   product.variations?.forEach((variation) => {
     variation.options?.forEach((option) => {
@@ -94,8 +115,8 @@ export function mapProductToMenuItem(
     id: `${product.id}-${product.code}`,
     productId: product.id,
     name: product.name,
-    category: product.category?.name || "Other",
-    subCategory: product.subCategory?.name || "General",
+    category: categoryName || "Other",
+    subCategory: subCategoryName || "General",
     price: basePrice,
     image: normalizeProductImageUrl(product.image) || undefined,
     description: product.description || undefined,
@@ -108,13 +129,14 @@ export function mapProductToMenuItem(
 export function mapProductsToMenuItems(
   products: Product[],
   branchId: number,
-  allModifications: Modification[]
+  allModifications: Modification[],
+  categoryList?: Category[]
 ): MenuItem[] {
   const uniqueItems: MenuItem[] = [];
   const seenIds = new Set<string>();
 
   products.forEach((product) => {
-    const item = mapProductToMenuItem(product, branchId, allModifications);
+    const item = mapProductToMenuItem(product, branchId, allModifications, categoryList);
     if (seenIds.has(item.id)) return;
     uniqueItems.push(item);
     seenIds.add(item.id);

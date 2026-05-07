@@ -34,7 +34,8 @@ type PromotionModalProps = {
     buyQuantity?: number,
     getQuantity?: number,
     promotionId?: number,
-    qty?: number
+    qty?: number,
+    category?: string
   ) => void;
 };
 
@@ -242,7 +243,8 @@ export default function PromotionModal({
         augmentedPromoInfo.type === "bogo" && bogoData ? bogoData.buyQuantity : undefined,
         augmentedPromoInfo.type === "bogo" && bogoData ? bogoData.getQuantity : undefined,
         augmentedPromoInfo.promotionId,
-        augmentedPromoInfo.type === "bogo" && bogoData ? qty * bogoData.buyQuantity : qty
+        augmentedPromoInfo.type === "bogo" && bogoData ? qty * bogoData.buyQuantity : qty,
+        item.category
     );
 
     if (augmentedPromoInfo.type === "bogo" && augmentedPromoInfo.getFreeItem && bogoData) {
@@ -264,7 +266,8 @@ export default function PromotionModal({
             bogoData.buyQuantity,
             bogoData.getQuantity,
             augmentedPromoInfo.promotionId,
-            qty * bogoData.getQuantity // Multiply by sets
+            qty * bogoData.getQuantity, // Multiply by sets
+            item.category
         );
     }
 
