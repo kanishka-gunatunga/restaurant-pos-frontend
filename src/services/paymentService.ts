@@ -34,9 +34,9 @@ export function normalizePaymentStats(raw: unknown): PaymentStats {
     totalCollectedAmount: numField(data.totalCollectedAmount ?? data.total_collected_amount),
     pendingPaymentAmount: numField(
       data.pendingPaymentAmount ??
-        data.pending_payment_amount ??
-        data.pendingAmount ??
-        data.pending_amount
+      data.pending_payment_amount ??
+      data.pendingAmount ??
+      data.pending_amount
     ),
     totalRefundAmount: numField(data.totalRefundAmount ?? data.total_refund_amount),
     refundRate,

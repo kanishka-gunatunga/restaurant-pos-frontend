@@ -16,7 +16,9 @@ import {
   calculateItemDiscount,
 } from "@/hooks/useDiscount";
 import NewOrderDetailsModal from "./NewOrderDetailsModal";
+import ManualDiscountModal from "./ManualDiscountModal";
 import ProcessPaymentModal from "./ProcessPaymentModal";
+
 import type { OrderDetailsData, OrderItem } from "@/contexts/OrderContext";
 import type { CreateOrderData, Order } from "@/types/order";
 import {
@@ -163,10 +165,12 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
     activeOrderNote,
     setActiveKitchenNote,
     setActiveOrderNote,
-    clearOrderById,
     clearCheckoutSession,
     setCheckoutLockedOrderSlotId,
+    manualDiscount,
+    setManualDiscount,
   } = useOrder();
+
 
   const [editOrderId, setEditOrderId] = useState<string | null>(null);
   const [noteModal, setNoteModal] = useState<NoteModalType>(null);
@@ -175,7 +179,9 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
     loadPendingPaymentFlow()
   );
   const [isOrderAndPaySubmitting, setIsOrderAndPaySubmitting] = useState(false);
+  const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
   const orderSubmitLockRef = useRef(false);
+
 
   useEffect(() => {
     const p = loadPendingPaymentFlow();
@@ -252,11 +258,20 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
     orderDetails?.orderType === "Dine In"
       ? Number((subtotal * (serviceChargePercentage / 100)).toFixed(2))
       : 0;
-  const deliveryChargeAmount =
     orderDetails?.orderType === "Delivery"
       ? Number(orderDetails.deliveryChargeAmount ?? 0)
       : 0;
-  const total = subtotal + cartTaxAmount + serviceChargeAmount + deliveryChargeAmount;
+
+  const manualDiscountAmountRaw = manualDiscount
+    ? manualDiscount.type === "percentage"
+      ? (subtotal * manualDiscount.value) / 100
+      : manualDiscount.value
+    : 0;
+  const manualDiscountAmount = Math.min(manualDiscountAmountRaw, subtotal);
+
+  const total = subtotal - manualDiscountAmount + cartTaxAmount + serviceChargeAmount + deliveryChargeAmount;
+
+
 
   const handleSubmitOrder = async (
     isPayNow = false
@@ -352,8 +367,9 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
               ? "takeaway"
               : "delivery",
         tableNumber: orderDetails.tableNumber,
-        orderDiscount: totalItemDiscount,
+        orderDiscount: totalItemDiscount + manualDiscountAmount,
         tax: cartTaxAmount,
+
         orderNote: activeOrderNote,
         kitchenNote: activeKitchenNote,
         deliveryAddress: orderDetails.deliveryAddress,
@@ -820,13 +836,20 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
             </div>
 
             <div className="flex flex-col gap-1 rounded-[14px] border-2 border-[#E2E8F0] bg-white px-3 py-2 font-['Arial'] text-sm font-bold leading-5 text-[#62748E]">
-              <div className="flex items-center justify-center text-center">
+              <div className="flex items-center justify-between">
                 <p className="font-['Arial'] text-[14px] font-bold leading-4 text-[#62748E]">
                   % Discount Applied
                 </p>
-                {/* <Tag className="h-4 w-4" /> */}
+                <button
+                  type="button"
+                  onClick={() => setIsDiscountModalOpen(true)}
+                  disabled={hasPendingPayment || items.length === 0}
+                  className="font-['Arial'] text-[10px] font-bold uppercase text-[#E26522] hover:opacity-70 disabled:opacity-50"
+                >
+                  {manualDiscount ? "Edit" : "Add Manual"}
+                </button>
               </div>
-              {totalItemDiscount > 0 ? (
+              {totalItemDiscount > 0 || manualDiscountAmount > 0 ? (
                 <div className="mt-1 space-y-1">
                   {itemsWithDiscounts
                     .filter((i) => i.discountAmount > 0)
@@ -835,10 +858,10 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
                         key={idx}
                         className="flex justify-between text-[11px] font-normal text-[#45556C]"
                       >
-                        <span>
+                        <span className="truncate pr-2">
                           {item.name} ({item.discountName})
                         </span>
-                        <span>
+                        <span className="shrink-0">
                           - Rs.
                           {item.discountAmount.toLocaleString("en-US", {
                             minimumFractionDigits: 2,
@@ -846,6 +869,16 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
                         </span>
                       </div>
                     ))}
+                  {manualDiscount && (
+                    <div className="flex justify-between border-t border-dashed border-[#E2E8F0] pt-1 text-[11px] font-bold text-[#EA580C]">
+                      <span>Manual Discount ({manualDiscount.type === "percentage" ? `${manualDiscount.value}%` : "Flat"})</span>
+                      <span>
+                        - Rs.{manualDiscountAmount.toLocaleString("en-US", {
+                          minimumFractionDigits: 2,
+                        })}
+                      </span>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <p className="text-center text-xs font-normal text-[#90A1B9] mt-1">
@@ -854,6 +887,7 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
               )}
             </div>
 
+
             <div className="space-y-1">
               <div className="flex justify-between font-['Arial'] text-sm leading-5 text-[#62748E]">
                 <span>Subtotal</span>
@@ -861,14 +895,15 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
                   Rs.{subtotalBeforeDiscount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                 </span>
               </div>
-              {totalItemDiscount > 0 && (
+              {(totalItemDiscount > 0 || manualDiscountAmount > 0) && (
                 <div className="flex justify-between font-['Arial'] text-sm leading-5 text-[#10B981]">
-                  <span>Discount</span>
+                  <span>Total Discount</span>
                   <span>
-                    - Rs.{totalItemDiscount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                    - Rs.{(totalItemDiscount + manualDiscountAmount).toLocaleString("en-US", { minimumFractionDigits: 2 })}
                   </span>
                 </div>
               )}
+
               {/* Tax UI hidden for now; we still send tax: 0 in payload for future tax-rule support. */}
               {/*
               <div className="flex justify-between font-['Arial'] text-sm leading-5 text-[#62748E]">
@@ -952,7 +987,17 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
         />
       )}
 
+      {isDiscountModalOpen && (
+        <ManualDiscountModal
+          onSave={setManualDiscount}
+          onClose={() => setIsDiscountModalOpen(false)}
+          initialDiscount={manualDiscount}
+          subtotal={subtotal}
+        />
+      )}
+
       <NoteModal
+
         key={noteModal ?? "closed"}
         type={noteModal}
         title={noteModal === "kitchen" ? "Kitchen Note" : noteModal === "order" ? "Order Note" : ""}

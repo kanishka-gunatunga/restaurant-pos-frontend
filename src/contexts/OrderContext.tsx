@@ -29,6 +29,12 @@ export type OrderDetailsData = {
   deliveryChargeTitle?: string;
 };
 
+export type ManualDiscount = {
+  value: number;
+  type: "percentage" | "amount";
+};
+
+
 export type OrderItem = {
   id: string;
   productId: number;
@@ -50,7 +56,9 @@ export type Order = {
   orderDetails: OrderDetailsData | null;
   kitchenNote?: string;
   orderNote?: string;
+  manualDiscount?: ManualDiscount | null;
 };
+
 
 type OrderContextType = {
   orders: Order[];
@@ -71,6 +79,9 @@ type OrderContextType = {
   activeOrderNote: string;
   setActiveKitchenNote: (value: string) => void;
   setActiveOrderNote: (value: string) => void;
+  manualDiscount: ManualDiscount | null;
+  setManualDiscount: (discount: ManualDiscount | null) => void;
+
   addItem: (
     productId: number,
     name: string,
@@ -137,7 +148,9 @@ const createEmptyOrder = (): Order => ({
   orderDetails: null,
   kitchenNote: "",
   orderNote: "",
+  manualDiscount: null,
 });
+
 
 const hasOrderData = (order: Order): boolean => {
   if (order.orderDetails != null) {
@@ -147,9 +160,11 @@ const hasOrderData = (order: Order): boolean => {
   if (order.items && order.items.length > 0) return true;
   if (order.kitchenNote && order.kitchenNote.trim().length > 0) return true;
   if (order.orderNote && order.orderNote.trim().length > 0) return true;
+  if (order.manualDiscount != null) return true;
 
   return false;
 };
+
 
 function applyClearOrderSlot(prev: Order[], orderId: string): Order[] | null {
   const clearedOrder = prev.find((o) => o.id === orderId);
@@ -161,7 +176,9 @@ function applyClearOrderSlot(prev: Order[], orderId: string): Order[] | null {
     orderDetails: null,
     kitchenNote: "",
     orderNote: "",
+    manualDiscount: null,
   };
+
 
   const updated = prev.map((order) => (order.id === orderId ? cleared : order));
   const ordersWithData = updated.filter((o) => o.id === orderId || hasOrderData(o));
@@ -285,6 +302,8 @@ export function OrderProvider({
   const activeOrderDetails = getActiveOrder()?.orderDetails ?? null;
   const activeKitchenNote = getActiveOrder()?.kitchenNote ?? "";
   const activeOrderNote = getActiveOrder()?.orderNote ?? "";
+  const manualDiscount = getActiveOrder()?.manualDiscount ?? null;
+
 
   const setActiveOrderDetails = useCallback(
     (data: OrderDetailsData) => {
@@ -333,6 +352,23 @@ export function OrderProvider({
     },
     [activeOrderId, orders]
   );
+
+  const setManualDiscount = useCallback(
+    (discount: ManualDiscount | null) => {
+      if (hasPendingPaymentLock()) return;
+      const orderId = activeOrderId ?? orders[0]?.id;
+      if (!orderId) return;
+      setOrders((prev) => {
+        const updated = prev.map((order) =>
+          order.id === orderId ? { ...order, manualDiscount: discount } : order
+        );
+        saveOrdersToStorage(updated);
+        return updated;
+      });
+    },
+    [activeOrderId, orders]
+  );
+
 
   const addOrder = useCallback(() => {
     if (hasPendingPaymentLock()) return;
@@ -584,7 +620,9 @@ export function OrderProvider({
                   items: orderData.items !== undefined ? orderData.items : o.items,
                   kitchenNote: orderData.kitchenNote !== undefined ? orderData.kitchenNote : o.kitchenNote,
                   orderNote: orderData.orderNote !== undefined ? orderData.orderNote : o.orderNote,
+                  manualDiscount: orderData.manualDiscount !== undefined ? orderData.manualDiscount : o.manualDiscount,
                 }
+
                 : o
             );
             saveOrdersToStorage(updated);
@@ -602,7 +640,9 @@ export function OrderProvider({
         orderDetails: orderData?.orderDetails ?? null,
         kitchenNote: orderData?.kitchenNote ?? "",
         orderNote: orderData?.orderNote ?? "",
+        manualDiscount: orderData?.manualDiscount ?? null,
       };
+
 
       setOrders((prev) => {
         let updated: Order[];
@@ -696,7 +736,10 @@ export function OrderProvider({
         activeOrderNote,
         setActiveKitchenNote,
         setActiveOrderNote,
+        manualDiscount,
+        setManualDiscount,
         addItem,
+
         updateQty,
         removeItem,
         updateItem,
