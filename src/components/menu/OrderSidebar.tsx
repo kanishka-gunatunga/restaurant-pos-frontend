@@ -258,6 +258,7 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
     orderDetails?.orderType === "Dine In"
       ? Number((subtotal * (serviceChargePercentage / 100)).toFixed(2))
       : 0;
+  const deliveryChargeAmount =
     orderDetails?.orderType === "Delivery"
       ? Number(orderDetails.deliveryChargeAmount ?? 0)
       : 0;
