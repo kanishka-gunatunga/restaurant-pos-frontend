@@ -165,6 +165,7 @@ export default function OrderSidebar({ onEditItem }: { onEditItem?: (item: Order
     activeOrderNote,
     setActiveKitchenNote,
     setActiveOrderNote,
+    clearOrderById,
     clearCheckoutSession,
     setCheckoutLockedOrderSlotId,
     manualDiscount,
