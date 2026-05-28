@@ -79,8 +79,18 @@ function generateGenericReport(data: any[], config: ReportConfig) {
       fontSize: isLandscape ? 8 : 9,
       cellPadding: 4,
     },
-    // We can assume numerical values usually go on the right side. We'll simply let it default left / center.
-    // Ideally we could align right dynamically if Number.isNaN isn't true, but default left is fine for now.
+    didParseCell: (cellData) => {
+      const headerText = String(headers[cellData.column.index] || '').toLowerCase();
+      const isRightAligned = headerText.includes('price') || 
+                             headerText.includes('amount') || 
+                             headerText.includes('subtotal') || 
+                             headerText.includes('discount') || 
+                             headerText.includes('tax') ||
+                             headerText.includes('(rs)');
+      if (isRightAligned) {
+        cellData.cell.styles.halign = 'right';
+      }
+    }
   });
 
   const finalY = (doc as any).lastAutoTable.finalY + 10;
