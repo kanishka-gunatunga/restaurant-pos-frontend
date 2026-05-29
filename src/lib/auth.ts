@@ -28,7 +28,7 @@ async function loginWithBackend(
     const res = await fetch(`${API_URL}/api/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ employeeId: employeeId.trim(), password }),
+      body: JSON.stringify({ employeeId: employeeId, password }),
       signal: controller.signal,
     });
     clearTimeout(timeoutId);
