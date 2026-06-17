@@ -11,6 +11,7 @@ import {
   Minus,
   ChevronDown,
   Loader2,
+  Search,
 } from "lucide-react";
 import { useGetAllDiscounts, findApplicableDiscount, calculateItemDiscount } from "@/hooks/useDiscount";
 import { resolveProductImageSrc } from "@/lib/productImage";
@@ -275,10 +276,22 @@ export default function EditOrderModal({ order, onClose, onSubmit, onOrderAndPay
   const { data: allModifications = [] } = useGetAllModifications("active");
   const { data: discountsData = [] } = useGetAllDiscounts({ status: "active" });
 
+  const [searchQuery, setSearchQuery] = useState("");
+
   const menuItems = useMemo(
     () => mapProductsToMenuItems(products, branchId, allModifications),
     [products, branchId, allModifications]
   );
+
+  const filteredMenuItems = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return menuItems;
+    return menuItems.filter(
+      (item) =>
+        item.name.toLowerCase().includes(q) ||
+        (item.category && item.category.toLowerCase().includes(q))
+    );
+  }, [menuItems, searchQuery]);
 
   const menuItemByProductId = useMemo(
     () =>
@@ -317,6 +330,12 @@ export default function EditOrderModal({ order, onClose, onSubmit, onOrderAndPay
   }, [order.items, initialItems]);
 
   const [showAddItems, setShowAddItems] = useState(false);
+
+  useEffect(() => {
+    if (!showAddItems) {
+      setSearchQuery("");
+    }
+  }, [showAddItems]);
   const [orderAndPayBusy, setOrderAndPayBusy] = useState(false);
 
   const [saveFlowBusy, setSaveFlowBusy] = useState(false);
@@ -562,19 +581,34 @@ export default function EditOrderModal({ order, onClose, onSubmit, onOrderAndPay
                   Close
                 </button>
               </div>
+
+              {/* Search bar */}
+              <div className="relative mt-3">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#62748E]" />
+                <input
+                  type="text"
+                  placeholder="Search items by name or category..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full rounded-[12px] border border-[#CBD5E1] bg-white py-2 pl-9 pr-4 font-['Inter'] text-sm text-[#1D293D] placeholder-[#90A1B9] outline-none focus:border-[#155DFC] focus:ring-1 focus:ring-[#155DFC]"
+                />
+              </div>
+
               <div className="mt-3 max-h-[min(560px,65vh)] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#DBEAFE] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#93C5FD] [&::-webkit-scrollbar-thumb]:hover:bg-[#60A5FA]">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 pr-1">
                   {isLoadingProducts ? (
                     <div className="col-span-full flex items-center justify-center py-10">
                       <Loader2 className="h-6 w-6 animate-spin text-[#155DFC]" />
                     </div>
-                  ) : menuItems.length > 0 ? (
-                    menuItems.map((menuItem) => (
+                  ) : filteredMenuItems.length > 0 ? (
+                    filteredMenuItems.map((menuItem) => (
                       <AddItemCard key={menuItem.id} item={menuItem} onAdd={addItemFromMenu} />
                     ))
                   ) : (
                     <div className="col-span-full rounded-[12px] border border-[#BFDBFE] bg-white px-4 py-6 text-center font-['Inter'] text-sm text-[#62748E]">
-                      No active products found for this branch.
+                      {searchQuery
+                        ? `No items found matching "${searchQuery}"`
+                        : "No active products found for this branch."}
                     </div>
                   )}
                 </div>
@@ -582,7 +616,6 @@ export default function EditOrderModal({ order, onClose, onSubmit, onOrderAndPay
             </div>
           )}
 
-          {/* Order Summary */}
           <div className="mt-6 rounded-[16px] border-2 border-[#E2E8F0] bg-[#F8FAFC] p-5 [&>*+*]:mt-4">
             <div className="flex items-center gap-2 font-['Inter'] text-base font-bold leading-6 text-[#314158]">
               <DollarSign className="h-5 w-5 text-[#EA580C]" />
