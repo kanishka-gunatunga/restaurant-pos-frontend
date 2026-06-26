@@ -132,6 +132,7 @@ export const getOrderById = async (id: string | number): Promise<Order> => {
 };
 
 export const createOrder = async (data: CreateOrderData): Promise<Order> => {
+  console.log("[createOrder] POST /orders payload:", data);
   const res = await axiosInstance.post("/orders", data);
   return res.data;
 };

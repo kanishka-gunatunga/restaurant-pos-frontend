@@ -4,7 +4,12 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import MenuPageHeader from "@/components/menu/MenuPageHeader";
 import MenuContent from "@/components/menu/MenuContent";
 import OrderSidebar from "@/components/menu/OrderSidebar";
-import { OrderProvider, useOrder, type PendingAddParams } from "@/contexts/OrderContext";
+import {
+  OrderProvider,
+  useOrder,
+  type PendingAddParams,
+  type MenuOrderSurface,
+} from "@/contexts/OrderContext";
 import { useDrawerSession } from "@/contexts/DrawerSessionContext";
 import { useAuth } from "@/contexts/AuthContext";
 import DrawerSessionRequiredModal from "@/components/drawer/DrawerSessionRequiredModal";
@@ -68,6 +73,7 @@ function ManagerMenuContent() {
   const [showDrawerModal, setShowDrawerModal] = useState(false);
   const [editingOrderItem, setEditingOrderItem] = useState<OrderItem | null>(null);
   const pendingAddRef = useRef<PendingAddParams[]>([]);
+  const menuSurfaceRef = useRef<MenuOrderSurface>("menu");
 
   const beforeAddItem = useCallback((pending?: PendingAddParams) => {
     if (hasSession) return true;
@@ -111,13 +117,18 @@ function ManagerMenuContent() {
 
   return (
     <>
-      <OrderProvider beforeAddItem={beforeAddItem} beforeAddOrder={beforeAddOrder}>
+      <OrderProvider
+        beforeAddItem={beforeAddItem}
+        beforeAddOrder={beforeAddOrder}
+        menuSurfaceRef={menuSurfaceRef}
+      >
         <PendingAddReplay pendingAddRef={pendingAddRef} onReplayed={handleReplayed} />
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <MenuPageHeader />
           <div className="flex min-h-0 flex-1 overflow-hidden pr-[320px] md:pr-[380px]">
             <div className="min-w-0 flex-1 overflow-y-auto pb-6">
               <MenuContent
+                menuSurfaceRef={menuSurfaceRef}
                 editingOrderItem={editingOrderItem}
                 onCancelEdit={() => setEditingOrderItem(null)}
               />
@@ -145,6 +156,7 @@ function CashierMenuContent() {
   const [showDrawerModal, setShowDrawerModal] = useState(false);
   const [editingOrderItem, setEditingOrderItem] = useState<OrderItem | null>(null);
   const pendingAddRef = useRef<PendingAddParams[]>([]);
+  const menuSurfaceRef = useRef<MenuOrderSurface>("menu");
 
   const beforeAddItem = useCallback((pending?: PendingAddParams) => {
     if (hasSession) return true;
@@ -188,15 +200,20 @@ function CashierMenuContent() {
 
   return (
     <>
-      <OrderProvider beforeAddItem={beforeAddItem} beforeAddOrder={beforeAddOrder}>
+      <OrderProvider
+        beforeAddItem={beforeAddItem}
+        beforeAddOrder={beforeAddOrder}
+        menuSurfaceRef={menuSurfaceRef}
+      >
         <PendingAddReplay pendingAddRef={pendingAddRef} onReplayed={handleReplayed} />
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <MenuPageHeader />
           <div className="flex min-h-0 flex-1 overflow-hidden pr-[320px] md:pr-[380px]">
             <div className="min-w-0 flex-1 overflow-y-auto pb-6">
-              <MenuContent 
-                editingOrderItem={editingOrderItem} 
-                onCancelEdit={() => setEditingOrderItem(null)} 
+              <MenuContent
+                menuSurfaceRef={menuSurfaceRef}
+                editingOrderItem={editingOrderItem}
+                onCancelEdit={() => setEditingOrderItem(null)}
               />
             </div>
             <OrderSidebar onEditItem={(item) => setEditingOrderItem(item)} />

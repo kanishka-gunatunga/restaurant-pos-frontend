@@ -35,7 +35,8 @@ export default function AddProductModal({
     isUnlimited: false,
     categoryId: 0,
     subCategoryId: 0,
-    variants: [] as { name: string; price: string }[],
+    barcode: "",
+    variants: [] as { name: string; price: string; barcode?: string }[],
     addonGroupIds: [] as number[],
     selectedBranchIds: [] as number[],
   });
@@ -71,7 +72,12 @@ export default function AddProductModal({
           isUnlimited: readIsUnlimitedFromPrice(branchPrice),
           categoryId: product.categoryId || 0,
           subCategoryId: product.subCategoryId || 0,
-          variants: variation?.options?.map(o => ({ name: o.name, price: o.prices?.[0]?.price.toString() || "" })) || [],
+          barcode: product.barcode || "",
+          variants: variation?.options?.map(o => ({
+            name: o.name,
+            price: o.prices?.[0]?.price.toString() || "",
+            barcode: o.barcode || ""
+          })) || [],
           addonGroupIds: product.productModifications?.map(pm => pm.modificationId) || [],
           selectedBranchIds: product.branches?.map(pb => pb.branchId) || [],
         });
@@ -85,6 +91,7 @@ export default function AddProductModal({
           isUnlimited: false,
           categoryId: 0,
           subCategoryId: 0,
+          barcode: "",
           variants: [],
           addonGroupIds: [],
           selectedBranchIds: [parseInt(branchId)],
@@ -108,6 +115,7 @@ export default function AddProductModal({
       description: formData.name,
       categoryId: formData.categoryId || undefined,
       subCategoryId: formData.subCategoryId || undefined,
+      barcode: formData.barcode || undefined,
       branches: formData.selectedBranchIds,
       variations: [
         {
@@ -115,6 +123,7 @@ export default function AddProductModal({
           options: formData.variants.length > 0
             ? formData.variants.map(v => ({
               name: v.name,
+              barcode: v.barcode || undefined,
               prices: formData.selectedBranchIds.map(bid => ({
                 branchId: bid,
                 price: parseFloat(v.price) || 0,
@@ -125,6 +134,7 @@ export default function AddProductModal({
             }))
             : [{
               name: "Standard",
+              barcode: formData.barcode || undefined,
               prices: formData.selectedBranchIds.map(bid => ({
                 branchId: bid,
                 price: parseFloat(formData.price) || 0,
@@ -409,6 +419,7 @@ export default function AddProductModal({
                         />
                       </div>
                     </div>
+
                     <div className="flex items-end pb-1">
                       <button
                         type="button"

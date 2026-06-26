@@ -66,24 +66,18 @@ function DiscountCard({ offer, onEdit }: { offer: Discount; onEdit: (offer: Disc
           </p>
         </div>
         <div className="flex items-center">
-          <button
-            type="button"
-            role="switch"
-            aria-checked={isActive}
-            aria-label={isActive ? "Deactivate" : "Activate"}
+          <button 
             onClick={handleToggleActive}
             disabled={isToggling}
-            className={`flex h-5 w-9 shrink-0 items-center mr-2 rounded-full border-2 bg-white p-1 transition-colors duration-200 ${isActive ? "border-[#00BC7D] justify-end" : "border-[#CBD5E1] justify-start"
-              } ${isToggling ? "opacity-50 cursor-not-allowed" : ""}`}
-          >
-            {isToggling ? (
-              <Loader2 className="h-3 w-3 animate-spin text-[#94A3B8]" />
-            ) : (
-              <span
-                className={`h-3 w-3 shrink-0 rounded-full transition-all duration-200 ${isActive ? "bg-[#00BC7D]" : "bg-[#94A3B8]"
-                  }`}
-              />
+            className={`flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-bold transition-colors ${
+            isActive 
+              ? "bg-[#F1F5F9] text-[#314158] hover:bg-[#E2E8F0]" 
+              : "bg-[#EA580C] text-white hover:bg-[#c2410c]"
+          }`}>
+            {isToggling && (
+              <Loader2 className="h-3 w-3 animate-spin" />
             )}
+            {isActive ? "Deactivate" : "Activate"}
           </button>
           <button
             type="button"
@@ -140,24 +134,15 @@ function DiscountCard({ offer, onEdit }: { offer: Discount; onEdit: (offer: Disc
   );
 }
 
-export default function DiscountsTab() {
+interface DiscountsTabProps {
+  onEdit: (discount: Discount) => void;
+  onAdd?: () => void;
+}
+
+export default function DiscountsTab({ onEdit, onAdd }: DiscountsTabProps) {
   const { data: discounts, isLoading } = useGetAllDiscounts({ status: "all" });
-  const [addDiscountOpen, setAddDiscountOpen] = useState(false);
-  const [addDiscountOverlayVisible, setAddDiscountOverlayVisible] = useState(false);
-  const [editingDiscount, setEditingDiscount] = useState<Discount | null>(null);
-
-  useEffect(() => {
-    if (!addDiscountOpen) {
-      setEditingDiscount(null);
-      return;
-    }
-    const raf = requestAnimationFrame(() => setAddDiscountOverlayVisible(true));
-    return () => cancelAnimationFrame(raf);
-  }, [addDiscountOpen]);
-
   const handleEdit = (offer: Discount) => {
-    setEditingDiscount(offer);
-    setAddDiscountOpen(true);
+    onEdit(offer);
   };
 
   if (isLoading) {
@@ -174,15 +159,17 @@ export default function DiscountsTab() {
         <h2 className="font-['Inter'] text-[16px] font-bold leading-6 text-[#314158]">
           Discount Products
         </h2>
-        <button
-          type="button"
-          onClick={() => setAddDiscountOpen(true)}
-          className="flex items-center gap-2 rounded-[14px] bg-[#EA580C] px-4 py-2.5 font-['Inter'] text-sm font-bold text-white shadow-[0px_4px_6px_-4px_#EA580C33,0px_10px_15px_-3px_#EA580C33] transition-opacity hover:bg-[#c2410c]"
-          style={{ transitionDuration: "300ms", transitionTimingFunction: "ease-out" }}
-        >
-          <Plus className="h-4 w-4" />
-          Add Discount
-        </button>
+        {onAdd && (
+          <button
+            type="button"
+            onClick={onAdd}
+            className="flex items-center gap-2 rounded-[14px] bg-[#EA580C] px-4 py-2.5 font-['Inter'] text-sm font-bold text-white shadow-[0px_4px_6px_-4px_#EA580C33,0px_10px_15px_-3px_#EA580C33] transition-opacity hover:bg-[#c2410c]"
+            style={{ transitionDuration: "300ms", transitionTimingFunction: "ease-out" }}
+          >
+            <Plus className="h-4 w-4" />
+            Add Discount
+          </button>
+        )}
       </div>
       {discounts && discounts.length > 0 ? (
         <div className="space-y-4">
@@ -199,13 +186,6 @@ export default function DiscountsTab() {
         </div>
       )}
 
-      <AddDiscountModal
-        key={`${addDiscountOpen}-${editingDiscount?.id ?? "new"}`}
-        open={addDiscountOpen}
-        overlayVisible={addDiscountOverlayVisible}
-        editingDiscount={editingDiscount}
-        onClose={() => setAddDiscountOpen(false)}
-      />
     </div>
   );
 }

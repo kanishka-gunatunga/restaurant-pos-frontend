@@ -64,6 +64,12 @@ export type OrderDetailItem = {
   addOns?: string[];
   addonLines?: OrderDetailAddonLine[];
   modifications?: { modificationId: number; price: number }[];
+  bogoPromotionId?: string | number;
+  productBundleId?: string | number;
+  isFreeItem?: boolean;
+  linkId?: string;
+  buyQuantity?: number;
+  getQuantity?: number;
 };
 
 export type OrderDetailsView = {
@@ -78,6 +84,8 @@ export type OrderDetailsView = {
   customerId?: string | number;
   totalAmount: number;
   orderType?: OrderTypeLabel;
+  tableId?: number | null;
+  tableName?: string | null;
   tableNumber?: string;
   deliveryAddress?: string;
   landmark?: string;
@@ -109,6 +117,8 @@ export type OrderRow = {
   status: OrderStatus;
   paymentStatus: PaymentStatus;
   orderType?: OrderTypeLabel;
+  tableId?: number | null;
+  tableName?: string | null;
   tableNumber?: string;
   deliveryAddress?: string;
   landmark?: string;
@@ -199,6 +209,15 @@ export function mapOrderToRow(apiOrder: ApiOrder): OrderRow {
     status: apiOrder.status || "pending",
     paymentStatus: orderPaymentStatus,
     orderType,
+    tableId:
+      apiOrder.tableId != null && Number.isFinite(Number(apiOrder.tableId))
+        ? Number(apiOrder.tableId)
+        : null,
+    tableName:
+      (raw.tableName as string | undefined) ??
+      (raw.table_name as string | undefined) ??
+      apiOrder.tableNumber ??
+      null,
     tableNumber: apiOrder.tableNumber,
     deliveryAddress: apiOrder.deliveryAddress,
     landmark: apiOrder.landmark,
@@ -383,6 +402,10 @@ function flattenModificationsForTotals(mods: OrderItemModification[]): {
 
 function mapOrderItemToDetail(item: ApiOrderItem): OrderDetailItem {
   const rawItem = item as ApiOrderItem & Record<string, unknown>;
+  const rawVariationOption =
+    rawItem.variation_option && typeof rawItem.variation_option === "object"
+      ? (rawItem.variation_option as { id?: unknown })
+      : undefined;
   const rawMods = normalizeModificationsFromOrderItem(rawItem);
   const addonLines = addonLinesFromModifications(rawMods);
   const variant = readOrderItemVariantLabel(rawItem);
@@ -395,10 +418,8 @@ function mapOrderItemToDetail(item: ApiOrderItem): OrderDetailItem {
       (item.variationOptionId ?? 
        rawItem.variation_option_id ?? 
        item.variationOption?.id ?? 
-       (item.variationOption as any)?.variationId ??
-       (item as any).variation_option?.id ??
-       (item as any).variation_option?.variationId) != null
-        ? String(item.variationOptionId ?? rawItem.variation_option_id ?? item.variationOption?.id ?? (item.variationOption as any)?.variationId ?? (item as any).variation_option?.id ?? (item as any).variation_option?.variationId)
+       rawVariationOption?.id) != null
+        ? String(item.variationOptionId ?? rawItem.variation_option_id ?? item.variationOption?.id ?? rawVariationOption?.id)
         : undefined,
     name: (item.product as { name?: string } | undefined)?.name || "Unknown Product",
     qty: item.quantity,
@@ -409,5 +430,11 @@ function mapOrderItemToDetail(item: ApiOrderItem): OrderDetailItem {
     addonLines: addonLines.length > 0 ? addonLines : undefined,
     addOns: addonLines.length > 0 ? addonLines.map((a) => `${a.qty}x ${a.name}`) : undefined,
     modifications: modifications.length > 0 ? modifications : undefined,
+    bogoPromotionId: item.bogoPromotionId ?? (rawItem.bogo_promotion_id as string | number),
+    productBundleId: item.productBundleId ?? (rawItem.product_bundle_id as string | number),
+    isFreeItem: item.isFreeItem ?? (rawItem.is_free_item as boolean),
+    linkId: item.linkId ?? (rawItem.link_id as string),
+    buyQuantity: item.buyQuantity ?? (rawItem.buy_quantity as number),
+    getQuantity: item.getQuantity ?? (rawItem.get_quantity as number),
   };
 }

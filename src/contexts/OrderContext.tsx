@@ -7,6 +7,7 @@ import {
   useCallback,
   useLayoutEffect,
   useRef,
+  type MutableRefObject,
   type ReactNode,
 } from "react";
 import { clearMenuOpenCheckoutForSlot } from "@/lib/menuOpenCheckout";
@@ -19,6 +20,7 @@ export type OrderDetailsData = {
   customerId?: string | number;
   originalCustomerName?: string;
   orderType: OrderType;
+  tableId?: number | null;
   tableNumber?: string;
   deliveryAddress?: string;
   landmark?: string;
@@ -27,13 +29,13 @@ export type OrderDetailsData = {
   deliveryChargeId?: number | null;
   deliveryChargeAmount?: number;
   deliveryChargeTitle?: string;
+  loyaltyPoints?: number;
 };
 
 export type ManualDiscount = {
   value: number;
   type: "percentage" | "amount";
 };
-
 
 export type OrderItem = {
   id: string;
@@ -48,6 +50,15 @@ export type OrderItem = {
   price: number;
   qty: number;
   image?: string;
+  linkId?: string;
+  isFreeItem?: boolean;
+  promotionType?: "BOGO" | "COMBO";
+  buyQuantity?: number;
+  getQuantity?: number;
+  promotionId?: number;
+  itemType?: "food" | "voucher" | "promotion";
+  recipientName?: string;
+  recipientMobile?: string;
 };
 
 export type Order = {
@@ -92,8 +103,19 @@ type OrderContextType = {
     addOnsList?: string[],
     variationId?: number,
     variationOptionId?: number,
-    modifications?: { modificationId: number; price: number }[]
+    modifications?: { modificationId: number; price: number }[],
+    options?: AddItemOptions,
+    linkId?: string,
+    isFreeItem?: boolean,
+    promotionType?: "BOGO" | "COMBO",
+    buyQuantity?: number,
+    getQuantity?: number,
+    promotionId?: number,
+    qty?: number
   ) => void;
+  registerOpenOrderDetails: (fn: ((mode: OrderDetailsModalMode) => void) | null) => void;
+  flushPendingAddsAfterOrderDetails: () => void;
+  clearPendingAddsAfterOrderDetails: () => void;
   updateQty: (id: string, delta: number) => void;
   removeItem: (id: string) => void;
   updateItem: (
@@ -108,11 +130,23 @@ type OrderContextType = {
     variationId?: number,
     variationOptionId?: number,
     modifications?: { modificationId: number; price: number }[],
-    qty?: number
+    qty?: number,
+    options?: AddItemOptions
   ) => void;
   canAddOrder: boolean;
   canCloseOrder: boolean;
   loadOrderById: (orderId: string, orderData?: Partial<Order>) => void;
+};
+
+export type MenuOrderSurface = "menu" | "vouchers" | "promotions";
+
+export type OrderDetailsModalMode = "full" | "minimalVoucher";
+
+export type AddItemOptions = {
+  skipOrderDetailsCheck?: boolean;
+  itemType?: "food" | "voucher" | "promotion";
+  recipientName?: string;
+  recipientMobile?: string;
 };
 
 /** Params for one add-item call. Used when blocking add (e.g. no drawer session) so we can replay after session starts. */
@@ -127,6 +161,16 @@ export type PendingAddParams = {
   variationId?: number;
   variationOptionId?: number;
   modifications?: { modificationId: number; price: number }[];
+  linkId?: string;
+  isFreeItem?: boolean;
+  promotionType?: "BOGO" | "COMBO";
+  buyQuantity?: number;
+  getQuantity?: number;
+  promotionId?: number;
+  qty?: number;
+  itemType?: "food" | "voucher" | "promotion";
+  recipientName?: string;
+  recipientMobile?: string;
 };
 
 const OrderContext = createContext<OrderContextType | null>(null);
@@ -256,11 +300,18 @@ export function OrderProvider({
   children,
   beforeAddItem,
   beforeAddOrder,
+  menuSurfaceRef: menuSurfaceRefProp,
 }: {
   children: ReactNode;
   beforeAddItem?: (pending?: PendingAddParams) => boolean;
   beforeAddOrder?: () => boolean;
+  menuSurfaceRef?: MutableRefObject<MenuOrderSurface>;
 }) {
+  const defaultMenuSurfaceRef = useRef<MenuOrderSurface>("menu");
+  const menuSurfaceRef = menuSurfaceRefProp ?? defaultMenuSurfaceRef;
+  const pendingAfterOrderDetailsRef = useRef<PendingAddParams[]>([]);
+  const openOrderDetailsRef = useRef<((mode: OrderDetailsModalMode) => void) | null>(null);
+
   const initialOrders = (() => {
     const loaded = loadOrdersFromStorage();
     const ordersWithData = loaded.filter(hasOrderData);
@@ -431,6 +482,17 @@ export function OrderProvider({
     clearOrderById(orderId);
   }, [activeOrderId, clearOrderById]);
 
+  const registerOpenOrderDetails = useCallback(
+    (fn: ((mode: OrderDetailsModalMode) => void) | null) => {
+      openOrderDetailsRef.current = fn;
+    },
+    []
+  );
+
+  const clearPendingAddsAfterOrderDetails = useCallback(() => {
+    pendingAfterOrderDetailsRef.current = [];
+  }, []);
+
   const addItem = useCallback(
     (
       productId: number,
@@ -442,7 +504,15 @@ export function OrderProvider({
       addOnsList?: string[],
       variationId?: number,
       variationOptionId?: number,
-      modifications?: { modificationId: number; price: number }[]
+      modifications?: { modificationId: number; price: number }[],
+      options?: AddItemOptions,
+      linkId?: string,
+      isFreeItem?: boolean,
+      promotionType?: "BOGO" | "COMBO",
+      buyQuantity?: number,
+      getQuantity?: number,
+      promotionId?: number,
+      qty = 1
     ) => {
       if (hasPendingPaymentLock()) return;
       const pending: PendingAddParams = {
@@ -456,7 +526,31 @@ export function OrderProvider({
         variationId,
         variationOptionId,
         modifications,
+        itemType: options?.itemType,
+        recipientName: options?.recipientName,
+        recipientMobile: options?.recipientMobile,
+        linkId,
+        isFreeItem,
+        promotionType,
+        buyQuantity,
+        getQuantity,
+        promotionId,
+        qty,
       };
+
+      if (!options?.skipOrderDetailsCheck) {
+        const surface = menuSurfaceRef.current;
+        const orderIdForActive = activeOrderId ?? orders[0]?.id;
+        const activeOrder = orders.find((o) => o.id === orderIdForActive);
+        const hasOrderDetails = activeOrder?.orderDetails != null;
+
+        if (!hasOrderDetails && (surface === "menu" || surface === "promotions" || surface === "vouchers")) {
+          pendingAfterOrderDetailsRef.current = [...pendingAfterOrderDetailsRef.current, pending];
+          openOrderDetailsRef.current?.(surface === "vouchers" ? "minimalVoucher" : "full");
+          return;
+        }
+      }
+
       if (beforeAddItem && !beforeAddItem(pending)) return;
       const orderId = activeOrderId ?? orders[0]?.id;
       if (!orderId) return;
@@ -471,13 +565,18 @@ export function OrderProvider({
               i.variationId === variationId &&
               i.variationOptionId === variationOptionId &&
               JSON.stringify(i.modifications) === JSON.stringify(modifications) &&
-              i.details === details
+              i.details === details &&
+              i.linkId === linkId &&
+              i.isFreeItem === isFreeItem &&
+              i.itemType === options?.itemType &&
+              (i.recipientName ?? "") === (options?.recipientName ?? "") &&
+              (i.recipientMobile ?? "") === (options?.recipientMobile ?? "")
           );
           if (existing) {
             return {
               ...order,
               items: order.items.map((i) =>
-                i.id === existing.id ? { ...i, qty: i.qty + 1 } : i
+                i.id === existing.id ? { ...i, qty: i.qty + qty } : i
               ),
             };
           }
@@ -494,10 +593,19 @@ export function OrderProvider({
                 name,
                 details,
                 price,
-                qty: 1,
                 image,
                 variant,
                 addOnsList,
+                itemType: options?.itemType,
+                recipientName: options?.recipientName,
+                recipientMobile: options?.recipientMobile,
+                linkId,
+                isFreeItem,
+                promotionType,
+                buyQuantity,
+                getQuantity,
+                promotionId,
+                qty,
               },
             ],
           };
@@ -506,8 +614,41 @@ export function OrderProvider({
         return updated;
       });
     },
-    [activeOrderId, beforeAddItem, orders]
+    [activeOrderId, beforeAddItem, menuSurfaceRef, orders]
   );
+
+  const flushPendingAddsAfterOrderDetails = useCallback(() => {
+    const pending = pendingAfterOrderDetailsRef.current;
+    if (pending.length === 0) return;
+    pendingAfterOrderDetailsRef.current = [];
+    for (const p of pending) {
+      addItem(
+        p.productId,
+        p.name,
+        p.price,
+        p.details,
+        p.image,
+        p.variant,
+        p.addOnsList,
+        p.variationId,
+        p.variationOptionId,
+        p.modifications,
+        {
+          skipOrderDetailsCheck: true,
+          itemType: p.itemType,
+          recipientName: p.recipientName,
+          recipientMobile: p.recipientMobile,
+        },
+        p.linkId,
+        p.isFreeItem,
+        p.promotionType,
+        p.buyQuantity,
+        p.getQuantity,
+        p.promotionId,
+        p.qty
+      );
+    }
+  }, [addItem]);
 
   const updateQty = useCallback(
     (itemId: string, delta: number) => {
@@ -518,13 +659,41 @@ export function OrderProvider({
       setOrders((prev) => {
         const updated = prev.map((order) => {
           if (order.id !== orderId) return order;
+
+          const targetItem = order.items.find(i => i.id === itemId);
+          if (!targetItem) return order;
+
+          let actualDelta = delta;
+          if (targetItem.promotionType === "BOGO" && !targetItem.isFreeItem && targetItem.buyQuantity) {
+            // Treat +/- 1 as +/- one full pack
+            if (Math.abs(delta) === 1) {
+              actualDelta = delta > 0 ? targetItem.buyQuantity : -targetItem.buyQuantity;
+            }
+          }
+
+          const newQty = Math.max(0, targetItem.qty + actualDelta);
+
+          let updatedItems = order.items.map((i) =>
+            i.id === itemId ? { ...i, qty: newQty } : i
+          );
+
+          // Sync linked BOGO items
+          if (targetItem.promotionType === "BOGO" && targetItem.linkId) {
+            if (!targetItem.isFreeItem) {
+              // This is a "Buy" item, sync the "Free" one
+              const freeItem = updatedItems.find(i => i.linkId === targetItem.linkId && i.isFreeItem);
+              if (freeItem && freeItem.buyQuantity && freeItem.getQuantity) {
+                const newFreeQty = Math.floor(newQty / freeItem.buyQuantity) * freeItem.getQuantity;
+                updatedItems = updatedItems.map(i =>
+                  i.id === freeItem.id ? { ...i, qty: newFreeQty } : i
+                );
+              }
+            }
+          }
+
           return {
             ...order,
-            items: order.items
-              .map((i) =>
-                i.id === itemId ? { ...i, qty: Math.max(0, i.qty + delta) } : i
-              )
-              .filter((i) => i.qty > 0),
+            items: updatedItems.filter((i) => i.qty > 0),
           };
         });
         saveOrdersToStorage(updated);
@@ -543,9 +712,22 @@ export function OrderProvider({
       setOrders((prev) => {
         const updated = prev.map((order) => {
           if (order.id !== orderId) return order;
+
+          const targetItem = order.items.find(i => i.id === itemId);
+          if (!targetItem) return order;
+
+          const filteredItems = order.items.filter((i) => {
+            if (i.id === itemId) return false;
+            // If we remove a BOGO "buy" item, remove all its linked items
+            if (targetItem.promotionType === "BOGO" && targetItem.linkId && !targetItem.isFreeItem) {
+              if (i.linkId === targetItem.linkId) return false;
+            }
+            return true;
+          });
+
           return {
             ...order,
-            items: order.items.filter((i) => i.id !== itemId),
+            items: filteredItems,
           };
         });
         saveOrdersToStorage(updated);
@@ -568,7 +750,8 @@ export function OrderProvider({
       variationId?: number,
       variationOptionId?: number,
       modifications?: { modificationId: number; price: number }[],
-      qty?: number
+      qty?: number,
+      options?: AddItemOptions
     ) => {
       if (hasPendingPaymentLock()) return;
       const orderId = activeOrderId ?? orders[0]?.id;
@@ -594,6 +777,9 @@ export function OrderProvider({
                   image,
                   variant,
                   addOnsList,
+                  itemType: options?.itemType ?? i.itemType,
+                  recipientName: options?.recipientName ?? i.recipientName,
+                  recipientMobile: options?.recipientMobile ?? i.recipientMobile,
                 }
                 : i
             ),
@@ -739,7 +925,9 @@ export function OrderProvider({
         manualDiscount,
         setManualDiscount,
         addItem,
-
+        registerOpenOrderDetails,
+        flushPendingAddsAfterOrderDetails,
+        clearPendingAddsAfterOrderDetails,
         updateQty,
         removeItem,
         updateItem,

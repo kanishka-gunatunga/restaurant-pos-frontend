@@ -1,9 +1,8 @@
 /**
  * Application constants
- * Centralize config values used across the POS system
  */
 
-export const APP_NAME = "Restaurant POS";
+export const APP_NAME = "Ahas Gawwa POS";
 
 /** Auth idle timeout in minutes. */
 export const AUTH_IDLE_TIMEOUT_MINUTES = 15;
@@ -23,8 +22,12 @@ export const ROUTES = {
   DASHBOARD_EXTRA_FEE: "/dashboard/extra-fee",
   DASHBOARD_BRANCHES: "/dashboard/branches",
   DASHBOARD_ACTIVITY: "/dashboard/activity",
+  DASHBOARD_VOUCHERS: "/dashboard/vouchers",
+  DASHBOARD_VOUCHERS_CREATED: "/dashboard/vouchers/create-vouchers",
   DASHBOARD_REPORTS: "/dashboard/reports",
+  DASHBOARD_PROMOTIONS: "/dashboard/promotions",
   DASHBOARD_CALCULATOR: "/dashboard/calculator",
+  DASHBOARD_TABLES: "/dashboard/tables",
   ORDERS: "/orders",
   MENU: "/menu",
   TABLES: "/tables",

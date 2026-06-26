@@ -91,12 +91,13 @@ export const useGetProductsByCategory = (categoryId: number, status?: string) =>
 
 export const useGetProductsByBranch = (
   branchId: number,
-  params: { categoryId?: number; subCategoryId?: number; status?: string } = {}
+  params: { categoryId?: number; subCategoryId?: number; status?: string } = {},
+  options?: { enabled?: boolean }
 ) => {
   return useQuery({
     queryKey: [...PRODUCT_KEYS.all, "byBranch", branchId, params],
     queryFn: () => productService.getProductsByBranch(branchId, params),
-    enabled: !!branchId,
+    enabled: (options?.enabled ?? true) && !!branchId,
     staleTime: 5 * 60 * 1000,
   });
 };

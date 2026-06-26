@@ -56,6 +56,7 @@ export interface VariationOption {
   variationId: number;
   name: string;
   status: ProductStatus;
+  barcode?: string;
   prices?: VariationPrice[];
   discountItems?: DiscountItem[];
 }
@@ -133,6 +134,7 @@ export interface Product {
   categoryId?: number | null;
   subCategoryId?: number | null;
   status: ProductStatus;
+  barcode?: string;
   category?: Category;
   subCategory?: Category;
   branches?: ProductBranch[];
@@ -151,11 +153,13 @@ export interface CreateProductPayload {
   sku?: string;
   categoryId?: number;
   subCategoryId?: number;
+  barcode?: string;
   branches?: number[]; // Array of branch IDs
   variations?: {
     name: string;
     options: {
       name: string;
+      barcode?: string;
       prices: {
         branchId: number;
         price: number;
@@ -212,4 +216,4 @@ export interface CreateDiscountPayload {
   }[];
 }
 
-export interface UpdateDiscountPayload extends Partial<CreateDiscountPayload> {}
+export type UpdateDiscountPayload = Partial<CreateDiscountPayload>;

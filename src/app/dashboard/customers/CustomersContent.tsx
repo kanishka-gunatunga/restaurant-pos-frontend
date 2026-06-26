@@ -7,6 +7,8 @@ import CustomerHeader from "@/components/customers/CustomerHeader";
 import CustomerTable from "@/components/customers/CustomerTable";
 import AddCustomerModal from "@/components/customers/AddCustomerModal";
 import SendPromotionModal from "@/components/customers/SendPromotionModal";
+import CategoryDiscountModal from "@/components/customers/CategoryDiscountModal";
+import TableManagement from "@/components/customers/TableManagement";
 import {
   useGetAllCustomers,
   useSearchCustomers,
@@ -23,6 +25,7 @@ export default function CustomersContent() {
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isPromotionModalOpen, setIsPromotionModalOpen] = useState(false);
+  const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
   useEffect(() => {
@@ -131,6 +134,7 @@ export default function CustomersContent() {
             onSearchChange={setSearchTerm}
             onAddClick={() => setIsAddModalOpen(true)}
             onSendPromotionClick={() => setIsPromotionModalOpen(true)}
+            onDiscountClick={() => setIsDiscountModalOpen(true)}
           />
           <CustomerTable
             searchTerm={searchTerm}
@@ -157,6 +161,12 @@ export default function CustomersContent() {
       {isPromotionModalOpen && (
         <SendPromotionModal
           onClose={() => setIsPromotionModalOpen(false)}
+        />
+      )}
+
+      {isDiscountModalOpen && (
+        <CategoryDiscountModal
+          onClose={() => setIsDiscountModalOpen(false)}
         />
       )}
     </div>

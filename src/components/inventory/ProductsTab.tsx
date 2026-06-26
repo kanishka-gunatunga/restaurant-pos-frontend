@@ -1,6 +1,6 @@
 "use client";
 
-import { Package, Pencil, Trash2, Calendar, FileText, Loader2, Power, Hash } from "lucide-react";
+import { Package, Pencil, Trash2, Calendar, FileText, Loader2, Power, Hash, Tag, Barcode } from "lucide-react";
 import { toast } from "sonner";
 import {
   useGetAllProducts,
@@ -10,6 +10,8 @@ import {
 } from "@/hooks/useProduct";
 import { Product } from "@/types/product";
 import { formatDate } from "@/lib/format";
+import { useState } from "react";
+import ViewBarcodesModal from "./ViewBarcodesModal";
 
 type ProductsTabProps = {
   branchId: string;
@@ -22,6 +24,8 @@ export default function ProductsTab({ branchId, searchQuery, onEditProduct }: Pr
   const { data: searchResults, isLoading: isSearchLoading } = useSearchProducts(searchQuery, "all");
   const activateMutation = useActivateProduct();
   const deactivateMutation = useDeactivateProduct();
+
+  const [selectedProductForBarcode, setSelectedProductForBarcode] = useState<Product | null>(null);
 
   const products = searchQuery ? searchResults : allProducts;
   const isLoading = searchQuery ? isSearchLoading : isAllLoading;
@@ -117,6 +121,14 @@ export default function ProductsTab({ branchId, searchQuery, onEditProduct }: Pr
                         <div className="flex items-center justify-end gap-1">
                           <button
                             type="button"
+                            onClick={() => setSelectedProductForBarcode(product)}
+                            className="rounded-lg p-2 text-[#90A1B9] hover:bg-[#EA580C1A] hover:text-[#EA580C]"
+                            title="View Barcodes"
+                          >
+                            <Barcode className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => onEditProduct(product)}
                             className="rounded-lg p-2 text-[#90A1B9] hover:bg-[#F1F5F9] hover:text-[#45556C]"
                           >
@@ -149,6 +161,12 @@ export default function ProductsTab({ branchId, searchQuery, onEditProduct }: Pr
           </table>
         </div>
       </div>
+
+      <ViewBarcodesModal
+        open={!!selectedProductForBarcode}
+        product={selectedProductForBarcode}
+        onClose={() => setSelectedProductForBarcode(null)}
+      />
     </div>
   );
 }

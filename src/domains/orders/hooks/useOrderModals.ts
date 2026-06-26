@@ -150,6 +150,8 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
       customerId: order.customerId,
       totalAmount: order.totalAmount,
       orderType: order.orderType,
+      tableId: order.tableId,
+      tableName: order.tableName,
       tableNumber: order.tableNumber,
       deliveryAddress: order.deliveryAddress,
       landmark: order.landmark,
@@ -238,11 +240,17 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
       const payload = {
         order_products: data.items.map((item) => ({
           productId: Number(item.productId || item.id),
-          variationId: item.variationOptionId ? Number(item.variationOptionId) : undefined,
+          variationOptionId: item.variationOptionId ? Number(item.variationOptionId) : undefined,
           quantity: item.qty,
           unitPrice: item.price,
           productDiscount: item.productDiscount ?? 0,
           modifications: item.modifications,
+          bogoPromotionId: item.bogoPromotionId,
+          productBundleId: item.productBundleId,
+          isFreeItem: item.isFreeItem,
+          linkId: item.linkId,
+          buyQuantity: item.buyQuantity,
+          getQuantity: item.getQuantity,
         })),
       };
 
@@ -384,11 +392,17 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
 
       const order_products = data.items.map((item) => ({
         productId: Number(item.productId || item.id),
-        variationId: item.variationOptionId ? Number(item.variationOptionId) : undefined,
+        variationOptionId: item.variationOptionId ? Number(item.variationOptionId) : undefined,
         quantity: item.qty,
         unitPrice: item.price,
         productDiscount: item.productDiscount ?? 0,
         modifications: item.modifications,
+        bogoPromotionId: item.bogoPromotionId,
+        productBundleId: item.productBundleId,
+        isFreeItem: item.isFreeItem,
+        linkId: item.linkId,
+        buyQuantity: item.buyQuantity,
+        getQuantity: item.getQuantity,
       }));
 
       let updated: Order;
@@ -477,6 +491,7 @@ export function useOrderModals(options?: UseOrderModalsOptions) {
               customerName: data.customerName,
               customerMobile: data.phone,
               orderType: mapOrderTypeToApi(data.orderType),
+              tableId: data.orderType === "Dine In" ? data.tableId : null,
               tableNumber: data.orderType === "Dine In" ? data.tableNumber : undefined,
               deliveryAddress: data.orderType === "Delivery" ? data.deliveryAddress : undefined,
               landmark: data.orderType === "Delivery" ? data.landmark : undefined,

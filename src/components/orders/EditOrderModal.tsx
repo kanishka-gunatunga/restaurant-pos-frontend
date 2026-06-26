@@ -20,6 +20,7 @@ import type { MenuItem, ProductVariant, ProductAddOn } from "@/components/menu/t
 import { useGetAllModifications } from "@/hooks/useModification";
 import { useGetProductsByBranch } from "@/hooks/useProduct";
 import { useAuth } from "@/contexts/AuthContext";
+import type { OrderItem } from "@/contexts/OrderContext";
 import { lineNetBeforeOrderDiscount, totalsFromOrderLineItems } from "@/domains/orders/orderLineTotals";
 
 export type EditOrderLineItem = {
@@ -35,6 +36,13 @@ export type EditOrderLineItem = {
   variant?: string;
   addOns?: string[];
   modifications?: { modificationId: number; price: number }[];
+  bogoPromotionId?: string | number;
+  productBundleId?: string | number;
+  isFreeItem?: boolean;
+  linkId?: string;
+  buyQuantity?: number;
+  getQuantity?: number;
+  promotionType?: "BOGO" | "COMBO";
 };
 
 type OrderForEdit = {
@@ -59,6 +67,12 @@ type OrderForEdit = {
     variant?: string;
     addOns?: string[];
     modifications?: { modificationId: number; price: number }[];
+    bogoPromotionId?: string | number;
+    productBundleId?: string | number;
+    isFreeItem?: boolean;
+    linkId?: string;
+    buyQuantity?: number;
+    getQuantity?: number;
   }[];
 };
 
@@ -100,8 +114,6 @@ function AddItemCard({
   const hasVariants = item.variants && item.variants.length > 0;
   const hasAddOns = item.addOns && item.addOns.length > 0;
   const basePrice = selectedVariant?.price ?? item.price;
-  const addOnsTotal = selectedAddOns.reduce((sum, { addOn, qty: n }) => sum + addOn.price * n, 0);
-  const unitPrice = basePrice + addOnsTotal;
 
   const toggleAddOn = (addOn: ProductAddOn) => {
     setSelectedAddOns((prev) => {
@@ -133,7 +145,7 @@ function AddItemCard({
       variationId: selectedVariant?.variationId != null ? String(selectedVariant.variationId) : undefined,
       variationOptionId: selectedVariant?.id != null ? String(selectedVariant.id) : undefined,
       name: item.name,
-      price: unitPrice,
+      price: basePrice,
       image: resolveProductImageSrc(item.image, String(item.productId)),
       variant: variantName,
       addOns: addOnsList.length > 0 ? addOnsList : undefined,
@@ -320,6 +332,13 @@ export default function EditOrderModal({ order, onClose, onSubmit, onOrderAndPay
       variant: it.variant,
       addOns: it.addOns,
       modifications: it.modifications,
+      bogoPromotionId: it.bogoPromotionId,
+      productBundleId: it.productBundleId,
+      isFreeItem: it.isFreeItem,
+      linkId: it.linkId,
+      buyQuantity: it.buyQuantity,
+      getQuantity: it.getQuantity,
+      promotionType: it.bogoPromotionId ? "BOGO" : (it.productBundleId ? "COMBO" : undefined),
     };
   });
 
@@ -363,15 +382,49 @@ export default function EditOrderModal({ order, onClose, onSubmit, onOrderAndPay
   const hasAdditionalPayment = paymentDiff > 0;
 
   const updateQty = (id: string, delta: number) => {
-    setLineItems((prev) =>
-      prev
-        .map((it) => (it.id === id ? { ...it, qty: Math.max(0, it.qty + delta) } : it))
-        .filter((it) => it.qty > 0)
-    );
+    setLineItems((prev) => {
+      const targetItem = prev.find(it => it.id === id);
+      if (!targetItem || targetItem.isFreeItem) return prev;
+
+      let actualDelta = delta;
+      if (targetItem.promotionType === "BOGO" && !targetItem.isFreeItem && targetItem.buyQuantity) {
+        if (Math.abs(delta) === 1) {
+          actualDelta = delta > 0 ? targetItem.buyQuantity : -targetItem.buyQuantity;
+        }
+      }
+
+      const newQty = Math.max(0, targetItem.qty + actualDelta);
+      
+      let updatedItems = prev.map((it) => (it.id === id ? { ...it, qty: newQty } : it));
+
+      // Sync linked BOGO items
+      if (targetItem.promotionType === "BOGO" && targetItem.linkId) {
+        if (!targetItem.isFreeItem) {
+          const freeItem = updatedItems.find(i => i.linkId === targetItem.linkId && i.isFreeItem);
+          if (freeItem && freeItem.buyQuantity && freeItem.getQuantity) {
+            const newFreeQty = Math.floor(newQty / freeItem.buyQuantity) * freeItem.getQuantity;
+            updatedItems = updatedItems.map(i => 
+              i.id === freeItem.id ? { ...i, qty: newFreeQty } : i
+            );
+          }
+        }
+      }
+
+      return updatedItems.filter((it) => it.qty > 0);
+    });
   };
 
   const removeItem = (id: string) => {
-    setLineItems((prev) => prev.filter((it) => it.id !== id));
+    setLineItems((prev) => {
+      const targetItem = prev.find(it => it.id === id);
+      if (!targetItem || targetItem.isFreeItem) return prev;
+
+      // If we remove a BOGO "buy" item, remove all its linked items
+      if (targetItem.promotionType === "BOGO" && targetItem.linkId && !targetItem.isFreeItem) {
+        return prev.filter((it) => it.linkId !== targetItem.linkId);
+      }
+      return prev.filter((it) => it.id !== id);
+    });
   };
 
   const addItemFromMenu = (params: {
@@ -386,7 +439,10 @@ export default function EditOrderModal({ order, onClose, onSubmit, onOrderAndPay
     modifications?: { modificationId: number; price: number }[];
   }) => {
     // Find applicable discount for the new item
-    const mockOrderItem = { productId: params.productId, variationOptionId: params.variationOptionId } as any;
+    const mockOrderItem = {
+      productId: params.productId,
+      variationOptionId: params.variationOptionId,
+    } as unknown as OrderItem;
     const applicable = findApplicableDiscount(mockOrderItem, discountsData);
     const productDiscount = applicable 
       ? calculateItemDiscount(params.price, 1, applicable.discountItem)
@@ -510,36 +566,47 @@ export default function EditOrderModal({ order, onClose, onSubmit, onOrderAndPay
                       </p>
                     )}
                     <div className="mt-2 flex items-center gap-2">
-                      <div className="flex items-center rounded-[10px] border border-[#E2E8F0] bg-white">
-                        <button
-                          type="button"
-                          onClick={() => updateQty(it.id, -1)}
-                          className="p-2 text-[#62748E] hover:text-[#1D293D]"
-                        >
-                          <Minus className="h-4 w-4" />
-                        </button>
-                        <span className="min-w-[28px] text-center font-['Inter'] text-sm font-bold text-[#1D293D]">
-                          {it.qty}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => updateQty(it.id, 1)}
-                          className="p-2 text-[#62748E] hover:text-[#1D293D]"
-                        >
-                          <Plus className="h-4 w-4" />
-                        </button>
-                      </div>
+                      {!it.isFreeItem ? (
+                        <div className="flex items-center rounded-[10px] border border-[#E2E8F0] bg-white">
+                          <button
+                            type="button"
+                            onClick={() => updateQty(it.id, -1)}
+                            className="p-2 text-[#62748E] hover:text-[#1D293D]"
+                          >
+                            <Minus className="h-4 w-4" />
+                          </button>
+                          <span className="min-w-[28px] text-center font-['Inter'] text-sm font-bold text-[#1D293D]">
+                            {it.qty}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => updateQty(it.id, 1)}
+                            className="p-2 text-[#62748E] hover:text-[#1D293D]"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 px-2">
+                          <span className="font-['Inter'] text-[10px] font-black tracking-wider text-[#90A1B9] uppercase">QTY:</span>
+                          <span className="font-['Inter'] text-xs font-black text-[#0A0A0A]">
+                            {it.qty}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-1">
-                    <button
-                      type="button"
-                      onClick={() => removeItem(it.id)}
-                      className="rounded-full p-2 text-[#90A1B9] hover:bg-[#FFE6EB] hover:text-[#EC003F]"
-                      aria-label="Remove item"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    {!it.isFreeItem && (
+                      <button
+                        type="button"
+                        onClick={() => removeItem(it.id)}
+                        className="rounded-full p-2 text-[#90A1B9] hover:bg-[#FFE6EB] hover:text-[#EC003F]"
+                        aria-label="Remove item"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
                     <div className="text-right">
                       <p className="font-['Inter'] text-xs font-medium text-[#62748E]">Item Total</p>
                       <p className="font-['Inter'] text-base font-bold text-[#1D293D]">

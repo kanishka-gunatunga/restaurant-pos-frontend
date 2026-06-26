@@ -27,6 +27,12 @@ export interface OrderItem {
   unitPrice: number;
   productDiscount: number;
   status: "pending" | "complete";
+  bogoPromotionId?: string | number;
+  productBundleId?: string | number;
+  isFreeItem?: boolean;
+  linkId?: string;
+  buyQuantity?: number;
+  getQuantity?: number;
   product?: {
     id: string | number;
     name: string;
@@ -56,6 +62,8 @@ export interface Order {
   customerId?: string | number;
   totalAmount: number;
   orderType: OrderType;
+  tableId?: number | null;
+  tableName?: string | null;
   tableNumber?: string;
   orderDiscount: number;
   tax: number;
@@ -93,7 +101,8 @@ export interface CreateOrderData {
   customerName?: string;
   customerId?: string | number;
   totalAmount: number;
-  orderType: OrderType;
+  orderType?: OrderType;
+  tableId?: number | null;
   tableNumber?: string;
   orderDiscount: number;
   tax: number;
@@ -109,16 +118,23 @@ export interface CreateOrderData {
   deliveryChargeId?: number | null;
   deliveryChargeSelectedId?: number | null;
   order_products: {
-    productId: string | number;
-    variationId?: string | number;
+    // Optional so bundle lines (productBundleId only) can omit productId.
+    productId?: string | number;
+    // IMPORTANT: send only `variationOptionId` (id from `variationoptions`).
+    // Do NOT send `variationId` (parent group id) — the backend no longer
+    // has a fallback for it and will fail a foreign key check.
+    variationOptionId?: string | number;
     quantity: number;
     unitPrice: number;
     productDiscount: number;
+    bogoPromotionId?: string | number;
+    productBundleId?: string | number;
     status?: "pending" | "complete";
     modifications?: {
       modificationId: number;
       price: number;
     }[];
+    notes?: string;
   }[];
 }
 

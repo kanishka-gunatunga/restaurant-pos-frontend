@@ -175,7 +175,7 @@ export default function InventoryContent() {
                   onEditProduct={openEditProduct}
                 />
               )}
-              {activeTab === "discounts" && <DiscountsTab />}
+              {/* {activeTab === "discounts" && <DiscountsTab />} */}
             </div>
           </div>
         </div>

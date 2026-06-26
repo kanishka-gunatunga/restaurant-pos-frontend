@@ -7,6 +7,7 @@ import type { OrderDetailsData, OrderType } from "@/contexts/OrderContext";
 import { useGetCustomerByMobile } from "@/hooks/useCustomer";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDeliveryChargesByBranch } from "@/hooks/useDeliveryCharge";
+import { useGetTables } from "@/hooks/useTable";
 
 type Props = {
   onSubmit: (data: OrderDetailsData) => void;
@@ -15,6 +16,7 @@ type Props = {
   title?: string;
   submitButtonText?: string;
   isSubmitting?: boolean;
+  variant?: "full" | "voucherSale";
 };
 
 const DineInIcon = ({ active }: { active: boolean }) => (
@@ -150,15 +152,23 @@ export default function NewOrderDetailsModal({
   onSubmit,
   onClose,
   initialData,
-  title = "New Order Details",
-  submitButtonText = "Proceed to Menu",
+  title,
+  submitButtonText,
   isSubmitting = false,
+  variant = "full",
 }: Props) {
+  const resolvedTitle = title ?? (variant === "voucherSale" ? "Customer details" : "New Order Details");
+  const resolvedSubmitText =
+    submitButtonText ?? (variant === "voucherSale" ? "Continue" : "Proceed to Menu");
   const [customerName, setCustomerName] = useState(initialData?.customerName ?? "");
   const [phone, setPhone] = useState(initialData?.phone ?? "");
   const [hasManualNameEdit, setHasManualNameEdit] = useState(false);
   const [orderType, setOrderType] = useState<OrderType>(initialData?.orderType ?? "Dine In");
-  const [tableNumber, setTableNumber] = useState(initialData?.tableNumber ?? "");
+  const [tableId, setTableId] = useState(
+    initialData?.tableId != null && Number.isFinite(Number(initialData.tableId))
+      ? String(initialData.tableId)
+      : ""
+  );
   const [deliveryAddress, setDeliveryAddress] = useState(initialData?.deliveryAddress ?? "");
   const [landmark, setLandmark] = useState(initialData?.landmark ?? "");
   const [zipCode, setZipCode] = useState(initialData?.zipCode ?? "");
@@ -171,6 +181,7 @@ export default function NewOrderDetailsModal({
   const [toast, setToast] = useState<string | null>(null);
   const { user } = useAuth();
   const userBranchId = user?.branchId ?? null;
+  const { data: allTables = [], isLoading: isLoadingTables } = useGetTables();
   const { data: deliveryChargesByBranch = [], isLoading: isLoadingDeliveryCharges } =
     useDeliveryChargesByBranch(userBranchId);
   const { data: customerData, isLoading: isLoadingCustomer } = useGetCustomerByMobile(phone.length >= 10 ? phone : "");
@@ -190,13 +201,25 @@ export default function NewOrderDetailsModal({
     if (mobileDigits.length > 0 && !/^0{1}7{1}[01245678]{1}[0-9]{7}$/.test(mobileDigits)) {
       return showToast("Invalid mobile number.");
     }
-    if (orderType === "Dine In" && !tableNumber.trim())
-      return showToast("Please enter table number.");
+    if (variant === "voucherSale") {
+      onSubmit({
+        customerName: resolvedCustomerName.trim(),
+        phone: phone.trim(),
+        customerId: resolvedCustomerId,
+        originalCustomerName: resolvedOriginalCustomerName,
+        loyaltyPoints: customerData?.loyalty_points,
+        orderType: "Take Away",
+      });
+      return;
+    }
+    if (orderType === "Dine In" && !tableId)
+      return showToast("Please select a table.");
     if (orderType === "Delivery" && !deliveryAddress.trim())
       return showToast("Please enter delivery address.");
     if (orderType === "Delivery" && !deliveryCharge)
       return showToast("Please select a delivery charge.");
 
+    const selectedTable = availableTables.find((table) => String(table.id) === tableId);
     const selectedDeliveryCharge = deliveryChargeOptions.find((option) => option.value === deliveryCharge);
 
     onSubmit({
@@ -204,8 +227,12 @@ export default function NewOrderDetailsModal({
       phone: phone.trim(),
       customerId: resolvedCustomerId,
       originalCustomerName: resolvedOriginalCustomerName,
+      loyaltyPoints: customerData?.loyalty_points,
       orderType,
-      ...(orderType === "Dine In" && { tableNumber }),
+      ...(orderType === "Dine In" && {
+        tableId: selectedTable?.id ?? null,
+        tableNumber: selectedTable?.table_name ?? "",
+      }),
       ...(orderType === "Delivery" && {
         deliveryAddress,
         landmark,
@@ -226,6 +253,7 @@ export default function NewOrderDetailsModal({
   const iconClass = "absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#90A1B9]";
 
   const orderTypes: OrderType[] = ["Dine In", "Take Away", "Delivery"];
+  const availableTables = allTables.filter((table) => table.status === "available");
   const deliveryChargeOptions = deliveryChargesByBranch.map((charge) => ({
     value: String(charge.id),
     title: charge.title,
@@ -253,7 +281,7 @@ export default function NewOrderDetailsModal({
         >
           <X className="h-5 w-5" />
         </button>
-        <h2 className="font-['Arial'] text-2xl font-bold leading-8 text-[#1D293D]">{title}</h2>
+        <h2 className="font-['Arial'] text-2xl font-bold leading-8 text-[#1D293D]">{resolvedTitle}</h2>
 
         <div className="mt-6 grid grid-cols-2 gap-4">
           <div>
@@ -297,6 +325,8 @@ export default function NewOrderDetailsModal({
           </div>
         </div>
 
+        {variant === "full" && (
+          <>
         <div className="mt-6">
           <label className={labelClass}>Order Type</label>
           <div className="mt-2 grid grid-cols-3 gap-3">
@@ -331,15 +361,27 @@ export default function NewOrderDetailsModal({
 
         {orderType === "Dine In" && (
           <div className="mt-6">
-            <label className={labelClass}>Table Number</label>
+            <label className={labelClass}>Table</label>
             <div className="relative mt-1.5">
-              <input
-                type="text"
-                value={tableNumber}
-                onChange={(e) => setTableNumber(e.target.value)}
-                placeholder="e.g. T6"
-                className="w-full rounded-[14px] border border-[#E3E4EA] bg-[#F8FAFC] px-4 py-3 font-['Arial'] text-base leading-[100%] text-[#0A0A0A80] placeholder:text-[#0A0A0A80] focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C]/20"
-              />
+              <select
+                value={tableId}
+                onChange={(e) => setTableId(e.target.value)}
+                className={selectClass}
+              >
+                <option value="" disabled>
+                  {isLoadingTables
+                    ? "Loading tables..."
+                    : availableTables.length > 0
+                      ? "Select table"
+                      : "No available tables"}
+                </option>
+                {availableTables.map((table) => (
+                  <option key={table.id} value={String(table.id)}>
+                    {table.table_name}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#90A1B9]" />
             </div>
           </div>
         )}
@@ -444,6 +486,8 @@ export default function NewOrderDetailsModal({
             </div>
           </>
         )}
+          </>
+        )}
 
         <button
           type="button"
@@ -451,7 +495,7 @@ export default function NewOrderDetailsModal({
           disabled={isSubmitting}
           className="mt-8 w-full rounded-[14px] bg-[#EA580C] py-4 font-['Arial'] text-lg font-bold leading-7 text-white shadow-[0px_4px_6px_-4px_#EA580C4D,0px_10px_15px_-3px_#EA580C4D] transition-all duration-300 ease-out hover:bg-[#DC4C04] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {isSubmitting ? "Saving..." : submitButtonText}
+          {isSubmitting ? "Saving..." : resolvedSubmitText}
         </button>
       </div>
 

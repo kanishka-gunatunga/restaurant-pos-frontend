@@ -41,10 +41,16 @@ export default function CustomerTable({
                 Address
               </th>
               <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-[#90A1B9]">
+                Category
+              </th>
+              <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-[#90A1B9]">
                 Promotions
               </th>
               <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-[#90A1B9] text-center">
                 Orders
+              </th>
+              <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-[#90A1B9] text-center">
+                Loyalty
               </th>
               <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-[#90A1B9] text-right">
                 Actions
@@ -103,6 +109,19 @@ export default function CustomerTable({
                     </div>
                   </td>
                   <td className="px-6 py-4">
+                    <span
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${
+                        customer.category === "management"
+                          ? "bg-purple-100 text-purple-700 border border-purple-200"
+                          : customer.category === "staff"
+                          ? "bg-blue-100 text-blue-700 border border-blue-200"
+                          : "bg-gray-100 text-gray-600 border border-gray-200"
+                      }`}
+                    >
+                      {customer.category}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
                     <button
                       onClick={() => onTogglePromotion(customer)}
                       className={`flex h-5 w-5 cursor-pointer items-center justify-center rounded-[4px] transition-all hover:scale-110 active:scale-95 ${
@@ -119,6 +138,11 @@ export default function CustomerTable({
                   <td className="px-6 py-4 text-center">
                     <span className="inline-flex h-7 min-w-[32px] items-center justify-center rounded-full bg-[#EEF2FF] px-3 text-[12px] font-bold text-[#4F39F6]">
                       {customer.orders_count || 0}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-center">
+                    <span className="inline-flex h-7 min-w-[32px] items-center justify-center border border-1-[#FFE6BE] rounded-full bg-[#FEF7DB80] px-3 text-[12px] font-bold text-[#F58F00]">
+                      {customer.loyalty_points || 0}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right">
