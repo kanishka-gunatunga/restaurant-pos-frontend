@@ -126,3 +126,29 @@ export const getProductsByBranch = async (
   const res = await axiosInstance.get(`/products/branch/${branchId}`, { params });
   return res.data;
 };
+
+export const getProductBarcode = async (id: number): Promise<any> => {
+  const res = await axiosInstance.get(`/products/barcode/${id}`);
+  return res.data;
+};
+
+export const printProductBarcode = async (id: number): Promise<any> => {
+  const res = await axiosInstance.get(`/products/${id}/barcode/print`);
+  return res.data;
+};
+
+export const exportProductsTemplate = async (): Promise<Blob> => {
+  const res = await axiosInstance.get("/products/export-template", {
+    responseType: "blob",
+  });
+  return res.data;
+};
+
+export const importProducts = async (file: File): Promise<any> => {
+  const fd = new FormData();
+  fd.append("file", file);
+  const res = await axiosInstance.post("/products/import", fd, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return res.data;
+};

@@ -524,3 +524,14 @@ export async function getAllSessionHistory(params?: {
     throw err;
   }
 }
+
+export const getTodaySummary = async (): Promise<any> => {
+  const res = await axiosInstance.get("/sessions/today/summary");
+  return res.data;
+};
+
+export const getTodaySessions = async (): Promise<any> => {
+  const res = await axiosInstance.get("/sessions/today/sessions");
+  return res.data;
+};
+

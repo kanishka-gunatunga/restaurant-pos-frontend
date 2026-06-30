@@ -9,6 +9,7 @@ import { ROUTES } from "@/lib/constants";
 import { useAuth } from "@/contexts/AuthContext";
 import { TABS, type TabId } from "@/domains/inventory/types";
 import { useGetAllBranches } from "@/hooks/useBranch";
+import { useExportProducts, useImportProducts } from "@/hooks/useProduct";
 import AddCategoryModal from "@/components/inventory/AddCategoryModal";
 import AddGroupModal from "@/components/inventory/AddGroupModal";
 import CategoriesTab from "@/components/inventory/CategoriesTab";
@@ -16,6 +17,7 @@ import AddonsTab from "@/components/inventory/AddonsTab";
 import ProductsTab from "@/components/inventory/ProductsTab";
 import DiscountsTab from "@/components/inventory/DiscountsTab";
 import { Category, Modification, Product } from "@/types/product";
+import { toast } from "sonner";
 
 export default function InventoryContent() {
   const router = useRouter();
@@ -23,6 +25,8 @@ export default function InventoryContent() {
   const branchIdParam = searchParams.get("branchId");
   const { isCashier } = useAuth();
   const { data: branches = [] } = useGetAllBranches("active");
+  const exportProductsMutation = useExportProducts();
+  const importProductsMutation = useImportProducts();
 
   const branch = branches.find((b) => b.id.toString() === branchIdParam) || branches[0];
   const branchId = branch?.id.toString() || "";
@@ -147,14 +151,54 @@ export default function InventoryContent() {
             {activeTab === "products" && (
               <div className="flex items-center justify-between  px-10 py-3">
                 <h2 className="font-['Inter'] text-[16px] font-bold leading-6 text-[#314158]">Products</h2>
-                <Link
-                  href={ROUTES.DASHBOARD_INVENTORY_ADD_PRODUCT}
-                  className="flex shrink-0 items-center gap-2 rounded-[14px] bg-[#EA580C] px-4 py-2.5 font-['Inter'] text-sm font-bold text-white shadow-[0px_4px_6px_-4px_#EA580C33,0px_10px_15px_-3px_#EA580C33] transition-opacity hover:bg-[#c2410c]"
-                  style={{ transitionDuration: "300ms", transitionTimingFunction: "ease-out" }}
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Product
-                </Link>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const fileInput = document.createElement("input");
+                      fileInput.type = "file";
+                      fileInput.accept = ".csv";
+                      fileInput.onchange = async (e) => {
+                        const file = (e.target as HTMLInputElement).files?.[0];
+                        if (file) {
+                          try {
+                            await importProductsMutation.mutateAsync(file);
+                            toast.success("Products imported successfully");
+                          } catch (err: any) {
+                            toast.error(err?.response?.data?.message || "Failed to import products");
+                          }
+                        }
+                      };
+                      fileInput.click();
+                    }}
+                    disabled={importProductsMutation.isPending}
+                    className="flex items-center gap-2 rounded-[14px] border border-[#E2E8F0] bg-white px-4 py-2.5 font-['Inter'] text-sm font-bold text-[#45556C] shadow-sm transition-opacity hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    Import
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await exportProductsMutation.mutateAsync();
+                      } catch (err: any) {
+                        toast.error(err?.response?.data?.message || "Failed to export products");
+                      }
+                    }}
+                    disabled={exportProductsMutation.isPending}
+                    className="flex items-center gap-2 rounded-[14px] border border-[#E2E8F0] bg-white px-4 py-2.5 font-['Inter'] text-sm font-bold text-[#45556C] shadow-sm transition-opacity hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    Export
+                  </button>
+                  <Link
+                    href={ROUTES.DASHBOARD_INVENTORY_ADD_PRODUCT}
+                    className="flex shrink-0 items-center gap-2 rounded-[14px] bg-[#EA580C] px-4 py-2.5 font-['Inter'] text-sm font-bold text-white shadow-[0px_4px_6px_-4px_#EA580C33,0px_10px_15px_-3px_#EA580C33] transition-opacity hover:bg-[#c2410c]"
+                    style={{ transitionDuration: "300ms", transitionTimingFunction: "ease-out" }}
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Product
+                  </Link>
+                </div>
               </div>
             )}
 

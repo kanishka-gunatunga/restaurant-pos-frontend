@@ -101,3 +101,29 @@ export const useGetProductsByBranch = (
     staleTime: 5 * 60 * 1000,
   });
 };
+
+export const useExportProducts = () => {
+  return useMutation({
+    mutationFn: () => productService.exportProductsTemplate(),
+    onSuccess: async (blob) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `products-export-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    },
+  });
+};
+
+export const useImportProducts = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => productService.importProducts(file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: PRODUCT_KEYS.all });
+    },
+  });
+};

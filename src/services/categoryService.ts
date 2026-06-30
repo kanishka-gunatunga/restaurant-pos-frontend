@@ -40,3 +40,19 @@ export const deactivateCategory = async (id: number): Promise<any> => {
   const res = await axiosInstance.post(`/categories/${id}/deactivate`);
   return res.data;
 };
+
+export const exportCategoriesTemplate = async (): Promise<Blob> => {
+  const res = await axiosInstance.get("/categories/export-template", {
+    responseType: "blob",
+  });
+  return res.data;
+};
+
+export const importCategories = async (file: File): Promise<any> => {
+  const fd = new FormData();
+  fd.append("file", file);
+  const res = await axiosInstance.post("/categories/import", fd, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return res.data;
+};

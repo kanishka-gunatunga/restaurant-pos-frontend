@@ -85,3 +85,29 @@ export const useDeactivateCategory = () => {
     },
   });
 };
+
+export const useExportCategories = () => {
+  return useMutation({
+    mutationFn: () => categoryService.exportCategoriesTemplate(),
+    onSuccess: async (blob) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `categories-export-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    },
+  });
+};
+
+export const useImportCategories = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => categoryService.importCategories(file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: CATEGORY_KEYS.all });
+    },
+  });
+};

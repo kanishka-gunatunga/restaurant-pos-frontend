@@ -2,7 +2,7 @@
 
 import { Plus, Pencil, Power, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { useGetAllCategories, useActivateCategory, useDeactivateCategory } from "@/hooks/useCategory";
+import { useGetAllCategories, useActivateCategory, useDeactivateCategory, useExportCategories, useImportCategories } from "@/hooks/useCategory";
 import { CategoryIcon, SubCategoryIcon } from "./CategoryIcons";
 import { Category } from "@/types/product";
 
@@ -15,6 +15,8 @@ export default function CategoriesTab({ onAddCategory, onEditCategory }: Categor
   const { data: categories, isLoading, error } = useGetAllCategories("all");
   const activateMutation = useActivateCategory();
   const deactivateMutation = useDeactivateCategory();
+  const exportCategoriesMutation = useExportCategories();
+  const importCategoriesMutation = useImportCategories();
 
   const handleToggleStatus = async (category: Category) => {
     try {
@@ -59,9 +61,48 @@ export default function CategoriesTab({ onAddCategory, onEditCategory }: Categor
         <h2 className="font-['Inter'] text-[16px] font-bold leading-6 text-[#314158]">
           Categories & Sub-Categories
         </h2>
-        <button
-          type="button"
-          onClick={onAddCategory}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              const fileInput = document.createElement("input");
+              fileInput.type = "file";
+              fileInput.accept = ".csv";
+              fileInput.onchange = async (e) => {
+                const file = (e.target as HTMLInputElement).files?.[0];
+                if (file) {
+                  try {
+                    await importCategoriesMutation.mutateAsync(file);
+                    toast.success("Categories imported successfully");
+                  } catch (err: any) {
+                    toast.error(err?.response?.data?.message || "Failed to import categories");
+                  }
+                }
+              };
+              fileInput.click();
+            }}
+            disabled={importCategoriesMutation.isPending}
+            className="flex items-center gap-2 rounded-[14px] border border-[#E2E8F0] bg-white px-4 py-2.5 font-['Inter'] text-sm font-bold text-[#45556C] shadow-sm transition-opacity hover:bg-gray-50 disabled:opacity-50"
+          >
+            Import
+          </button>
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                await exportCategoriesMutation.mutateAsync();
+              } catch (err: any) {
+                toast.error(err?.response?.data?.message || "Failed to export categories");
+              }
+            }}
+            disabled={exportCategoriesMutation.isPending}
+            className="flex items-center gap-2 rounded-[14px] border border-[#E2E8F0] bg-white px-4 py-2.5 font-['Inter'] text-sm font-bold text-[#45556C] shadow-sm transition-opacity hover:bg-gray-50 disabled:opacity-50"
+          >
+            Export
+          </button>
+          <button
+            type="button"
+            onClick={onAddCategory}
           className="flex items-center gap-2 rounded-[14px] bg-[#EA580C] px-4 py-2.5 font-['Inter'] text-sm font-bold text-white shadow-[0px_4px_6px_-4px_#EA580C33,0px_10px_15px_-3px_#EA580C33] transition-opacity hover:bg-[#c2410c]"
           style={{ transitionDuration: "300ms", transitionTimingFunction: "ease-out" }}
         >

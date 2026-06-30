@@ -87,3 +87,7 @@ export const updateCategoryDiscounts = async (discounts: CategoryDiscount[]): Pr
   return res.data;
 };
 
+export const getCustomerLoyalty = async (id: number | string): Promise<any> => {
+  const res = await axiosInstance.get(`/customers/loyalty/${id}`);
+  return res.data;
+};

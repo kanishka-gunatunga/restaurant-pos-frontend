@@ -10,11 +10,32 @@ export interface GetReportParams {
   print?: boolean;
 }
 
-export const getReportData = async (params: GetReportParams) => {
-  const { reportTypePath, ...queryParams } = params;
-  const res = await axiosInstance.get(`/reports/${reportTypePath}`, {
-    params: queryParams,
-  });
-  console.log(`${reportTypePath} Report API Response:`, res.data);
+export const getSalesReport = async (params: Omit<GetReportParams, "reportTypePath">): Promise<any> => {
+  const res = await axiosInstance.get("/reports/sales", { params });
+  return res.data;
+};
+
+export const getOrdersReport = async (params: Omit<GetReportParams, "reportTypePath">): Promise<any> => {
+  const res = await axiosInstance.get("/reports/orders", { params });
+  return res.data;
+};
+
+export const getPaymentsReport = async (params: Omit<GetReportParams, "reportTypePath">): Promise<any> => {
+  const res = await axiosInstance.get("/reports/payments", { params });
+  return res.data;
+};
+
+export const getProductPerformanceReport = async (params: Omit<GetReportParams, "reportTypePath">): Promise<any> => {
+  const res = await axiosInstance.get("/reports/product-performance", { params });
+  return res.data;
+};
+
+export const getItemizedSalesReport = async (params: Omit<GetReportParams, "reportTypePath">): Promise<any> => {
+  const res = await axiosInstance.get("/reports/itemized-sales", { params });
+  return res.data;
+};
+
+export const getProductsReport = async (params: Omit<GetReportParams, "reportTypePath">): Promise<any> => {
+  const res = await axiosInstance.get("/reports/products", { params });
   return res.data;
 };
